@@ -1,0 +1,9 @@
+ultralytics
+opencv-python-headless
+pandas
+pyyaml
+tqdm
+rich
+modal
+pytest
+ruff
