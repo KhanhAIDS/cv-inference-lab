@@ -7,29 +7,49 @@
 - Đây không phải production repo.
 - Tool, dataset, model public / research / non-commercial đều có thể dùng nếu license cho phép.
 
-## 2. Hai môi trường phát triển (Local & Server)
+## 2. Hai môi trường phát triển
 
-- Code cho dự án được phát triển song song trên hai môi trường khác biệt:
+- Code được phát triển song song trên:
   - Máy local Windows.
   - Server SSH Linux.
-- Bất kỳ đoạn code nào (tiện ích, data pipeline, script) cũng phải ưu tiên tương thích chéo với cả Windows và Linux.
-- Nếu một phần không thể chạy chung trên cả hai platform:
-  - Phải tách riêng theo từng trường hợp Windows / Linux.
-  - Phải ghi rõ phần nào là platform-specific.
-  - Tuyệt đối không để logic chỉ chạy được trên một platform rò rỉ vào core chung.
+- Code phải ưu tiên tương thích Windows và Linux.
+- Nếu không thể chạy chung:
+  - Tách riêng Windows / Linux.
+  - Ghi rõ phần platform-specific.
+  - Không để logic platform-specific rò vào core chung.
 - Không hard-code path, OS, GPU, server, username, drive letter.
 
 ## 3. Target Platform: Modal.com
 
-- **Target Platform:** GPU trên `modal.com`. Đây là môi trường chuẩn để thực thi và giải quyết triệt để sự khác biệt kỹ thuật giữa Windows Local và Linux Server, đảm bảo tính portable.
-- **Vai trò:** Sử dụng `modal.com` cho **tất cả** các tác vụ liên quan đến mô hình (chạy thử, benchmark, triển khai).
-- Kiến trúc hệ thống triển khai model cho các bài toán sẽ bám sát hoàn toàn vào kiến trúc trên `modal.com` (chi tiết sẽ phụ thuộc vào từng bài toán cụ thể).
-- Code tương tác đặc thù với Modal phải được đóng gói vào các wrapper / script / config riêng biệt để không làm kẹt logic lõi (core logic).
-- Dù Modal là đích đến chính, **Core inference logic** (thuật toán thuần) vẫn phải giữ được tính portable để có thể kiểm thử trực tiếp trên Windows Local hoặc Server Linux khi cần.
+- GPU target chính: `modal.com`.
+- Dùng Modal cho tác vụ liên quan mô hình:
+  - chạy thử
+  - benchmark
+  - triển khai
+- Code Modal phải nằm trong wrapper / script / config riêng.
+- Core inference logic vẫn phải portable để test trên Windows local hoặc Linux server.
 
-## 4. Mục tiêu tối thượng
+## 4. Tổ chức bài toán
 
-- Mục tiêu tối thượng: xây dựng một lab để đo, so sánh, và tối ưu end-to-end Computer Vision inference.
-- Mọi quyết định kỹ thuật phải phục vụ mục tiêu này.
+- Mỗi bài toán nằm trong một folder riêng dưới `tasks/`.
+- Dataset của mỗi bài toán nằm trong một folder riêng dưới `datasets/`.
+- Tên folder phải nói rõ bài toán hoặc dataset đang chứa.
+- Không để code, docs, dataset của bài toán cụ thể nằm rải ở root.
+
+## 5. Tối giản codebase
+
+- Mặc định giữ codebase nhỏ nhất có thể. Tuyệt đối không giữ lại file/thư mục không phục vụ trực tiếp cho quy trình hiện tại.
+- Chỉ giữ file thật sự cần cho audit, train, eval, profile, test, report.
+- Xóa ngay lập tức file/folder sinh tự động, cache, scaffold rỗng, placeholder thừa.
+- Không được viết code thừa thãi, tạo file thừa thãi ví dụ như `__init__.py` khi không thực sự cần thiết.
+- Không tạo folder hoặc ignore rule preemptive (đón đầu) khi chưa có file thực tế hoặc nhu cầu thực sự.
+- Đặt tên file/folder tường minh theo nội dung.
+- Không thêm comment trong code.
+- Chỉ giữ hoặc thêm comment code khi user yêu cầu rõ.
+
+## 6. Mục tiêu tối thượng
+
+- Xây dựng lab để đo, so sánh, tối ưu end-to-end Computer Vision inference.
+- Mọi quyết định kỹ thuật phải phục vụ đo, so sánh, hoặc tối ưu inference.
 - Không tối ưu mù.
-- Không thêm complexity nếu chưa giúp đo, so sánh, hoặc tối ưu inference rõ ràng hơn.
+- Không thêm complexity nếu chưa giúp đo, so sánh, hoặc tối ưu inference rõ hơn.
