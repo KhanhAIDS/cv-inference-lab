@@ -1,51 +1,158 @@
-- **Timeline:** `2026-07-08 09:47:37 +07:00`
-  - **Yêu cầu:** tạo file metadata/helper/context cho hệ thống hiện tại để agent khác tra nhanh logic, công thức, schema, context.
+- **Timeline:** `2026-07-08 11:35:00 +07:00`
+  - **Yêu cầu:** (1) đánh giá alignment research plan vs codebase + QC bbox D-Fire (read-only, file tạm ngoài repo); (2) phản biện và viết lại `research_plan.md` + `research_toolbox.md` (v2) để xác lập hướng đi, đồng bộ `agent_context.md`.
   - **Commands đã chạy:**
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/research_plan.md"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/dataset.py"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/train.py"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/modal_app.py"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/eval.py"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/extract_hard_negatives.py"`
-    - `Get-ChildItem -LiteralPath "datasets/smoke_fire_detection" -Force`
-    - `Get-ChildItem -LiteralPath "datasets/smoke_fire_detection/FIgLib" -Directory`
-    - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
-    - `git status --short`
-    - `Test-Path -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
-    - `Get-Content -Head 80 -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
-    - `Get-Content -Tail 40 -Encoding UTF8 -LiteralPath "CHANGELOG.md"`
-    - `git status --short`
-    - `git diff --stat`
-    - `(Get-Content -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Measure-Object -Line).Lines`
-    - `(Get-Content -LiteralPath "CHANGELOG.md" | Measure-Object -Line).Lines`
-    - `Get-Item -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Select-Object FullName,Length,LastWriteTime`
-  - **Thay đổi trực tiếp:**
-    - Thêm: `tasks/smoke_fire_detection/docs/agent_context.md`
-    - Sửa: `CHANGELOG.md`
-  - **Thay đổi gián tiếp:**
-    - Không có.
-  - **Ghi chú:**
-    - Không chạy lệnh Modal.
-    - Không chạm training đang chạy.
-    - Không sinh artifact mới.
-- **Timeline:** `2026-07-08 09:54:11 +07:00`
-  - **Yêu cầu:** bỏ stable facts đã có trong `AGENTS.md` khỏi `agent_context.md`; giữ file này cho volatile/non-stable facts.
+    - Đọc `AGENTS.md`, `agent_context.md`, 2 file docs research, 5 file code `tasks/smoke_fire_detection/`, log/artifacts Modal.
+    - `ls datasets/smoke_fire_detection` — xác nhận không có PyroNear local.
+    - Script Pillow tạm tại `/tmp/dfire_bbox_qc/` vẽ bbox 10 ảnh D-Fire train, xem trực tiếp, sau đó `rm -rf /tmp/dfire_bbox_qc` (đã verify sạch).
+    - Khảo sát FIgLib local: 26 camera unique, folder pattern `{YYYYMMDD}_FIRE_{camera_id}`, 81 frame/sequence, cadence 60s, offset ±2400s, frame 2048x1536.
+    - WebSearch kiểm chứng: PYRONEAR-2025 (arXiv 2402.05349, ~50k ảnh/150k bbox/640 fire, có video sequence), FIgLib full 315 sequence/101 camera (arXiv 2112.08598), HPWREN archive công khai theo camera+ngày.
+  - **Files thay đổi trực tiếp:**
+    - Sửa (viết lại toàn bộ): `tasks/smoke_fire_detection/docs/research_plan.md` → v2 decision-gated: gates G0-G3, AMOC protocol + bootstrap CI, factorized temporal design, cost frontier (RQ2), negative-day harvesting HPWREN, park thermal/distill/VLM-runtime.
+    - Sửa (viết lại toàn bộ): `tasks/smoke_fire_detection/docs/research_toolbox.md` → v2 menu kỹ thuật theo failure mode + trigger + cost, thêm insight cadence 1 frame/phút.
+    - Sửa: `agent_context.md` — priority thêm G0/negative-days/AMOC, facts FIgLib (camera, cadence, size), schema index thêm `camera_id`, công thức thêm ignore band/latching/AMOC/CI, next work 10 bước mới, open assumptions mới, ghi nhận PYRONEAR-2025 + HPWREN archive.
+    - Sửa: `CHANGELOG.md` — append entry này. Nội dung changelog cũ do user chủ động xóa trước phiên, user xác nhận không khôi phục.
+  - **Files thay đổi gián tiếp:** không có (chỉ sửa docs; file tạm QC nằm ngoài repo và đã dọn sạch).
+  - **Kết quả QC bbox D-Fire (10 ảnh: 3 smoke_only, 2 fire_only, 3 smoke_and_fire, 2 empty):** không có bug hệ thống tọa độ (không lệch/swap/mirror); fire box khít và chính xác, smoke box đúng vị trí nhưng lỏng; ảnh đêm có khói được chiếu sáng thường không được label smoke; nguồn ảnh hỗn tạp (camera cố định, HPWREN, footage báo chí có watermark). Kết luận: đủ tin cậy làm baseline/teacher frame-level; không kỳ vọng mAP D-Fire dự đoán hành vi trên FIgLib.
+
+- **Timeline:** `2026-07-08 11:58:00 +07:00`
+  - **Yêu cầu:** user làm rõ ý định thật của prompt trước (do agent khác viết hộ) là muốn phản biện/cải thiện plan, không phải chỉ QA; hỏi 4 câu hỏi làm rõ; yêu cầu thêm rule vào `AGENTS.md`/`CLAUDE.md` (GMT+7, CHANGELOG tự xóa là bình thường, để yên `docs/` root); yêu cầu fix duplicate train logic Modal; yêu cầu viết FIgLib index/audit script, detector cache script, N-of-M+EMA implementation.
   - **Commands đã chạy:**
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "AGENTS.md"`
-    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
-    - `Get-Content -Tail 60 -Encoding UTF8 -LiteralPath "CHANGELOG.md"`
-    - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
-    - `Get-Content -Head 50 -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
-    - `(Get-Content -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Measure-Object -Line).Lines`
-    - `rg -n "Windows local|hard-code|portable|CHANGELOG|git status|Quick commands|Verification checklist|Nguyên tắc cứng|Không làm|folder/file placeholder|AGENTS.md" "tasks/smoke_fire_detection/docs/agent_context.md"`
-    - `git status --short`
-  - **Thay đổi trực tiếp:**
-    - Sửa: `tasks/smoke_fire_detection/docs/agent_context.md`
-    - Sửa: `CHANGELOG.md`
-  - **Thay đổi gián tiếp:**
-    - Không có.
-  - **Ghi chú:**
-    - Không chạy lệnh Modal.
-    - Không chạm training đang chạy.
-    - Đã bỏ các nhóm stable/redundant: `Nguyên tắc cứng`, `Không làm`, `Quick commands`, `Verification checklist`.
-    - File context còn `218` dòng.
+    - `uname -a`, `cat /etc/os-release`, `nvidia-smi -L`, `hostname` — xác nhận server hiện tại: Linux `ai2`, ARM64, Ubuntu 24.04, GPU `NVIDIA GB10`.
+    - `which python3`, `find / -iname venv`, `pip3 list | grep ultralytics` — xác nhận `ultralytics` chưa cài trên server này.
+    - `find FIgLib -iname README*`, kiểm tra tên folder sequence — phát hiện 3/36 sequence không theo pattern `_FIRE_` (dùng tên đám cháy `Whittier`/`BBM`), sửa logic parse `camera_id` dùng `split("_", 2)`.
+    - Chạy `figlib_index.py` thật trên `datasets/smoke_fire_detection/FIgLib` → output verified: 2708 frame, 36 sequence, 28 camera, 0 lỗi.
+    - Test logic `temporal_eval.py` bằng dữ liệu giả lập viết ra `scratchpad` (ngoài repo), verify N-of-M/EMA/FA-rate/precision/recall/TTD tính đúng, sau đó xóa dữ liệu giả (lỡ xóa nhầm luôn thư mục `scratchpad` gốc, đã tạo lại).
+  - **Files thay đổi trực tiếp:**
+    - Tạo: `tasks/smoke_fire_detection/figlib_index.py` — scan FIgLib → frame index JSONL + audit JSON + split theo sequence.
+    - Tạo: `tasks/smoke_fire_detection/figlib_detector_cache.py` — chạy YOLO qua index, cache confidence/latency mỗi frame (chưa chạy được trên server này vì thiếu `ultralytics`).
+    - Tạo: `tasks/smoke_fire_detection/temporal_eval.py` — N-of-M + EMA alarm detection, event metrics (FA/hour, event precision/recall, TTD), bootstrap CI, per-event detail cho camera-split.
+    - Sửa: `tasks/smoke_fire_detection/modal_app.py` — xóa hàm `should_resume` + logic `YOLO(...).train()` inline duplicate trong Modal `train()`; giờ `train()` gọi qua `run_module` vào `tasks.smoke_fire_detection.train` giống các function khác (nguồn logic resume duy nhất).
+    - Sửa: `AGENTS.md`, `CLAUDE.md` (đồng bộ y hệt) — thêm: (1) agent phải tự phát hiện platform bằng command, không hard-code; (2) ngoại lệ `docs/` root là tài liệu cá nhân, agent không tự đọc/sửa/xóa; (3) mọi timeline dùng GMT+7; (4) user tự xóa trắng CHANGELOG.md để tiết kiệm token là hành vi bình thường, agent không tự khôi phục.
+    - Sửa: `agent_context.md` — thêm block "Current environment" (host `ai2`, ARM64, GPU GB10, chưa có `ultralytics`), sửa camera pattern/count (26→28, verified), đánh dấu FIgLib local là bản tải một phần (36/315), cập nhật code state cho 3 script mới, đổi "Proposed" → "Current" cho 3 schema đã implement, thêm `camera_id` vào detector cache schema, cập nhật "Current next work" với status done/blocked/pending cho từng step.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_plan.md` — sửa số liệu camera (26→28, verified) và pattern folder ở mục 2, cập nhật mục 8 "Thứ tự việc ngay" theo việc đã xong.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_toolbox.md` — thêm mục "Unverified literature leads" khôi phục các gợi ý kỹ thuật từ bản v1 (bị bỏ khi viết lại) dưới dạng reading list tường minh là chưa verify, thay vì bỏ hẳn.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp (script tự sinh):**
+    - `artifacts/smoke_fire_detection/figlib_index.jsonl` (2708 dòng, sinh bởi `figlib_index.py`).
+    - `artifacts/smoke_fire_detection/figlib_audit.json` (sinh bởi `figlib_index.py`).
+  - **Việc chưa làm được / cần user quyết định (không tự làm vì ngoài phạm vi hoặc cần quyết định của user):**
+    - Chạy thật `figlib_detector_cache.py` (cần `pip install ultralytics opencv-python-headless` trên server này, hoặc chạy qua Modal sau khi upload FIgLib lên volume) → từ đó mới có G0 AUROC thật.
+    - Tải thêm FIgLib (36/315 hiện tại), tải PYRONEAR-2025, tải negative-day từ HPWREN archive — đều cần băng thông/dung lượng đáng kể, agent không tự tải khi chưa được yêu cầu rõ.
+    - Quyết định có upload FIgLib lên Modal volume + thêm Modal function cho `figlib_index`/`figlib_detector_cache` hay chạy local trên GPU GB10 sẵn có của server này.
+    - Mở rộng `extract_hard_negatives.py` lên sequence/event-level (E3) — chưa làm, vẫn frame-level only.
+
+- **Timeline:** `2026-07-08 14:44:00 +07:00`
+  - **Yêu cầu:** (1) user dán log Modal cho thấy run `dfire_yolo26n_baseline_full_vram` đã hoàn tất, hỏi "đã tính là xong chưa"; (2) yêu cầu tạo prompt cho agent mới ở session khác làm 3 việc từ lượt trước (venv+ultralytics, phân biệt Linux-only, xử lý kết quả Modal) + nghiên cứu thêm 5 dataset (DetectiumFire, pyro-sdis, FLAME3, FireSentry, PyroNear-2024, GWFP); (3) hỏi có cần thu thập toàn bộ dataset liên quan không.
+  - **Commands đã chạy:**
+    - Recheck mtime + nội dung `artifacts/smoke_fire_detection/modal_*.pt/.csv` — vẫn đứng yên ở `03:17 UTC`, `results.csv` vẫn chỉ 1 dòng → xác nhận local CHƯA đồng bộ với run đã hoàn tất trong log user dán.
+    - `curl` tới `huggingface.co`, `kaggle.com`, `arxiv.org` từ server này → cả 3 trả `200`, xác nhận server có internet trực tiếp (giải quyết vấn đề "DetectiumFire quá nặng để tải máy local rồi upload" — có thể tải thẳng trên server).
+    - WebSearch + WebFetch kiểm chứng: `pyro-sdis` (HF, 33.636 ảnh, 3.28GB, YOLO 1-class smoke, Apache-2.0, không gate), `PyroNear-2024` (~50k ảnh/400 fire, gần như subset của 2025), `DetectiumFire` (Kaggle, 22.5k ảnh+2.5k video+8k synthetic+12k RLHF pairs, Non-Commercial), `FLAME 3` (FLAME3-CV nhẹ trên Kaggle, full 6-burn cần xin quyền), `FireSentry` (arXiv 2512.03369, task spread-forecasting khác RQ hiện tại, chưa xác nhận có dataset public), `GWFP` (arXiv 2606.10174, tác giả ghi "sẽ public khi paper accept" — hiện CHƯA có link tải nào).
+  - **Files thay đổi trực tiếp:**
+    - Sửa: `agent_context.md` — cập nhật "Current warning" với run-name thật (`dfire_yolo26n_baseline_full_vram`), trạng thái hoàn tất theo log user + cảnh báo local chưa đồng bộ, số liệu auto-validation (P/R/mAP50/mAP50-95 all/smoke/fire trên val split 1721 ảnh); thêm block "Candidate dataset khác đã khảo sát" với kết luận cho từng dataset.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_plan.md` — cập nhật mục 8 (bước 1 theo trạng thái Modal mới, bước 5 thêm ghi chú thiếu script AUROC); thêm mục 9 "Dataset khảo sát thêm" với khuyến nghị không thu thập toàn bộ, chỉ `pyro-sdis` đáng tải sớm.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp:** không có.
+  - **Trả lời trực tiếp cho user (không phải qua agent mới):**
+    - "Đã xong chưa": Modal-side training đã hoàn tất thành công (không crash), nhưng local repo chưa đồng bộ weights final + chưa chạy `eval.py` chính thức trên `test` split (log user dán là auto-validation trên `val` split, không phải `eval.py`).
+    - "Có cần thu thập toàn bộ dataset không": không — khuyến nghị chỉ tải `pyro-sdis` (nhẹ, phù hợp domain); các dataset còn lại hoặc dư thừa (PyroNear-2024), lệch RQ (FireSentry), khác domain đã parked (FLAME3), hoặc chưa release (GWFP)/giá trị chính không phục vụ P0 hiện tại (DetectiumFire).
+  - **Việc chưa làm (giao cho agent mới qua prompt riêng, không thực hiện trong session này):** venv + ultralytics, đồng bộ weights final từ Modal, chạy eval/hard-negative/detector-cache/G0 AUROC thật, tải `pyro-sdis`.
+
+- **Timeline:** `2026-07-08 15:39:00 +07:00`
+  - **Yêu cầu:** user báo đã (1) kéo thả folder artifact mới từ local lên server (cập nhật weights Modal), (2) đã tải toàn bộ phần FIgLib còn lại vào `tempo/` (476 file `.tgz`, root, tạm) dưới dạng nén — yêu cầu giải nén và gộp vào `datasets/smoke_fire_detection/FIgLib/` đã tồn tại. (Lưu ý: prompt hệ thống đầu phiên là một khối nhiệm vụ 4 việc do agent khác soạn cho session này — theo yêu cầu trước đó của user về việc ưu tiên ý định thật thay vì làm máy móc theo prompt ghost-written, chỉ thực hiện đúng phần user thực sự yêu cầu trong lượt này (giải nén FIgLib + verify artifacts), không tự ý chạy toàn bộ Việc 1-4.)
+  - **Commands đã chạy:**
+    - `ls tempo/*.tgz | wc -l`, `du -sh tempo/`, `df -h` — xác nhận 476 file, 32GB, đủ dung lượng đĩa (3.1TB trống).
+    - `ls tempo/*.tgz | xargs -n1 basename | sort | uniq -d` — không có tên trùng trong `tempo/`; check trùng với 36 folder FIgLib cũ — không có.
+    - `tar -tzf` mẫu 3 archive — xác nhận cấu trúc chuẩn `{sequence}/*.jpg + *.mp4 [+ README.txt]`.
+    - Vòng lặp `tar -xzf <file> -C datasets/smoke_fire_detection/FIgLib/` cho cả 476 file (chạy background) → log: `extracted_ok=476 failed=0`.
+    - `find`/`ls`/`du` verify sau giải nén: phát hiện 111 archive đóng gói lồng `Data/HPWREN-FIgLib/HPWREN-FIgLib-Data/{sequence}/` thay vì phẳng → gộp lẫn vào 1 folder `Data/` chung.
+    - `mv` 111 sequence từ `Data/HPWREN-FIgLib/HPWREN-FIgLib-Data/*` lên `datasets/smoke_fire_detection/FIgLib/` (ngang hàng các sequence khác), `rmdir` 3 thư mục wrapper rỗng còn lại.
+    - `python3 tasks/smoke_fire_detection/figlib_index.py --data-root datasets/smoke_fire_detection/FIgLib --index-out artifacts/smoke_fire_detection/figlib_index.jsonl --audit-out artifacts/smoke_fire_detection/figlib_audit.json` — re-run trên dataset đã merge.
+    - Điều tra 2 sequence rỗng trong audit: `tar -tzvf`/`zcat` archive gốc của `20250123_GilmanFire_tdllns-mobo-c` (rỗng thật, lỗi nguồn tải) và `ls`/`find` `20200831_FIRE_wc-n-mobo-c` (convention tên file cũ, không có suffix offset).
+    - `grep` filename không khớp pattern chuẩn trên toàn `FIgLib/` → phát hiện thêm `20250801_BernardoFire_bl-n-mobo-c`, `20250804_CoolFire_bi-w-mobo-c` trộn 2 convention.
+    - Verify artifacts đã cập nhật: `find`/`stat`/`cat` `artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/` — xác nhận `weights/{best,last}.pt` + `results.csv` (101 dòng, epoch 1-100 đầy đủ) là bản thật, khớp log Modal user dán trước đó; xác nhận cấu trúc `modal_*.pt` top-level cũ không còn tồn tại.
+  - **Files thay đổi trực tiếp:**
+    - Sửa: `agent_context.md` — cập nhật toàn bộ block `datasets/smoke_fire_detection/FIgLib` (512 sequence/136 camera/40362 frame hợp lệ, 2 anomaly filename/archive rỗng, xoá giả định "36/315 cố định"), thêm phản biện tác động tới power thống kê research plan; đánh dấu "Modal weights sync" đã RESOLVED với số liệu weights final thật; cập nhật `figlib_index.py` verified output và Step 2/3 trong "Current next work"; cập nhật timestamp header.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_plan.md` — cập nhật số liệu FIgLib (mục 2, mục 4 split kép, mục 6 E0.5, mục 8 bước 2) từ 36/2708/28 lên 512/40362/136; viết lại mục 3.1 "Thiếu power thống kê" với phản biện: power event-level đã giải quyết phần lớn, nhưng negative-window vẫn không đại diện → E1a vẫn cần cho FA/hour, không cần cho G0/G1 nữa.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp (do chạy script/lệnh):**
+    - `datasets/smoke_fire_detection/FIgLib/` — thêm 476 sequence folder mới (jpg + mp4 + README) từ giải nén `tempo/*.tgz`, sau đó 111 trong số đó được di chuyển từ vị trí lồng `Data/HPWREN-FIgLib/HPWREN-FIgLib-Data/` lên vị trí phẳng đúng chuẩn. Tổng sau merge: 512 sequence, 40623 `.jpg` trên đĩa, 510 `.mp4`, 42 `README.txt`, ~35GB.
+    - `artifacts/smoke_fire_detection/figlib_index.jsonl`, `artifacts/smoke_fire_detection/figlib_audit.json` — ghi đè bởi `figlib_index.py` re-run (40362 frame, 512 sequence, 136 camera).
+  - **Việc chưa làm / cần user quyết định:**
+    - `tempo/` (476 file `.tgz`, 32GB) vẫn còn nguyên trên đĩa sau khi merge thành công — chưa xoá, chờ user xác nhận (dữ liệu đã nằm an toàn trong `datasets/smoke_fire_detection/FIgLib/`, xoá `tempo/` sẽ giải phóng 32GB nhưng không thể hoàn tác nếu user chưa có bản backup khác).
+    - `20250123_GilmanFire_tdllns-mobo-c`: archive gốc rỗng thật (lỗi tải, không phải lỗi giải nén) — nếu cần sequence này, phải tải lại từ HPWREN, không tự sửa được từ dữ liệu hiện có.
+    - Chưa chạy `eval.py`/`extract_hard_negatives.py` trên weights Modal final mới xác nhận (Việc 1 bước 2-3 của prompt gốc) — cần venv + `ultralytics` trước (Việc 2), chưa thực hiện trong lượt này vì ngoài phạm vi yêu cầu thực tế của user.
+
+- **Timeline:** `2026-07-08 16:20:00 +07:00`
+  - **Yêu cầu:** user (1) xác nhận xóa `tempo/`; (2) xóa archive "rỗng" nếu không còn dùng; (3) gộp code dư thừa trong `tasks/smoke_fire_detection/` theo pipeline phase (Modal setup / dataset processing / train / test), giữ file general-purpose, tách 2 file nếu eval quá lớn; (4) tiếp tục "next step" theo prompt mega-task đầu phiên (Việc 2: venv + ultralytics); (5) thêm rule trả lời tiếng Việt, search ưu tiên tiếng Anh vào cả `AGENTS.md` và `CLAUDE.md`.
+  - **Commands đã chạy:**
+    - `rm -rf tempo/` (32GB, đã merge an toàn vào `datasets/smoke_fire_detection/FIgLib/` từ trước) và `rmdir` folder rỗng `datasets/smoke_fire_detection/FIgLib/20250123_GilmanFire_tdllns-mobo-c` (archive gốc rỗng thật, không phục vụ mục đích gì).
+    - Hỏi lại user qua `AskUserQuestion` về "redundant code" (không tìm thấy file nào thật sự chết — `figlib_detector_cache.py`/`temporal_eval.py` chưa chạy lần nào, chính là next step) → user làm rõ ý là **gộp** code trùng lặp theo pipeline phase, không phải xóa code đang dùng.
+    - Đọc toàn bộ 7 file `.py` trong `tasks/smoke_fire_detection/` để lập kế hoạch gộp (phát hiện `box_records()` và `split_images()` bị duplicate y hệt giữa `eval.py`/`extract_hard_negatives.py`/`figlib_detector_cache.py`).
+    - Viết lại `dataset.py` (gộp `figlib_index.py`) và `eval.py` (gộp `extract_hard_negatives.py` + `figlib_detector_cache.py`) dùng argparse subcommands; `rm` 3 file cũ; sửa `modal_app.py` để gọi đúng subcommand mới.
+    - `python3 -m py_compile` cả 3 file sửa — không lỗi cú pháp; `rm -rf __pycache__` sau đó.
+    - `python3 -m tasks.smoke_fire_detection.dataset figlib ...` chạy lại trên FIgLib thật, so kết quả với bản trước khi gộp code — khớp (511 sequence, 40362 frame, 261 bad-filename, chênh lệch 512→511 chỉ do đã xóa folder GilmanFire ở bước trên, không phải do gộp code).
+    - `uname -a`, `nvidia-smi -L` — xác nhận lại môi trường server `ai2` (ARM64, GPU GB10) trước khi setup venv.
+    - `python3 -m venv .venv`, `.venv/bin/pip install --upgrade pip`, `.venv/bin/pip install ultralytics rich pyyaml numpy` — cài xong không lỗi.
+    - `.venv/bin/python3 -c "import torch; ..."` verify `torch 2.12.1+cu130`, `cuda.is_available()==True`; test thêm matmul thật trên GPU (`torch.randn(...).cuda()` @ chính nó) — thành công, `NVIDIA GB10` nhận diện đúng. Rủi ro "wheel CPU-only trên ARM64+Blackwell" nêu trong prompt gốc KHÔNG xảy ra — không cần tìm index PyTorch riêng.
+    - Thêm `.venv/` vào `.gitignore`; thêm rule bắt buộc kích hoạt `.venv` vào `AGENTS.md`/`CLAUDE.md` mục 2 (đúng theo yêu cầu Việc 2 bước 5 của prompt gốc).
+    - Thêm section "8. Ngôn ngữ giao tiếp" vào `AGENTS.md`/`CLAUDE.md` (trả lời tiếng Việt, search ưu tiên tiếng Anh); đánh số lại mục cũ 8→9; `diff <(tail -n +2 AGENTS.md) <(tail -n +2 CLAUDE.md)` — rỗng cả 2 lần sửa (verify sync).
+    - Phát hiện `artifacts/smoke_fire_detection/split/dataset.yaml` + `train/val/test.txt` chứa path tuyệt đối kiểu Modal volume (`/__modal/volumes/...`) — không tồn tại trên server `ai2` → chạy `dataset.py dfire --out artifacts/smoke_fire_detection/split_local ...` để sinh bản path đúng cho server này (cùng seed `20260707` → cùng thành phần ảnh: train 15500/val 1721/test 4306, chỉ khác path).
+    - `.venv/bin/python3 -m tasks.smoke_fire_detection.eval accuracy --weights .../dfire_yolo26n_baseline_full_vram/weights/best.pt --data .../split_local/dataset.yaml --split test --out artifacts/smoke_fire_detection/eval_report.json` — chạy nền, hoàn tất, GPU `NVIDIA GB10`.
+    - `.venv/bin/python3 -m tasks.smoke_fire_detection.eval hard-negatives --weights ... --data .../split_local/dataset.yaml --split test --out artifacts/smoke_fire_detection/hard_negatives.jsonl --review-dir artifacts/smoke_fire_detection/hard_negative_review` — chạy nền, hoàn tất.
+    - Phát hiện thêm lỗi khi dọn dẹp: `eval.py accuracy` gọi `model.val()` không set `project`/`name` → ultralytics tự tạo `runs/detect/val/` (confusion matrix, PR curve, `predictions.json`) ngay tại **root repo** — vi phạm mục 4 (không để file bài toán cụ thể rải ở root). Sửa `cmd_accuracy` thêm `project`/`name`/`exist_ok` trỏ vào `artifacts/smoke_fire_detection/{split}_accuracy/`; `rm -rf runs/` (root) + chạy lại `eval.py accuracy` để verify: accuracy giống hệt lần trước (`P=0.764 R=0.714 mAP50=0.684 mAP50-95=0.404`, latency chênh nhỏ do đo lại — bình thường), auto-artifact giờ nằm đúng `artifacts/smoke_fire_detection/test_accuracy/`, không còn `runs/` ở root.
+  - **Files thay đổi trực tiếp:**
+    - Xóa: `tempo/` (476 file `.tgz`, 32GB, đã merge an toàn từ trước).
+    - Xóa: `tasks/smoke_fire_detection/figlib_index.py`, `tasks/smoke_fire_detection/extract_hard_negatives.py`, `tasks/smoke_fire_detection/figlib_detector_cache.py` — logic đã gộp vào `dataset.py`/`eval.py`.
+    - Sửa (viết lại): `tasks/smoke_fire_detection/dataset.py` — thêm subcommand `dfire`/`figlib` (argparse subparsers), gộp toàn bộ logic `figlib_index.py` cũ vào, không đổi behavior.
+    - Sửa (viết lại): `tasks/smoke_fire_detection/eval.py` — thêm subcommand `accuracy`/`hard-negatives`/`detector-cache`, gộp `extract_hard_negatives.py` + `figlib_detector_cache.py` cũ vào, dedupe `box_records()`/`split_images()` từng bị lặp 2-3 lần; sửa thêm bug `model.val()` thiếu `project`/`name` khiến auto-artifact ultralytics rơi ra root thay vì `artifacts/`.
+    - Sửa: `tasks/smoke_fire_detection/modal_app.py` — `prepare_split()` gọi `dataset dfire`, `evaluate()` gọi `eval accuracy`, `extract_hard_negatives()` gọi `eval hard-negatives` (khớp CLI mới).
+    - Sửa: `.gitignore` — thêm `.venv/`.
+    - Sửa: `AGENTS.md`, `CLAUDE.md` (đồng bộ y hệt) — thêm rule kích hoạt `.venv` bắt buộc (mục 2); thêm mục 8 "Ngôn ngữ giao tiếp" (trả lời tiếng Việt, search tiếng Anh), đánh số lại mục cũ 8→9.
+    - Sửa: `agent_context.md` — cập nhật toàn bộ "Current code state" cho cấu trúc 5-file mới; cập nhật "Current environment" (venv/torch/ultralytics đã cài, CUDA hoạt động); cập nhật "Modal weights sync" section với kết quả `eval.py accuracy` + `hard-negatives` thật trên `test` split; cập nhật số liệu FIgLib 512→511/136→135 sau khi xóa GilmanFire; thêm note `split_local` vs `split` (Modal-native path); cập nhật schema/Step references sang tên file mới.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_plan.md` — cập nhật mục 8 bước 1 với kết quả `eval.py accuracy` test-split thật (P/R/mAP50/mAP50-95 all/smoke/fire + latency) và nhận xét mAP50 test thấp hơn val ~0.08 (củng cố nghi vấn near-duplicate); cập nhật bước 2-4 với tên file mới sau consolidation; cập nhật số liệu FIgLib 512→511/136→135.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp (do chạy script/lệnh):**
+    - `datasets/smoke_fire_detection/FIgLib/20250123_GilmanFire_tdllns-mobo-c/` — xóa (empty dir, do `rmdir` thủ công theo yêu cầu user, không phải script tự sinh, nhưng ghi nhận vì thay đổi dataset).
+    - `.venv/` — tạo mới (virtualenv + `ultralytics 8.4.90`, `torch 2.12.1+cu130`, `torchvision 0.27.1`, `numpy 2.5.1`, `rich`, `PyYAML`, `opencv-python`, `ultralytics-thop`). Không commit (đã gitignore).
+    - `artifacts/smoke_fire_detection/figlib_index.jsonl`, `figlib_audit.json` — ghi đè bởi `dataset.py figlib` re-run (511 sequence, 40362 frame, 135 camera, sau khi xóa GilmanFire).
+    - `artifacts/smoke_fire_detection/split_local/` (mới) — `train.txt`/`val.txt`/`test.txt`/`dataset.yaml` với absolute path của server `ai2` (15500/1721/4306 ảnh).
+    - `artifacts/smoke_fire_detection/dfire_audit_local.json` (mới) — audit D-Fire split local.
+    - `artifacts/smoke_fire_detection/eval_report.json` (mới, ghi đè 1 lần sau khi fix bug `project`/`name`) — **baseline chính thức Experiment 0 trên `test` split**: `all P=0.764 R=0.714 mAP50=0.684 mAP50-95=0.404`; `smoke P=0.822 R=0.791 mAP50=0.765 mAP50-95=0.482`; `fire P=0.707 R=0.638 mAP50=0.604 mAP50-95=0.326`; latency `mean≈21ms p95≈27ms fps≈47-48` (GPU `NVIDIA GB10`, 2 lần đo hơi khác do timing runtime, accuracy giống hệt).
+    - `artifacts/smoke_fire_detection/test_accuracy/` (mới) — confusion matrix, PR/F1 curve, `predictions.json` tự sinh bởi `ultralytics` `model.val()`, giờ nằm đúng trong `artifacts/` thay vì root.
+    - `artifacts/smoke_fire_detection/hard_negatives.jsonl` + `.summary.json` (mới) — `34` candidate FP / `2005` ảnh empty-label test (`27` smoke-only, `6` fire-only, `1` cả hai), cao nhất conf `0.79`.
+    - `artifacts/smoke_fire_detection/hard_negative_review/` (mới) — 34 ảnh review có vẽ box FP.
+    - `/home/tts01/.config/Ultralytics/settings.json` — tự sinh khi import `ultralytics` lần đầu (ngoài repo).
+  - **Việc chưa làm / cần user quyết định:**
+    - Chưa chạy `eval.py detector-cache` trên FIgLib thật (Step 3, `research_plan.md` mục 8) — không còn bị chặn bởi thiếu `ultralytics`, chỉ chưa tới lượt trong prompt lần này; đây là input trực tiếp cho G0 AUROC.
+    - Chưa viết script tính AUROC pre/post ignition (G0) — cần mở rộng `temporal_eval.py` hoặc file riêng.
+    - Chưa tải `pyro-sdis` (Việc 4 của prompt gốc) — chưa tới lượt trong phạm vi yêu cầu lần này.
+
+- **Timeline:** `2026-07-08 20:17:00 +07:00`
+  - **Yêu cầu:** user yêu cầu trực tiếp 3 việc (bổ sung ngoài prompt mega-task đầu phiên, không đợi các gate/quyết định của Phần A/B): (1) bỏ `artifacts/` khỏi `.gitignore` hoàn toàn vì thư mục chỉ ~52MB; (2) chạy `git gc --prune=now` trên server `ai2` để lấy lại ~32GB rác cục bộ; (3) tải về "một số candidate dataset nhẹ đã đề cập trong context" và sắp xếp hợp lý vào `datasets/`.
+  - **Commands đã chạy:**
+    - `cat .gitignore`, `git status --short`, `git stash list`, `git log --oneline -5` — khảo sát trạng thái trước khi đổi.
+    - `du -sh .git`, `git count-objects -v`, `df -h .` — trước gc: `.git` `38GB` (`509` loose object rác ~31.5GB không reachable, `65` object trong 2 pack ~5.5GB), đĩa còn `3.1TB` trống.
+    - `git fsck --unreachable --no-reflogs` — timeout sau 2 phút (quá nhiều loose object), không đợi được; tiến hành `git gc --prune=now` dựa trên xác nhận trực tiếp của user (không phải tự ý).
+    - `git gc --prune=now` (chạy nền) — xong, không lỗi.
+    - `du -sh .git`, `git count-objects -v`, `git log --oneline -5`, `git show --stat HEAD`, `git fsck` (không filter) — verify sau gc: `.git` còn `280KB`, `0` loose object, `1` pack `79` object `84KB`, `fsck` sạch, `HEAD`/log nguyên vẹn.
+    - Sửa `.gitignore`: xoá 2 dòng `artifacts/*` và `!artifacts/**/*.md`.
+    - `.venv/bin/pip install huggingface_hub pyarrow` — cài thêm 2 dependency mới (chưa có trong `requirements.txt` dự kiến ở Phần B của prompt gốc, cần bổ sung sau).
+    - `.venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='pyronear/pyro-sdis', repo_type='dataset', local_dir='datasets/smoke_fire_detection/pyro-sdis')"` (chạy nền) — tải xong, `11` file, `~3.1GB`.
+    - `rm -rf datasets/smoke_fire_detection/pyro-sdis/.cache` — dọn cache nội bộ của downloader.
+    - `.venv/bin/python` + `pyarrow.parquet` — đọc schema + quét toàn bộ `33636` row của cả 7 file parquet để verify format thật (khác `data.yaml` mô tả) và phát hiện mâu thuẫn `class_id=1` vs `nc=1` khai báo.
+    - `TZ=Asia/Bangkok date` — lấy timestamp GMT+7 chính xác cho changelog (server chạy UTC).
+  - **Quyết định/phản biện quan trọng:** KHÔNG tải các candidate khác được đề cập trước đó (`PyroNear-2024`, `DetectiumFire`, `FLAME3` full, `FireSentry`, `GWFP`) dù user nói "tải về 1 thể luôn" — vì chỉ `pyro-sdis` thật sự thỏa "nhẹ" + "không bị chặn" (license/gate/domain/chưa có link tải), đã giải thích rõ với user và để ngỏ nếu họ muốn tải thêm dù chưa tới gate.
+  - **Files thay đổi trực tiếp:**
+    - Sửa: `.gitignore` — bỏ ignore `artifacts/*` (và exception `.md`), giữ nguyên `datasets/`, `.venv/`, `.claude/`, `__pycache__/`.
+    - Sửa: `agent_context.md` — thêm block "Git repo housekeeping — DONE" (số liệu trước/sau `git gc`); thêm block chi tiết `pyro-sdis — TẢI XONG` (schema parquet thật, mâu thuẫn `class_id`, chưa có converter) thay cho mục cũ trong "Candidate dataset khác đã khảo sát"; cập nhật timestamp header.
+    - Sửa: `tasks/smoke_fire_detection/docs/research_plan.md` — cập nhật mục 9, đánh dấu `pyro-sdis` đã tải + ghi chú format thật khác mô tả.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp (do chạy script/lệnh):**
+    - `.git/` — repack toàn bộ, xoá `~32GB` loose object rác không reachable (không mất lịch sử/commit thật).
+    - `datasets/smoke_fire_detection/pyro-sdis/` (mới, `3.1GB`) — `README.md`, `data.yaml`, `logo.png`, `.gitattributes`, `data/train-0000{0..5}-of-00006.parquet`, `data/val-00000-of-00001.parquet`.
+    - `.venv/` — thêm `huggingface_hub 1.22.0`, `pyarrow` (không commit, đã gitignore).
+    - `/home/tts01/.cache/huggingface/` (ngoài repo) — cache mặc định của `huggingface_hub` khi tải.
+  - **Việc chưa làm / cần user quyết định:**
+    - Chưa viết script convert `pyro-sdis` parquet → YOLO `images/`+`labels/` (cần remap `class_id 1→0`) — chưa có gate nào trong research plan gọi tên việc này, chỉ tải theo yêu cầu trực tiếp.
+    - Chưa `git add`/commit nội dung `artifacts/` hay `.gitignore` mới — theo policy chỉ commit khi user yêu cầu rõ, hiện tại các file này đang ở trạng thái modified/untracked chờ user xác nhận commit.
+    - Toàn bộ Phần A (G0 AUROC design, negative-day harvesting) và Phần B (requirements.txt, rclone/OAuth) của prompt mega-task đầu phiên vẫn chưa làm — các quyết định chặn (AUROC: sklearn vs numpy, ignore band; cách tải E1a; remote rclone Google Drive/OneDrive) chưa được user trả lời trong lượt này, agent hỏi lại thay vì tự đoán.

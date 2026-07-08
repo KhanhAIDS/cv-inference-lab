@@ -37,17 +37,6 @@ def workspace_path(path: str):
         return value
     return Path("/workspace") / value
 
-def should_resume(mode: str, last_path: Path):
-    if mode == "never":
-        if last_path.exists():
-            raise RuntimeError(f"Checkpoint exists, refusing fresh train in existing run: {last_path}")
-        return False
-    if last_path.exists():
-        return True
-    if mode == "always":
-        raise FileNotFoundError(last_path)
-    return False
-
 def run_module(args):
     env = dict(os.environ)
     env["PYTHONPATH"] = f"/root:{env.get('PYTHONPATH', '')}"
@@ -75,6 +64,7 @@ def prepare_split(
 ):
     result = run_module([
         "tasks.smoke_fire_detection.dataset",
+        "dfire",
         "--data-root",
         str(workspace_path(data_root)),
         "--out",
@@ -98,37 +88,34 @@ def train(
     seed: int = 20260707,
     resume: str = "auto",
 ):
-    from ultralytics import YOLO
-
-    data_path = workspace_path(data_yaml)
     project_dir = Path("/workspace") / "artifacts" / "smoke_fire_detection" / "runs"
-    run_dir = project_dir / run_name
-    last_path = run_dir / "weights" / "last.pt"
-    if not data_path.exists():
-        raise FileNotFoundError(data_path)
-    if resume not in {"auto", "always", "never"}:
-        raise ValueError("resume must be auto, always, or never")
-
-    if should_resume(resume, last_path):
-        model = YOLO(str(last_path))
-        model.train(resume=True)
-    else:
-        model = YOLO(model_name)
-        model.train(
-            data=str(data_path),
-            epochs=epochs,
-            patience=patience,
-            save_period=save_period,
-            batch=batch,
-            imgsz=imgsz,
-            seed=seed,
-            pretrained=True,
-            project=str(project_dir),
-            name=run_name,
-            exist_ok=True,
-        )
+    result = run_module([
+        "tasks.smoke_fire_detection.train",
+        "--data",
+        str(workspace_path(data_yaml)),
+        "--model",
+        model_name,
+        "--run-name",
+        run_name,
+        "--project",
+        str(project_dir),
+        "--epochs",
+        str(epochs),
+        "--imgsz",
+        str(imgsz),
+        "--batch",
+        str(batch),
+        "--patience",
+        str(patience),
+        "--save-period",
+        str(save_period),
+        "--seed",
+        str(seed),
+        "--resume",
+        resume,
+    ])
     volume.commit()
-    return str(run_dir)
+    return result
 
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=3600)
 def checkpoint_status(run_name: str = "dfire_yolo26n_baseline"):
@@ -158,6 +145,7 @@ def evaluate(
 ):
     result = run_module([
         "tasks.smoke_fire_detection.eval",
+        "accuracy",
         "--weights",
         str(workspace_path(weights)),
         "--data",
@@ -194,7 +182,8 @@ def extract_hard_negatives(
     max_review_images: int = 200,
 ):
     result = run_module([
-        "tasks.smoke_fire_detection.extract_hard_negatives",
+        "tasks.smoke_fire_detection.eval",
+        "hard-negatives",
         "--weights",
         str(workspace_path(weights)),
         "--data",

@@ -1,0 +1,22 @@
+{
+  "train": {
+    "images": 17221,
+    "labels": 17221,
+    "empty_labels": 7835,
+    "invalid_label_lines": 14,
+    "class_counts": {
+      "0": 9598,
+      "1": 11766
+    }
+  },
+  "test": {
+    "images": 4306,
+    "labels": 4306,
+    "empty_labels": 2005,
+    "invalid_label_lines": 4,
+    "class_counts": {
+      "0": 2334,
+      "1": 2872
+    }
+  }
+}

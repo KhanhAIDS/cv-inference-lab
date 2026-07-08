@@ -1,0 +1,7 @@
+path: /home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/split_local
+train: train.txt
+val: val.txt
+names:
+  0: smoke
+  1: fire
+test: test.txt

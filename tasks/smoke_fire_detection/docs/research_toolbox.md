@@ -1,173 +1,71 @@
-* **Không có 1 pipeline/model “tốt nhất” chung.**
+# Research Toolbox — Smoke/Fire (v2)
 
-  * Bài toán hiện tại **under-specified**: không domain, không camera cố định, không khoảng cách, không night/day, không sensor phụ.
-  * Research hiện cũng phân nhánh mạnh:
+- Updated: `2026-07-08`
+- Vai trò: menu kỹ thuật + **điều kiện rút ra dùng** (trigger). Quyết định và thứ tự nằm ở `research_plan.md`.
+- Nguyên tắc chọn: một kỹ thuật chỉ được dùng khi (a) một gate/failure mode trong plan gọi tên nó, và (b) cost implement + cost inference của nó được khai báo trước. Toolbox không phải wish list.
 
-    * FIgLib/SmokeyNet → RGB + thời gian cho early smoke. ([arXiv][1])
-    * PYRONEAR-2025 → detector + sequential model; video giúp phát hiện sớm hơn/tăng recall. ([arXiv][2])
-    * SKLFS → smoke-specific features + negative sampling vì boundary/false positive khó. ([arXiv][3])
-    * Multimodal SmokeyNet → RGB + weather sensors. ([arXiv][4])
-    * SAM-TIFF → RGB-T teacher → RGB student; **research mới**, không phải consensus production. ([arXiv][5])
-    * MLLM/VLM hiện vẫn fail đáng kể ở presence detection dưới heavy smoke. ([arXiv][6])
+## Insight khung (sửa so với v1)
 
-* **Có 1 “meta-pipeline” tôi coi là default tốt nhất khi constraint mơ hồ:**
+- Không tồn tại "best fixed architecture" cho constraint mơ hồ — vẫn đúng.
+- Default philosophy giữ nguyên: **modular + temporal + hard-negative driven + calibrated + cascade**.
+- **Bổ sung quan trọng:** cadence tower camera là 1 frame/phút → latency budget mỗi frame là hàng chục giây. Prior "phải dùng model nano" là dogma nhập từ video 30fps; kích thước model là **biến của cost frontier (E4)**, không phải ràng buộc cứng.
+- Cascade "light always-on + heavy verifier" vẫn hợp lý, nhưng vì lý do `$` (GPU share nhiều camera), không phải vì ms.
 
-  * `RGB video`
-  * `→ candidate detection/localization`
-  * `→ temporal evidence`
-  * `→ calibrated event decision`
-  * `→ uncertain case: verifier khác / VLM / human`
-  * **Modular cascade. Không phải 1 giant model.**
+## Menu theo failure mode
 
-* **Toàn bộ toolbox có thể áp dụng cho bài này:**
+### Detector không thấy khói nhỏ/xa (G0 fail hoặc AUROC thấp)
+- imgsz lớn hơn — cost tăng dự đoán được, thử đầu tiên.
+- tiling/SAHI, candidate crop → reprocess high-res — hợp cadence 1/min.
+- tile-classifier (SmokeyNet-style) thay bbox — đổi formulation, thuộc E5.
+- multi-scale FPN, super-resolution, smoke-specific low-level features — chỉ khi các mục trên fail.
 
-  * **Spatial task**
+### False alarm cao từ cloud/fog/glare (đo được sau E1a)
+- hard-negative mining event-level (FP persistence cao) — E3, ưu tiên nhất.
+- explicit negative categories: cloud / fog / steam / dust / glare / sunset / lamp / welding / candle / stove / campfire.
+- temporal persistence rule — đã nằm trong E2.
+- context/scene classifier, thermal verify, VLM verify — plugin sau, xếp theo cost tăng dần.
 
-    * image classification
-    * ROI/patch classification
-    * object detection
-    * smoke segmentation
-    * fire segmentation
-    * multi-task / multi-head
+### Muốn giảm TTD thêm khi FA đã đạt budget (G1/G2)
+- input giàu hơn cho verifier: chuỗi box+conf, ROI embedding (E2 factorized).
+- learned aggregator theo đúng thứ tự: logistic-window → LSTM/GRU/TCN → tiny Transformer.
+- optical flow / background model: rẻ, thử làm feature phụ trước khi lên 3D CNN / video foundation model.
+- bbox tracking / temporal tube linking: khi cần gắn alarm với một plume cụ thể.
 
-  * **Small/faint smoke**
+### Label thiếu hoặc yếu (FIgLib không có bbox)
+- weak label từ dấu offset (đang dùng) + ignore band `0..+180s`.
+- pseudo-label bằng D-Fire teacher + human verify subset nhỏ (~200 frame) → gold set cho eval.
+- VLM làm annotation assistant / triage (offline — nơi latency không quan trọng).
+- synthetic smoke composite (E6) khi cần ground-truth onset chính xác tuyệt đối.
+- semi-supervised / active learning / cross-dataset — mở khi có PYRONEAR-2025.
 
-    * high-resolution input
-    * multi-scale features
-    * FPN/PAFPN
-    * tiling / SAHI
-    * candidate crop → reprocess high-res
-    * super-resolution
-    * smoke-specific low-level features
+### Không chắc kết luận có thật (áp cho mọi experiment)
+- bootstrap CI theo event; split kép event/camera; deduplication audit; cross-dataset test (FIgLib ↔ PYRONEAR-2025).
+- calibration: temperature scaling trước; evidential / ensemble / MC-dropout sau (P2).
+- abstention / reject zone: chỉ sau khi calibration được đo.
+- conformal prediction, OOD detection — parked đến khi có use case cụ thể.
 
-  * **Temporal**
+### Tối ưu chi phí inference (E4)
+- frame skipping / keyframe theo cadence thật của camera.
+- batch nhiều camera trên 1 GPU; asynchronous pipeline; candidate clip buffering.
+- cascade on-demand (heavy verifier chỉ chạy trên candidate).
+- đo `$/camera-tháng` thực trên Modal thay vì suy diễn từ FLOPs.
 
-    * N-of-M frames
-    * EMA confidence
-    * persistence rule
-    * bbox tracking
-    * temporal tube linking
-    * background change
-    * optical flow / motion features
-    * LSTM / GRU
-    * TCN
-    * 3D CNN
-    * temporal Transformer
-    * video foundation model
+## Unverified literature leads (giữ lại từ v1 — chưa tự verify, đọc trước khi cam kết dùng)
 
-  * **Data**
+v1 có trích một loạt paper theo dạng citation gãy (`[1]`, `[6]`...) không có bibliography — bản v2 đã bỏ các trích dẫn đó vì chưa kiểm chứng, nhưng bản thân ý tưởng vẫn đáng đọc khi tới đúng gate. Liệt kê lại ở đây làm reading list, KHÔNG phải fact đã verify:
 
-    * hard-negative mining
-    * selective OHEM
-    * active learning
-    * model-error mining
-    * label cleanup
-    * pseudo-label
-    * semi-supervised learning
-    * synthetic fire/smoke
-    * diffusion-generated data
-    * domain adaptation
-    * cross-dataset training
-    * split theo event/video/camera/location
-    * deduplication
+- **Hard-negative flywheel (E3):** một hướng tên "SKLFS/SNSM" được cho là thiết kế quanh smoke-specific feature + negative sampling, hard negative lấy từ false detection của detector đang chạy, đánh giá trên ~1.200 camera thực tế — nếu đúng, là precedent trực tiếp cho architecture data-backflow ở E3. Cần tự tìm và đọc paper gốc để verify trước khi trích dẫn tiếp.
+- **Segmentation formulation (E5):** một hướng dùng foundation-model/larger-model supervision từ bbox label để train lightweight smoke segmentation student, số liệu tự nhận đạt khoảng `63% mIoU` ở `~25 FPS` trên Jetson Orin NX qua real-world forest burn — nếu verify được, là lý do cụ thể để thử segmentation thay vì giả định suông.
+- **RGB-T fusion (G3/E7):** naive early-fusion (4-channel concat) được cho là có information-interference/domain-gap issue trong detection RGB-T nói chung; dual-branch fusion mạnh hơn nhưng tốn inference hơn — khớp lý do v2 giữ 4-channel concat chỉ làm "dumb baseline" chứ không phải main method.
+- **RGB-T teacher → RGB student (RQ3/E8):** một hướng tên gợi ý "SAM-TIFF"-style cho biết student thường khó nhất trên ảnh chỉ có smoke/cây, không có flame visible — nếu đúng, đây chính là hard-slice quan trọng nhất cần đo ở E8 (`no visible flame`, `heavy smoke`).
+- **VLM/MLLM verifier (E9/P3):** vài nguồn cho rằng current MLLM vẫn fail đáng kể ở presence-detection dưới lớp khói dày, ủng hộ nghi ngờ trong v2 rằng specialist classifier thắng VLM về cost/reliability cho binary verification; VLM có thể có giá trị ở semantic reasoning (loại lửa, mức độ nguy hiểm) hơn là raw detection.
+- **Uncertainty (P2):** một số work 2026 về wildfire smoke thử evidential uncertainty/selective prediction, cho rằng ảnh khói mật độ mơ hồ có epistemic uncertainty cao hơn và tăng khi chất lượng ảnh giảm — nếu verify được, ủng hộ việc mở uncertainty head sau khi có baseline calibration.
 
-  * **Model strategy**
+**Cách dùng đúng:** trước khi bắt đầu E3/E5/E7/E8/E9 hoặc P2, dành 30 phút tìm và đọc paper thật đứng sau các claim trên (search theo tên hướng/kỹ thuật + "smoke fire detection"), verify số liệu, rồi mới quyết định áp dụng — đừng copy số liệu ở trên vào báo cáo vì chưa có nguồn xác nhận.
 
-    * specialist smoke model
-    * specialist flame model
-    * shared backbone + multiple heads
-    * ensemble
-    * mixture-of-experts
-    * light model → heavy verifier
-    * teacher/student distillation
-    * large teacher → edge student
-    * RGB-T teacher → RGB student
-    * foundation model teacher → specialist student
+## Kỹ thuật bị hạ cấp so với v1 (kèm lý do)
 
-  * **Thermal / multimodal**
-
-    * thermal-only
-    * RGB-only
-    * early fusion
-    * dual encoder
-    * feature fusion
-    * late fusion
-    * RGB + thermal + temporal
-    * RGB-T teacher → RGB student
-    * radiometric temperature regression
-    * CO / heat / smoke / weather sensor fusion
-
-  * **Reliability**
-
-    * threshold tuning
-    * confidence calibration
-    * temperature scaling
-    * uncertainty estimation
-    * ensemble disagreement
-    * evidential learning
-    * OOD detection
-    * abstention / reject option
-    * conformal prediction
-    * risk-based decision
-
-  * **False-positive suppression**
-
-    * explicit cloud/fog/steam/dust negatives
-    * lamp/glare/sunset negatives
-    * welding/candle/stove/campfire negatives
-    * context classifier
-    * temporal persistence
-    * specialist verifier
-    * scene-aware model
-    * thermal verification
-    * VLM verification
-    * human-in-the-loop
-
-  * Hard-negative handling đặc biệt relevant: SKLFS/SNSM được thiết kế trực tiếp quanh confusing negative supervision của smoke detection. ([arXiv][3])
-
-  * **VLM/MLLM**
-
-    * fire/no-fire verifier
-    * smoke vs cloud/fog/steam reasoning
-    * controlled vs dangerous fire
-    * identify burning object
-    * severity/risk assessment
-    * scene context
-    * alarm explanation
-    * **không nên làm primary pixel detector hiện tại**
-
-  * DetectiumFire đã mở hướng vision-language fire understanding/risk reasoning; FlameVQA cho thấy current MLLMs vẫn có failure ở heavy-smoke presence detection. ([arXiv][7])
-
-  * **System**
-
-    * frame skipping
-    * keyframe inference
-    * ROI inference
-    * detector + tracker
-    * candidate clip buffering
-    * lightweight always-on model
-    * expensive on-demand verifier
-    * asynchronous pipeline
-    * multi-camera aggregation
-    * human verification
-
-  * **Evaluation**
-
-    * frame precision/recall
-    * bbox AP
-    * segmentation IoU
-    * event precision/recall
-    * false alarms/hour
-    * time-to-detection
-    * alarm duration
-    * calibration error
-    * hard-slice metrics
-    * cross-dataset metrics
-
-* **Câu trả lời lạnh lùng nhất:**
-
-  * `Best fixed architecture` → **không tồn tại cho constraint hiện tại**
-  * `Best default philosophy` → **có**
-  * **`modular + temporal + hard-negative driven + calibrated + cascade`**
-  * Thermal, sensor, VLM, teacher-student, segmentation, giant Transformer → **plugin/experiment**, thêm khi ablation chứng minh có gain.
-  * **Đừng chốt `RGB-T Temporal Multi-head Transformer` trước khi biết failure mode. Đó là thiết kế architecture bằng tưởng tượng, không phải optimization.**
+- **Thermal / RGB-T fusion / RGB-T→RGB distillation:** parked theo G3 — FLAME 3 là UAV cận cảnh, khác domain tower, kết luận không transfer trực tiếp sang RQ1.
+- **VLM làm runtime verifier:** P3 — giữ nguyên nghi ngờ của v1 rằng specialist classifier thắng về cost/reliability; VLM chuyển sang data loop (annotation, triage).
+- **Giant multi-head model:** bỏ khỏi roadmap; nếu cần chỉ tồn tại như một điểm tham chiếu đắt trên cost frontier.
+- **Weather/sensor fusion:** chưa có nguồn data — không giữ trong menu active.

@@ -1,0 +1,7 @@
+path: /__modal/volumes/vo-OAAmeH6eUBBXkdSkr74ybc/artifacts/smoke_fire_detection/split
+train: train.txt
+val: val.txt
+names:
+  0: smoke
+  1: fire
+test: test.txt

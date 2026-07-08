@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import random
+import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -12,15 +13,27 @@ from rich.console import Console
 console = Console()
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 VALID_CLASS_IDS = {0, 1}
+FIGLIB_FRAME_PATTERN = re.compile(r"^(\d+)_([+-]\d+)$")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Create train/val/test splits")
-    parser.add_argument("--data-root", required=True, help="Path to raw dataset")
-    parser.add_argument("--out", required=True, help="Path to output split folder")
-    parser.add_argument("--audit-out", help="Path to output audit JSON file")
-    parser.add_argument("--val-ratio", type=float, default=0.1)
-    parser.add_argument("--seed", type=int, default=20260707)
-    parser.add_argument("--workers", type=int)
+    parser = argparse.ArgumentParser(description="Prepare dataset splits/index")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    dfire = subparsers.add_parser("dfire", help="Create D-Fire YOLO train/val/test splits")
+    dfire.add_argument("--data-root", required=True, help="Path to raw dataset")
+    dfire.add_argument("--out", required=True, help="Path to output split folder")
+    dfire.add_argument("--audit-out", help="Path to output audit JSON file")
+    dfire.add_argument("--val-ratio", type=float, default=0.1)
+    dfire.add_argument("--seed", type=int, default=20260707)
+    dfire.add_argument("--workers", type=int)
+
+    figlib = subparsers.add_parser("figlib", help="Build FIgLib frame index and audit")
+    figlib.add_argument("--data-root", required=True, help="Path to FIgLib dataset root")
+    figlib.add_argument("--index-out", required=True)
+    figlib.add_argument("--audit-out", required=True)
+    figlib.add_argument("--val-ratio", type=float, default=0.2)
+    figlib.add_argument("--seed", type=int, default=20260707)
+
     return parser.parse_args()
 
 def parse_label_line(line: str):
@@ -114,8 +127,7 @@ def worker_count(value):
         return value
     return min(32, os.cpu_count() or 1)
 
-def main():
-    args = parse_args()
+def cmd_dfire(args):
     random.seed(args.seed)
     data_root = Path(args.data_root).resolve()
     out_dir = Path(args.out).resolve()
@@ -151,7 +163,7 @@ def main():
     }
     if test_images:
         yaml_data["test"] = "test.txt"
-        
+
     (out_dir / "dataset.yaml").write_text(yaml.safe_dump(yaml_data, sort_keys=False), encoding="utf-8")
     console.print(f"Split saved: {out_dir}")
     console.print(f"Train: {len(train_images)} Val: {len(val_images)} Test: {len(test_images)}")
@@ -165,6 +177,109 @@ def main():
         audit_path.parent.mkdir(parents=True, exist_ok=True)
         audit_path.write_text(json.dumps(audit_data, indent=2), encoding="utf-8")
         console.print(f"Audit saved: {audit_path}")
+
+def figlib_camera_id_from_sequence(sequence_id: str):
+    parts = sequence_id.split("_", 2)
+    return parts[2] if len(parts) == 3 else "unknown"
+
+def figlib_parse_frame_name(stem: str):
+    match = FIGLIB_FRAME_PATTERN.match(stem)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+def figlib_scan_sequence(sequence_dir: Path):
+    sequence_id = sequence_dir.name
+    camera_id = figlib_camera_id_from_sequence(sequence_id)
+    videos = sorted(sequence_dir.glob("*.mp4"))
+    video_path = videos[0] if videos else None
+    frames = []
+    bad_filename_frames = 0
+    for image_path in sorted(sequence_dir.glob("*.jpg")):
+        parsed = figlib_parse_frame_name(image_path.stem)
+        if parsed is None:
+            bad_filename_frames += 1
+            continue
+        timestamp_unix, offset = parsed
+        frames.append({
+            "timestamp_unix": timestamp_unix,
+            "ignition_offset_seconds": offset,
+            "frame_path": str(image_path.resolve()),
+        })
+    frames.sort(key=lambda item: item["ignition_offset_seconds"])
+    readme_files = len(list(sequence_dir.glob("README.txt")))
+    return {
+        "sequence_id": sequence_id,
+        "camera_id": camera_id,
+        "video_path": str(video_path.resolve()) if video_path else None,
+        "frames": frames,
+        "readme_files": readme_files,
+        "bad_filename_frames": bad_filename_frames,
+        "missing_video": video_path is None,
+        "empty": len(frames) == 0,
+    }
+
+def cmd_figlib(args):
+    random.seed(args.seed)
+    data_root = Path(args.data_root).resolve()
+    sequence_dirs = sorted(d for d in data_root.iterdir() if d.is_dir())
+    sequences = [figlib_scan_sequence(d) for d in sequence_dirs]
+
+    shuffled = sequences[:]
+    random.shuffle(shuffled)
+    val_count = int(len(shuffled) * args.val_ratio)
+    val_ids = {seq["sequence_id"] for seq in shuffled[:val_count]}
+
+    index_records = []
+    for seq in sequences:
+        split = "val" if seq["sequence_id"] in val_ids else "train"
+        for frame in seq["frames"]:
+            index_records.append({
+                "dataset": "FIgLib",
+                "sequence_id": seq["sequence_id"],
+                "camera_id": seq["camera_id"],
+                "video_path": seq["video_path"],
+                "frame_path": frame["frame_path"],
+                "timestamp_unix": frame["timestamp_unix"],
+                "ignition_offset_seconds": frame["ignition_offset_seconds"],
+                "weak_event_label": "positive" if frame["ignition_offset_seconds"] >= 0 else "negative",
+                "label_source": "filename_offset_sign",
+                "split": split,
+            })
+
+    index_path = Path(args.index_out).resolve()
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [json.dumps(record, ensure_ascii=False) for record in index_records]
+    index_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+    all_offsets = [frame["ignition_offset_seconds"] for seq in sequences for frame in seq["frames"]]
+    audit = {
+        "sequences": len(sequences),
+        "videos": sum(1 for seq in sequences if seq["video_path"]),
+        "frames": sum(len(seq["frames"]) for seq in sequences),
+        "readme_files": sum(seq["readme_files"] for seq in sequences),
+        "missing_video_sequences": [seq["sequence_id"] for seq in sequences if seq["missing_video"]],
+        "empty_sequence_folders": [seq["sequence_id"] for seq in sequences if seq["empty"]],
+        "bad_filename_frames": sum(seq["bad_filename_frames"] for seq in sequences),
+        "offset_min_seconds": min(all_offsets) if all_offsets else None,
+        "offset_max_seconds": max(all_offsets) if all_offsets else None,
+        "unique_cameras": len({seq["camera_id"] for seq in sequences}),
+        "train_sequences": len(sequences) - len(val_ids),
+        "val_sequences": len(val_ids),
+    }
+    audit_path = Path(args.audit_out).resolve()
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    audit_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
+
+    console.print(f"Index saved: {index_path} ({len(index_records)} frames)")
+    console.print(f"Audit saved: {audit_path}")
+
+def main():
+    args = parse_args()
+    if args.command == "dfire":
+        cmd_dfire(args)
+    elif args.command == "figlib":
+        cmd_figlib(args)
 
 if __name__ == "__main__":
     main()

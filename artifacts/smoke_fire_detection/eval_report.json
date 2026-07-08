@@ -1,0 +1,50 @@
+{
+  "split": "test",
+  "weights": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
+  "data": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/split_local/dataset.yaml",
+  "conf": 0.25,
+  "iou": 0.6,
+  "imgsz": 640,
+  "device": "cuda:0",
+  "command": [
+    "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/tasks/smoke_fire_detection/eval.py",
+    "accuracy",
+    "--weights",
+    "artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
+    "--data",
+    "artifacts/smoke_fire_detection/split_local/dataset.yaml",
+    "--split",
+    "test",
+    "--out",
+    "artifacts/smoke_fire_detection/eval_report.json"
+  ],
+  "python": "3.12.3 (main, Mar 23 2026, 19:04:32) [GCC 13.3.0]",
+  "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+  "mAP50": 0.6844155319688805,
+  "mAP50_95": 0.4039059195651585,
+  "precision": 0.7644923751114991,
+  "recall": 0.7143649430148855,
+  "classes": {
+    "smoke": {
+      "class_id": 0,
+      "precision": 0.8217589010874502,
+      "recall": 0.7908468776732249,
+      "mAP50": 0.76471396966673,
+      "mAP50_95": 0.48205480090956854
+    },
+    "fire": {
+      "class_id": 1,
+      "precision": 0.707225849135548,
+      "recall": 0.637883008356546,
+      "mAP50": 0.604117094271031,
+      "mAP50_95": 0.3257570382207485
+    }
+  },
+  "latency_source_images": 4306,
+  "warmup": 50,
+  "samples": 500,
+  "mean_ms": 20.58253185603826,
+  "p50_ms": 21.339493499908713,
+  "p95_ms": 26.64154719986982,
+  "fps": 48.58488775794761
+}
