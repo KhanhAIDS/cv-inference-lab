@@ -1,0 +1,235 @@
+- **File:** `agent_context.md`
+- **Role:** volatile context only
+- **Stable context:** đọc `AGENTS.md`
+- **Scope:** `tasks/smoke_fire_detection`, `datasets/smoke_fire_detection`, `artifacts/smoke_fire_detection`
+- **Updated:** `2026-07-08 09:54:11 +07:00`
+
+- **Current warning**
+  - Modal training có thể đang chạy.
+  - Không gọi `train` Modal cùng `run_name` nếu chưa xác nhận trạng thái.
+  - Safe Modal function hiện tại: `checkpoint_status`.
+
+- **Current research question**
+  - Old question: `detect smoke + fire bbox`.
+  - Current question: early fire detection from video, low false alarm.
+  - Main variable: temporal confirmation gain over RGB single-frame.
+  - Later variable: thermal/RGB-T gain over RGB.
+  - Later research variable: RGB-T teacher knowledge distill sang RGB-only được bao nhiêu.
+  - Decision metric: event-level.
+  - Secondary metric: bbox/mAP.
+
+- **Current priority**
+  - `P0`: event-level benchmark.
+  - `P0`: `false alarm events/hour`.
+  - `P0`: `time-to-detection`.
+  - `P0`: RGB temporal verifier.
+  - `P0`: hard-negative mining.
+  - `P0`: event/camera/location split.
+  - `P1`: bbox vs ROI/image classifier vs segmentation cho smoke.
+  - `P1`: RGB vs thermal vs RGB-T fusion.
+  - `P1 research`: RGB-T teacher sang RGB student.
+  - `P2`: calibration/uncertainty/abstention.
+  - `P3`: VLM verifier.
+
+- **Current datasets**
+  - `datasets/smoke_fire_detection/D-Fire`
+    - Current format: YOLO bbox.
+    - Current split folders: `train`, `test`.
+    - Image path pattern: `{split}/images/*`.
+    - Label path pattern: `{split}/labels/{image_stem}.txt`.
+    - Class map: `0 = smoke`, `1 = fire`.
+    - Current adapter: `tasks/smoke_fire_detection/dataset.py`.
+  - `datasets/smoke_fire_detection/FIgLib`
+    - Current local subset: `36` event folders.
+    - Current local subset: `36` `.mp4`.
+    - Current local subset: `2708` `.jpg`.
+    - Current local subset: `3` `README.txt`.
+    - Current local annotations found: no bbox/mask/CSV/JSON/XML.
+    - Current fit: video/event/temporal weak-label benchmark.
+    - Current mismatch: not directly usable by D-Fire YOLO split script.
+    - Frame filename signal: Unix timestamp + ignition offset.
+    - Example filename: `1495296879_+00000.jpg`.
+    - Weak-label assumption: offset `< 0` negative.
+    - Weak-label assumption: offset `>= 0` positive.
+    - Assumption risk: official labels/splits not yet verified locally.
+
+- **Current code state**
+  - `tasks/smoke_fire_detection/dataset.py`
+    - Current role: D-Fire YOLO split creator.
+    - Input args: `--data-root`, `--out`, `--audit-out`, `--val-ratio`, `--seed`, `--workers`.
+    - Output files: `train.txt`, `val.txt`, optional `test.txt`, `dataset.yaml`, optional audit JSON.
+    - Val source: D-Fire `train`.
+    - Val grouping: label type.
+    - Label types: `empty`, `smoke_only`, `fire_only`, `smoke_and_fire`.
+  - `tasks/smoke_fire_detection/train.py`
+    - Current role: YOLO fine-tune/train.
+    - Default model: `yolo26n.pt`.
+    - Current pretrained behavior: `YOLO(args.model)` + `pretrained=True`.
+    - Current default run: `dfire_yolo26n_baseline`.
+    - Current project dir: `artifacts/smoke_fire_detection/runs`.
+    - Current resume modes: `auto`, `always`, `never`.
+    - Current resume checkpoint: `{run_dir}/weights/last.pt`.
+  - `tasks/smoke_fire_detection/eval.py`
+    - Current role: YOLO accuracy + latency report.
+    - Current output: JSON.
+    - Current accuracy metrics: `mAP50`, `mAP50_95`, `precision`, `recall`, per-class metrics.
+    - Current latency metrics: `mean_ms`, `p50_ms`, `p95_ms`, `fps`.
+  - `tasks/smoke_fire_detection/extract_hard_negatives.py`
+    - Current role: extract false positives from empty-label images.
+    - Current source: frame-level D-Fire split.
+    - Current outputs: JSONL candidates, summary JSON, optional review images.
+  - `tasks/smoke_fire_detection/modal_app.py`
+    - Current app: `smoke-fire-detection-yolo`.
+    - Current volume: `smoke-fire-lab-volume`.
+    - Current GPU: `L4`.
+    - Current functions: `prepare_split`, `train`, `checkpoint_status`, `evaluate`, `extract_hard_negatives`.
+
+- **Current D-Fire label schema**
+  - File type: YOLO txt.
+  - Line format: `class_id x_center y_center width height`.
+  - Allowed class ids: `{0, 1}`.
+  - Coordinate type: normalized float.
+  - Valid `x_center`: `0 <= x_center <= 1`.
+  - Valid `y_center`: `0 <= y_center <= 1`.
+  - Valid `width`: `0 < width <= 1`.
+  - Valid `height`: `0 < height <= 1`.
+  - Missing label file: empty label.
+  - Blank label file: empty label.
+  - Invalid line: increments `invalid_label_lines`.
+
+- **Current D-Fire split schema**
+  - `dataset.yaml.path`: absolute split output dir.
+  - `dataset.yaml.train`: `train.txt`.
+  - `dataset.yaml.val`: `val.txt`.
+  - `dataset.yaml.test`: `test.txt` if test images exist.
+  - `dataset.yaml.names`: `{0: smoke, 1: fire}`.
+  - `train.txt`: one absolute image path per line.
+  - `val.txt`: one absolute image path per line.
+  - `test.txt`: one absolute image path per line.
+  - Audit top-level keys: `train`, `test`.
+  - Audit per-split keys: `images`, `labels`, `empty_labels`, `invalid_label_lines`, `class_counts`.
+
+- **Current eval report schema**
+  - Context keys: `split`, `weights`, `data`, `conf`, `iou`, `imgsz`, `device`, `command`, `python`, `platform`.
+  - Accuracy keys: `mAP50`, `mAP50_95`, `precision`, `recall`, `classes`.
+  - Per-class keys: `class_id`, `precision`, `recall`, `mAP50`, `mAP50_95`.
+  - Latency keys: `latency_source_images`, `warmup`, `samples`, `mean_ms`, `p50_ms`, `p95_ms`, `fps`.
+  - Current latency formula: `fps = 1000 / mean_ms`.
+
+- **Current hard-negative schema**
+  - File type: JSONL.
+  - Unit: candidate image.
+  - Keys: `rank`, `image`, `label`, `split`, `max_confidence`, `detections`.
+  - Detection keys: `class_id`, `class_name`, `confidence`, `xyxy`.
+  - Sort order: `max_confidence` descending.
+  - Current mining source: empty-label images only.
+  - Current review image name: `{rank:04d}_{image_name}`.
+
+- **Proposed FIgLib index schema**
+  - Target file: `artifacts/smoke_fire_detection/figlib_index.jsonl`.
+  - Unit: frame.
+  - Key: `dataset = FIgLib`.
+  - Key: `sequence_id`.
+  - Key: `video_path`.
+  - Key: `frame_path`.
+  - Key: `timestamp_unix`.
+  - Key: `ignition_offset_seconds`.
+  - Key: `weak_event_label`.
+  - Key: `label_source = filename_offset_sign`.
+  - Key: `split`.
+  - Split unit: `sequence_id`.
+
+- **Proposed FIgLib audit schema**
+  - Target file: `artifacts/smoke_fire_detection/figlib_audit.json`.
+  - Key: `sequences`.
+  - Key: `videos`.
+  - Key: `frames`.
+  - Key: `readme_files`.
+  - Key: `missing_video_sequences`.
+  - Key: `empty_sequence_folders`.
+  - Key: `bad_filename_frames`.
+  - Key: `offset_min_seconds`.
+  - Key: `offset_max_seconds`.
+
+- **Proposed detector cache schema**
+  - Target file: `artifacts/smoke_fire_detection/figlib_detector_cache.jsonl`.
+  - Unit: frame prediction.
+  - Key: `sequence_id`.
+  - Key: `frame_path`.
+  - Key: `timestamp_unix`.
+  - Key: `ignition_offset_seconds`.
+  - Key: `weak_event_label`.
+  - Key: `model_weights`.
+  - Key: `conf`.
+  - Key: `iou`.
+  - Key: `imgsz`.
+  - Key: `detections`.
+  - Key: `max_smoke_confidence`.
+  - Key: `max_fire_confidence`.
+  - Key: `max_any_confidence`.
+  - Key: `latency_ms`.
+
+- **Temporal formulas**
+  - Default score: `score_t = max(max_smoke_confidence_t, max_fire_confidence_t)`.
+  - Smoke-only score: `score_t = max_smoke_confidence_t`.
+  - Fire-only score: `score_t = max_fire_confidence_t`.
+  - N-of-M hit: `hit_t = score_t >= threshold`.
+  - N-of-M alarm: `sum(hit_{t-M+1:t}) >= N`.
+  - EMA score: `ema_t = alpha * score_t + (1 - alpha) * ema_{t-1}`.
+  - EMA init option: `ema_0 = score_0`.
+  - EMA init option: `ema_0 = 0`.
+  - EMA alarm: `ema_t >= threshold`.
+  - Event alarm time: first frame where temporal verifier alarms.
+  - No alarm: `alarm_time = null`.
+  - FIgLib weak event start: `event_start_offset_seconds = 0`.
+  - TTD: `TTD_seconds = alarm_offset_seconds - event_start_offset_seconds`.
+  - FIgLib weak false alarm: `alarm_offset_seconds < 0`.
+  - Negative window hours: `total_negative_window_seconds / 3600`.
+  - False alarm rate: `false_alarm_events / negative_window_hours`.
+  - Event precision: `true_alarm_events / (true_alarm_events + false_alarm_events)`.
+  - Event recall: `detected_true_events / total_true_events`.
+  - Frame precision: `TP_frames / (TP_frames + FP_frames)`.
+  - Frame recall: `TP_frames / (TP_frames + FN_frames)`.
+
+- **Current pretrained/fine-tune status**
+  - Current YOLO baseline is not random-init.
+  - Current YOLO baseline loads `yolo26n.pt`.
+  - Current YOLO train path passes `pretrained=True`.
+  - Off-the-shelf model role under consideration: zero-shot baseline.
+  - Off-the-shelf model role under consideration: pseudo-label teacher.
+  - Off-the-shelf model role under consideration: proposal generator.
+  - Off-the-shelf model role under consideration: fine-tune starting point.
+  - Benchmark replacement risk: off-the-shelf demo without event false-alarm metric.
+  - Known hard domains: cloud, fog, dust, glare, sunset, lamp, welding, candle, stove, campfire.
+
+- **Current target architecture**
+  - RGB stream.
+  - Lightweight per-frame candidate detector.
+  - Low threshold candidate generation.
+  - Candidate ROI.
+  - Temporal event verifier.
+  - Hard-negative-trained confidence.
+  - Calibrated decision.
+  - Optional abstain.
+  - Optional thermal fusion/verifier.
+  - Optional VLM/human verifier for uncertain clips only.
+
+- **Current next work**
+  - Step 1: preserve current D-Fire YOLO baseline.
+  - Step 2: create FIgLib index/audit/split at sequence level.
+  - Step 3: run detector cache on FIgLib frames.
+  - Step 4: implement `N-of-M` and `EMA` temporal metrics.
+  - Step 5: report `false alarm/hour`, `event precision`, `event recall`, `TTD`.
+  - Step 6: mine hard negatives from event-level false alarms.
+  - Step 7: add LSTM only after simple rules are measured.
+  - Step 8: add temporal Transformer only after LSTM/simple-rule comparison.
+  - Step 9: open FLAME 3 thermal ablation after RGB temporal baseline is useful.
+  - Step 10: distill RGB-T teacher only if RGB-T beats RGB clearly.
+
+- **Current open assumptions**
+  - FIgLib local subset lacks official annotation files.
+  - FIgLib offset sign can serve as weak label.
+  - D-Fire YOLO baseline can serve as FIgLib proposal generator.
+  - Current hard-negative extractor is insufficient for video/event false alarms.
+  - Current eval script is insufficient for event-level metrics.
+  - Current Modal wrapper has no FIgLib/temporal functions yet.

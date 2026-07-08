@@ -1,0 +1,51 @@
+- **Timeline:** `2026-07-08 09:47:37 +07:00`
+  - **Yêu cầu:** tạo file metadata/helper/context cho hệ thống hiện tại để agent khác tra nhanh logic, công thức, schema, context.
+  - **Commands đã chạy:**
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/research_plan.md"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/dataset.py"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/train.py"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/modal_app.py"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/eval.py"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/extract_hard_negatives.py"`
+    - `Get-ChildItem -LiteralPath "datasets/smoke_fire_detection" -Force`
+    - `Get-ChildItem -LiteralPath "datasets/smoke_fire_detection/FIgLib" -Directory`
+    - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
+    - `git status --short`
+    - `Test-Path -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
+    - `Get-Content -Head 80 -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
+    - `Get-Content -Tail 40 -Encoding UTF8 -LiteralPath "CHANGELOG.md"`
+    - `git status --short`
+    - `git diff --stat`
+    - `(Get-Content -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Measure-Object -Line).Lines`
+    - `(Get-Content -LiteralPath "CHANGELOG.md" | Measure-Object -Line).Lines`
+    - `Get-Item -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Select-Object FullName,Length,LastWriteTime`
+  - **Thay đổi trực tiếp:**
+    - Thêm: `tasks/smoke_fire_detection/docs/agent_context.md`
+    - Sửa: `CHANGELOG.md`
+  - **Thay đổi gián tiếp:**
+    - Không có.
+  - **Ghi chú:**
+    - Không chạy lệnh Modal.
+    - Không chạm training đang chạy.
+    - Không sinh artifact mới.
+- **Timeline:** `2026-07-08 09:54:11 +07:00`
+  - **Yêu cầu:** bỏ stable facts đã có trong `AGENTS.md` khỏi `agent_context.md`; giữ file này cho volatile/non-stable facts.
+  - **Commands đã chạy:**
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "AGENTS.md"`
+    - `Get-Content -Raw -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
+    - `Get-Content -Tail 60 -Encoding UTF8 -LiteralPath "CHANGELOG.md"`
+    - `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`
+    - `Get-Content -Head 50 -Encoding UTF8 -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md"`
+    - `(Get-Content -LiteralPath "tasks/smoke_fire_detection/docs/agent_context.md" | Measure-Object -Line).Lines`
+    - `rg -n "Windows local|hard-code|portable|CHANGELOG|git status|Quick commands|Verification checklist|Nguyên tắc cứng|Không làm|folder/file placeholder|AGENTS.md" "tasks/smoke_fire_detection/docs/agent_context.md"`
+    - `git status --short`
+  - **Thay đổi trực tiếp:**
+    - Sửa: `tasks/smoke_fire_detection/docs/agent_context.md`
+    - Sửa: `CHANGELOG.md`
+  - **Thay đổi gián tiếp:**
+    - Không có.
+  - **Ghi chú:**
+    - Không chạy lệnh Modal.
+    - Không chạm training đang chạy.
+    - Đã bỏ các nhóm stable/redundant: `Nguyên tắc cứng`, `Không làm`, `Quick commands`, `Verification checklist`.
+    - File context còn `218` dòng.
