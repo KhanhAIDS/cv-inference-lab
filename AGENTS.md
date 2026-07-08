@@ -18,6 +18,7 @@
   - Ghi rõ phần platform-specific.
   - Không để logic platform-specific rò vào core chung.
 - Không hard-code path, OS, GPU, server, username, drive letter.
+- Trên Windows local, chạy Python bằng `py`, không dùng `python`.
 
 ## 3. Target Platform: Modal.com
 
@@ -53,3 +54,11 @@
 - Mọi quyết định kỹ thuật phải phục vụ đo, so sánh, hoặc tối ưu inference.
 - Không tối ưu mù.
 - Không thêm complexity nếu chưa giúp đo, so sánh, hoặc tối ưu inference rõ hơn.
+
+## 7. Tracking và Reporting
+- Bắt buộc duy trì file `CHANGELOG.md` ở thư mục root để kiểm soát gắt gao mọi thay đổi. Nếu file đã có nội dung, phải **append** (ghi tiếp) theo trình tự thời gian (timeline), tuyệt đối không xóa nội dung cũ.
+- Phải ghi rõ mốc thời gian (Timeline) cho mỗi lượt tương tác/yêu cầu.
+- Ghi chú đầy đủ các command đã chạy.
+- Phải liệt kê RÕ RÀNG VÀ ĐẦY ĐỦ tất cả các file bị tác động (Thêm/Sửa/Xóa). Trong đó chia làm 2 loại:
+  - **Thay đổi trực tiếp:** Do AI trực tiếp tạo hoặc sửa bằng tool (vd: viết code, sửa config).
+  - **Thay đổi gián tiếp:** Các file/folder tự động sinh ra/thay đổi do chạy script/command (vd: script Python tự tạo file audit, tự sinh folder split). Đây là điều BẮT BUỘC phải ghi nhận.
