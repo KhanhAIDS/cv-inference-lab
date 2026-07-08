@@ -156,3 +156,26 @@
     - Chưa viết script convert `pyro-sdis` parquet → YOLO `images/`+`labels/` (cần remap `class_id 1→0`) — chưa có gate nào trong research plan gọi tên việc này, chỉ tải theo yêu cầu trực tiếp.
     - Chưa `git add`/commit nội dung `artifacts/` hay `.gitignore` mới — theo policy chỉ commit khi user yêu cầu rõ, hiện tại các file này đang ở trạng thái modified/untracked chờ user xác nhận commit.
     - Toàn bộ Phần A (G0 AUROC design, negative-day harvesting) và Phần B (requirements.txt, rclone/OAuth) của prompt mega-task đầu phiên vẫn chưa làm — các quyết định chặn (AUROC: sklearn vs numpy, ignore band; cách tải E1a; remote rclone Google Drive/OneDrive) chưa được user trả lời trong lượt này, agent hỏi lại thay vì tự đoán.
+
+- **Timeline:** `2026-07-08 20:46:00 +07:00`
+  - **Yêu cầu:** user yêu cầu tiếp tục riêng mục rclone/OAuth (Google Drive) của prompt mega-task Phần B — cài rclone, config OAuth, chạy backup `datasets/smoke_fire_detection/` lên Drive, có thể ngắt kết nối server giữa chừng.
+  - **Commands đã chạy:**
+    - `which rclone` — chưa cài. `sudo -n true` — không có passwordless sudo.
+    - Cài user-local: tải `rclone-current-linux-arm64.zip` từ `downloads.rclone.org`, giải nén vào `~/.local/bin/rclone` — chạy được (`v1.74.3`). User yêu cầu đổi hướng: gỡ bản này (`rm ~/.local/bin/rclone`), tự chạy `curl https://rclone.org/install.sh | sudo bash` (user tự nhập password, agent không có) trong terminal riêng của user — cài xong system-wide tại `/usr/bin/rclone`.
+    - User tự chạy `rclone config` (agent hướng dẫn từng bước qua chat, không chạm vào token OAuth) — tạo remote `gdrive` (Google Drive, scope full access).
+    - `rclone lsd gdrive:` — verify remote hoạt động, liệt kê đúng các folder Drive cá nhân của user.
+    - `rclone about gdrive:` — verify quota: `5TiB` total, `~4.89TiB` free.
+    - Test tốc độ: `dd if=/dev/urandom of=<tmp> bs=1M count=100` (trong scratchpad, ngoài repo) → `rclone copy` file test lên `gdrive:cv-inference-lab-speedtest/` → `9.3s` cho `100MB` (~11 MiB/s, ~89 Mbps) → `rclone purge gdrive:cv-inference-lab-speedtest/` + xoá file tạm local ngay sau đó.
+    - `du -sh datasets/smoke_fire_detection/*` — verify tổng dung lượng hiện tại: `41GB` (D-Fire `3.0GB`, FIgLib `35GB`, pyro-sdis `3.1GB`).
+    - Chạy `nohup rclone copy datasets/smoke_fire_detection gdrive:cv-inference-lab/datasets/smoke_fire_detection --transfers 8 --checkers 8 --stats 30s -v > ~/rclone_datasets_sync.log 2>&1 < /dev/null & disown` — verify bằng `ps -o pid,ppid,pgid,sid,stat,cmd` rằng process đã reparent về `init` (`PPID=1`), tách hẳn khỏi phiên SSH/Claude Code hiện tại (an toàn khi user ngắt kết nối).
+  - **Files thay đổi trực tiếp:**
+    - Sửa: `agent_context.md` — thêm block "Google Drive backup (rclone) — IN PROGRESS" (chi tiết cài đặt, tốc độ, lệnh đang chạy, đích upload, cảnh báo snapshot timestamp FIgLib); cập nhật timestamp header.
+    - Sửa: `CHANGELOG.md` — append entry này.
+  - **Files thay đổi gián tiếp (do chạy script/lệnh, ngoài repo):**
+    - `/usr/bin/rclone` (mới, cài qua script chính thức, user tự chạy bằng sudo).
+    - `~/.config/rclone/rclone.conf` (mới, chứa OAuth token remote `gdrive` — không đọc/không hiển thị nội dung).
+    - `~/rclone_datasets_sync.log` (mới, log tiến trình copy, ngoài repo, ngoài scratchpad Claude Code — tồn tại độc lập với session).
+    - `gdrive:cv-inference-lab/datasets/smoke_fire_detection/` (đang ghi, Google Drive của user) — bản backup `datasets/smoke_fire_detection/` (D-Fire + FIgLib + pyro-sdis), snapshot tại 2026-07-08.
+  - **Việc chưa làm / cần làm ở lượt sau:**
+    - Copy vẫn đang chạy (ước tính ~1.5-2 giờ) — cần verify hoàn tất bằng `rclone check datasets/smoke_fire_detection gdrive:cv-inference-lab/datasets/smoke_fire_detection` hoặc so sánh số file/dung lượng.
+    - Chưa viết `requirements.txt` (mục 1 Phần B gốc) — nằm ngoài phạm vi "chỉ mục rclone/OAuth" mà user yêu cầu lần này.
