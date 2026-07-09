@@ -178,9 +178,17 @@ def cmd_dfire(args):
         audit_path.write_text(json.dumps(audit_data, indent=2), encoding="utf-8")
         console.print(f"Audit saved: {audit_path}")
 
+FIGLIB_CAMERA_BRANDS = ("mobo", "iqeye")
+
 def figlib_camera_id_from_sequence(sequence_id: str):
     parts = sequence_id.split("_", 2)
-    return parts[2] if len(parts) == 3 else "unknown"
+    if len(parts) == 3:
+        return parts[2]
+    tokens = sequence_id.split("-")
+    for index in range(len(tokens) - 1, -1, -1):
+        if tokens[index] in FIGLIB_CAMERA_BRANDS:
+            return "-".join(tokens[max(0, index - 2):])
+    return "unknown"
 
 def figlib_parse_frame_name(stem: str):
     match = FIGLIB_FRAME_PATTERN.match(stem)

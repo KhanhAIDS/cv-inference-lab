@@ -1,295 +1,167 @@
 - **File:** `agent_context.md`
-- **Role:** volatile context only
-- **Stable context:** đọc `AGENTS.md`
-- **Scope:** `tasks/smoke_fire_detection`, `datasets/smoke_fire_detection`, `artifacts/smoke_fire_detection`
-- **Updated:** `2026-07-08 20:46:00 +07:00`
-- **Timezone convention:** mọi timestamp trong file này/CHANGELOG.md dùng GMT+7, kể cả khi server chạy UTC.
+- **Role:** agent memory ngắn, không phải log.
+- **Style:** bullet 100%, keyword, câu cụt, không filler, không văn kể.
+- **Keep:** state hiện tại, schema, blocker, next step.
+- **Drop:** log dài, transcript, chi tiết lỗi cũ đã xử lý, dữ liệu outdated.
+- **Timestamp:** `2026-07-09 09:04:15 +0700`.
+- **TZ:** mọi timeline `CHANGELOG.md` dùng GMT+7.
 
-- **Current environment (server này, verified 2026-07-08)**
-  - Host: `ai2`, Linux `aarch64` (ARM64), Ubuntu `24.04`.
-  - GPU: `NVIDIA GB10` (onboard, không phải Modal L4).
-  - **Venv resolved 2026-07-08:** `.venv` (root repo) đã tạo, `pip install ultralytics rich pyyaml numpy` — bản mặc định từ PyPI (không cần index riêng): `torch 2.12.1+cu130`, `torch.cuda.is_available() == True`, verified matmul thật trên GPU (`NVIDIA GB10`), `ultralytics 8.4.90`. Rủi ro "wheel CPU-only trên ARM64+Blackwell" đã nêu trước đó KHÔNG xảy ra — không cần tìm index PyTorch riêng cho Grace/Blackwell. Từ giờ mọi lệnh `python`/`pip` liên quan project trên server này PHẢI qua `.venv/bin/python`/`.venv/bin/pip` (xem `AGENTS.md`/`CLAUDE.md` mục 2).
-  - `train.py`/`eval.py`/`dataset.py` giờ chạy được local trên server này qua `.venv`; Modal (`yolo_image`) vẫn là target chính cho train quy mô lớn.
-  - Agent luôn tự phát hiện platform bằng lệnh (`uname -a`, `nvidia-smi -L`...) khi cần, không giả định cứng máy nào đang active.
+- **Repo**
+  - Lab Computer Vision inference.
+  - Không production.
+  - Target chính: Modal.com GPU.
+  - Core logic portable Windows/Linux.
+  - Không hard-code path/OS/GPU/user/server.
+  - Root `docs/`: không đọc/sửa/xóa nếu user không yêu cầu rõ.
 
-- **Git repo housekeeping — DONE 2026-07-08 20:17.** User xác nhận rõ ràng: (1) bỏ `artifacts/*`/`!artifacts/**/*.md` khỏi `.gitignore` (không còn ignore gì trong `artifacts/` — thư mục này chỉ ~55MB, không đáng ignore); (2) chạy `git gc --prune=now` trên server `ai2`. Trước khi chạy: `git count-objects -v` cho thấy `38GB` `.git` chủ yếu là `509` loose object rác (~31.5GB, không reachable từ ref/reflog nào — khớp điều tra trước đó), chỉ `65` object nằm trong 2 pack (~5.5GB, cũng phần lớn là blob cũ không còn reachable từ `HEAD` hiện tại, có thể từ lúc `datasets`/`artifacts` từng bị commit nhầm trước khi có `.gitignore` rồi bị amend/force-push qua các commit "Fix things"/"Fix shit"). `git fsck --unreachable --no-reflogs` bị timeout (quá nhiều loose object) nên không chờ được, đã chạy `git gc --prune=now` dựa trên xác nhận trực tiếp của user thay vì đợi fsck. Kết quả: `.git` còn `280KB`, `count-objects -v` còn `0` loose object + `1` pack `79` object `84KB`; `git fsck` (không filter) chạy sạch, `git log`/`git show HEAD` verify nguyên vẹn — không mất lịch sử/commit thật nào, chỉ mất rác không reachable. Từ giờ nội dung `artifacts/smoke_fire_detection/` (weights `.pt`, JSON/JSONL report, review image) sẽ được `git add` bình thường như file thường, không còn bị `.gitignore` chặn — cần tự để ý không commit file rác/tạm lớn phát sinh trong `artifacts/` (vd `runs/detect/val/` nếu quên set `project`/`name`, xem bug đã fix ở "Modal weights sync" bên dưới).
-- **Google Drive backup (rclone) — IN PROGRESS, bắt đầu 2026-07-08 20:46.** Chuẩn bị cho việc user chuyển sang làm offline tại nhà, mất quyền truy cập server `ai2`.
-  - Cài `rclone v1.74.3`: thử user-local (`~/.local/bin`) trước vì server không có sudo passwordless, sau đó user tự chạy `curl https://rclone.org/install.sh | sudo bash` (đúng ý user muốn cài system-wide) → bản user-local đã gỡ, hiện `rclone` ở `/usr/bin/rclone`.
-  - `rclone config` (user tự làm phần OAuth Google qua trình duyệt, agent không chạm vào token) → remote tên `gdrive`, verify bằng `rclone lsd gdrive:` (liệt kê đúng các folder Drive cá nhân của user) và `rclone about gdrive:` (`5TiB` total, `~4.89TiB` free — dư dung lượng, không lo quota).
-  - Test tốc độ upload thật: file test `100MB` (`/dev/urandom`, xoá ngay sau test) mất `9.3s` → `~11 MiB/s` (~89 Mbps). Ước tính cho `41GB` hiện tại (D-Fire `3.0GB` + FIgLib `35GB` + pyro-sdis `3.1GB`): thuần băng thông ~1 giờ, nhưng FIgLib có ~40623 file ảnh nhỏ nên overhead per-file có thể kéo dài tới ~1.5-2 giờ thực tế.
-  - Lệnh đang chạy (background, **detached khỏi SSH/Claude Code session** bằng `nohup ... & disown`, verify `PPID=1`, log tại `~/rclone_datasets_sync.log` — KHÔNG phải trong repo, KHÔNG phụ thuộc scratchpad Claude Code): `rclone copy datasets/smoke_fire_detection gdrive:cv-inference-lab/datasets/smoke_fire_detection --transfers 8 --checkers 8 --stats 30s -v`.
-  - **Đích trên Drive:** `gdrive:cv-inference-lab/datasets/smoke_fire_detection/` (giữ nguyên cấu trúc `D-Fire/`, `FIgLib/`, `pyro-sdis/`).
-  - **QUAN TRỌNG — snapshot timestamp:** bản FIgLib đang upload lên Drive là snapshot tại **2026-07-08** (`511` sequence, `40362` frame hợp lệ, `135` camera — xem "Current datasets" > FIgLib). HPWREN duy trì FIgLib như archive sống, liên tục thêm fire mới — nếu sau này tải thêm từ HPWREN, KHÔNG được coi bản trên Drive là đã bao gồm fire mới sau ngày này; phải tự đối chiếu lại (danh sách sequence folder) trước khi merge, tránh trùng/lệch.
-  - Chưa verify hoàn tất (`rclone check` sau khi copy xong) — cần chạy lại ở lượt sau khi copy chạy đủ lâu.
-- **Modal weights sync — RESOLVED 2026-07-08 15:39.** User kéo thả folder artifact mới từ local lên server; verify: `artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/{best,last}.pt` (5.4MB, mtime `2026-07-08 08:18 UTC`) + `results.csv` (101 dòng = epoch 1-100 đầy đủ, không còn chỉ 1 dòng) đã xuất hiện — **đây là weights final thật**. `results.csv` dòng epoch 100 (train-time metric, không phải validate riêng): `precision=0.776 recall=0.698 mAP50=0.758 mAP50-95=0.441` — khớp cùng bậc với auto-validation user dán trước đó (`P=0.774 R=0.694 mAP50=0.76 mAP50-95=0.445`), chênh lệch nhỏ vì một bên là metric cuối epoch train, một bên là validate riêng. Cấu trúc cũ (`modal_best.pt`/`modal_last.pt`/`modal_results.csv` top-level) không còn tồn tại — đã thay bằng `runs/<run_name>/weights/` (khớp đúng `project`/`name` trong `train.py`/Modal `train()`).
-  - **E0 test-split baseline — DONE 2026-07-08.** `.venv` + `ultralytics`/`torch` đã cài (xem "Current environment"), regenerate split local-path tại `artifacts/smoke_fire_detection/split_local/` (xem "Current D-Fire split schema"), chạy `eval.py accuracy` chính thức trên `test` split (4306 ảnh, khác `val` — auto-validation lúc train chỉ chạy `val`): **all `P=0.764 R=0.714 mAP50=0.684 mAP50-95=0.404`**; `smoke P=0.822 R=0.791 mAP50=0.765 mAP50-95=0.482`; `fire P=0.707 R=0.638 mAP50=0.604 mAP50-95=0.326`; latency `mean≈21ms p95≈27ms fps≈46-49` (GPU `NVIDIA GB10`, imgsz 640, đo 2 lần do fix bug `eval.py accuracy` thiếu `project`/`name` — accuracy giống hệt cả 2 lần, latency chênh nhỏ do runtime timing). Report: `artifacts/smoke_fire_detection/eval_report.json`; auto-artifact (confusion matrix, PR curve) tại `artifacts/smoke_fire_detection/test_accuracy/`. **mAP50 trên test (0.684) thấp hơn đáng kể so với auto-validation trên val (0.76)** — cùng model, khác split, chênh ~0.08 mAP50 — củng cố nghi vấn near-duplicate D-Fire train/val (đã nêu ở `research_plan.md` mục 6, chưa audit). `eval.py hard-negatives` cũng đã chạy trên `test` split song song: `2005` ảnh empty-label, `34` candidate FP (conf ≥ 0.25, cao nhất `0.79`) — `27` chỉ FP `smoke`, `6` chỉ FP `fire`, `1` cả hai. Review image lưu tại `artifacts/smoke_fire_detection/hard_negative_review/` (xem `artifacts/smoke_fire_detection/hard_negatives.jsonl` + `.summary.json`).
-  - Không gọi `train` Modal cùng `run_name` nếu chưa xác nhận trạng thái.
-  - Safe Modal function hiện tại: `checkpoint_status`.
+- **Agent rules**
+  - Đọc file này trước file khác.
+  - Thiếu/sai context: verify file gốc rồi cập nhật file này.
+  - Chat output: tiếng Việt, bullet, ngắn, đủ ý.
+  - Web research: query English, trả lời Việt.
+  - Linux server project Python: dùng `.venv/bin/python`/`.venv/bin/pip`.
+  - Windows local Python: dùng `py`.
+  - Lệnh phụ thuộc platform: tự detect bằng command trước.
+  - Thay đổi repo: append `CHANGELOG.md`, timestamp GMT+7, ghi command, file trực tiếp/gián tiếp.
 
-- **Current research question**
-  - Old question: `detect smoke + fire bbox`.
-  - Current question: early fire detection from video, low false alarm.
-  - Main variable: temporal confirmation gain over RGB single-frame.
-  - Secondary variable: `TTD @ FA-budget` vs inference cost (`$/camera-month`, đo thực trên Modal).
-  - Later variable: thermal/RGB-T gain over RGB.
-  - Later research variable: RGB-T teacher knowledge distill sang RGB-only được bao nhiêu.
-  - Decision metric: event-level.
-  - Secondary metric: bbox/mAP.
+- **Scope đang sống**
+  - Task: `tasks/smoke_fire_detection/`.
+  - Dataset: `datasets/smoke_fire_detection/`.
+  - Artifact: `artifacts/smoke_fire_detection/`.
+  - Research: early fire detection video, low false alarm.
+  - Main metric: event-level `TTD` + `false alarm/hour`.
+  - Secondary metric: bbox/mAP, latency, cost.
 
-- **Current priority**
-  - `P0 gate`: G0 transfer check — AUROC pre/post ignition của D-Fire detector zero-shot trên FIgLib (`research_plan.md` mục 5).
-  - `P0 data`: negative-day harvesting từ HPWREN archive (mẫu số `false alarm/hour`).
-  - `P0 protocol`: AMOC (TTD vs FA/hour) + bootstrap CI theo event.
-  - `P0`: event-level benchmark.
-  - `P0`: `false alarm events/hour`.
-  - `P0`: `time-to-detection`.
-  - `P0`: RGB temporal verifier.
-  - `P0`: hard-negative mining.
-  - `P0`: event/camera/location split.
-  - `P1`: bbox vs ROI/image classifier vs segmentation cho smoke.
-  - `P1`: RGB vs thermal vs RGB-T fusion.
-  - `P1 research`: RGB-T teacher sang RGB student.
-  - `P2`: calibration/uncertainty/abstention.
-  - `P3`: VLM verifier.
+- **Env đã verify 2026-07-08, không giả định vĩnh viễn**
+  - Host lúc đó: `ai2`, Ubuntu 24.04, ARM64.
+  - GPU lúc đó: `NVIDIA GB10`.
+  - `.venv`: có `ultralytics 8.4.90`, `torch 2.12.1+cu130`, CUDA OK.
+  - Modal app GPU: L4.
+  - Nếu chạy lại: verify `uname -a`, `nvidia-smi -L`, `.venv`.
 
-- **Current datasets**
-  - `datasets/smoke_fire_detection/D-Fire`
-    - Current format: YOLO bbox.
-    - Current split folders: `train`, `test`.
-    - Image path pattern: `{split}/images/*`.
-    - Label path pattern: `{split}/labels/{image_stem}.txt`.
-    - Class map: `0 = smoke`, `1 = fire`.
-    - Current adapter: `tasks/smoke_fire_detection/dataset.py`.
-  - `datasets/smoke_fire_detection/FIgLib`
-    - **Merged 2026-07-08:** user kéo 476 file `.tgz` (32GB) từ HPWREN vào `tempo/` (root, tạm) → agent giải nén + gộp vào `datasets/smoke_fire_detection/FIgLib/` (476/476 archive OK, 0 lỗi giải nén), rồi chạy `dataset.py figlib` (lúc đó còn là file riêng `figlib_index.py`, đã gộp vào `dataset.py` sau đó — xem "Current code state") để lấy số liệu thật. `tempo/` đã xóa sau khi user xác nhận (32GB, giải phóng cùng ngày).
-    - Current local subset: `511` sequence folders (36 cũ + 476 mới - 1 archive rỗng đã xóa `20250123_GilmanFire_tdllns-mobo-c`).
-    - Current local subset: `510` `.mp4`.
-    - Current local subset: `40623` `.jpg` trên đĩa, `40362` frame hợp lệ trong index (`261` bị loại vì filename không theo pattern chuẩn — xem anomaly bên dưới).
-    - Current local subset: `42` `README.txt`.
-    - Folder pattern thật (verified, tổng quát hoá với hàng trăm tên đám cháy khác nhau, không chỉ `FIRE`): `{YYYYMMDD}_{fire_name}_{camera_id}`. Parse đúng: `sequence_id.split("_", 2)`, `camera_id = parts[2]`.
-    - Unique cameras local (verified qua `dataset.py figlib`, re-run 2026-07-08 sau khi xóa 1 archive rỗng): `135` (exact-string match trên `camera_id`; camera lặp giữa các sequence → bắt buộc report thêm camera-split; open assumption: naming có thể chưa dedupe đúng camera vật lý, vd `bm-n-mobo` vs `bm-n-mobo-c`).
-    - Frames per sequence: `81` (chuẩn), cadence `60s`, offset `-2400..+2400s`.
-    - Frame size: `2048x1536` (chưa verify lại trên toàn bộ 476 sequence mới — open assumption).
-    - **Data anomaly (verified 2026-07-08):** 111/476 archive mới đóng gói theo cấu trúc lồng `Data/HPWREN-FIgLib/HPWREN-FIgLib-Data/{sequence}/` thay vì phẳng `{sequence}/` — agent đã tự động di chuyển 111 sequence này lên ngang hàng với các sequence khác trong `FIgLib/`, xoá 3 thư mục wrapper rỗng. Không còn dấu vết cấu trúc lồng.
-    - **Data anomaly (verified 2026-07-08):** `20250123_GilmanFire_tdllns-mobo-c` — archive rỗng thật (0 file, chỉ có thư mục trong .tgz) — lỗi từ nguồn tải gốc, không phải lỗi giải nén phía agent, không tự sửa được. `20200831_FIRE_wc-n-mobo-c` (180 jpg) dùng filename convention cũ `{timestamp}.jpg` (không có suffix offset) → 0 frame hợp lệ sau index. `20250801_BernardoFire_bl-n-mobo-c`, `20250804_CoolFire_bi-w-mobo-c` trộn cả 2 convention (41 và 40 frame bị loại tương ứng, phần còn lại hợp lệ).
-    - **Sửa giả định cũ — quan trọng:** KHÔNG còn là "36/315 sequence của bộ FIgLib cố định". Sequence mới trải tới `2026-06` (vd `20260629_JunctionFire_*`, `20250107_EatonFire_*`) — HPWREN duy trì FIgLib như archive sống liên tục thêm fire mới, không phải tập tĩnh 315 sequence từ paper 2021 (arXiv 2112.08598). Không còn mẫu số cố định để nói "đã tải X/Y%".
-    - Current local annotations found: no bbox/mask/CSV/JSON/XML.
-    - Current fit: video/event/temporal weak-label benchmark.
-    - Current mismatch: not directly usable by D-Fire YOLO split script.
-    - Frame filename signal: Unix timestamp + ignition offset (chuẩn); 3 sequence dùng convention cũ chỉ có Unix timestamp (xem anomaly).
-    - Example filename: `1495296879_+00000.jpg`.
-    - Weak-label assumption: offset `< 0` negative.
-    - Weak-label assumption: offset `>= 0` positive.
-    - Assumption risk: official labels/splits not yet verified locally.
-    - **Tác động tới research plan (phản biện, xem `research_plan.md` mục 3.1):** power thống kê event-level (36→511, ~14x) không còn là bottleneck chính cho G0/G1; nhưng negative-window mỗi sequence vẫn chỉ ~40 phút ngay trước ignition (tương quan cao, thiếu đa dạng thời tiết) → E1a (negative-day harvesting) vẫn cần cho `FA/hour` đáng tin, dù không còn chặn G0/G1. Khuyến nghị: chạy G0/G1 ngay trên 511 event thay vì chờ negative-day harvesting trước.
-  - `PYRONEAR-2025` (verified tồn tại 2026-07-08, chưa tải về local)
-    - arXiv `2402.05349`: ~50k ảnh, ~150k bbox annotation, 640 fire, có video sequence.
-    - Vai trò dự kiến: train/val learned temporal verifier; FIgLib làm test transfer.
-  - `HPWREN archive` (verified công khai 2026-07-08, chưa tải)
-    - Duyệt theo camera + ngày, có tool bulk download, chỉ cần attribution.
-    - Vai trò dự kiến: negative days đúng domain cho FA/hour + hard-negative flywheel.
-
-- **`pyro-sdis` — TẢI XONG 2026-07-08 20:17** (`datasets/smoke_fire_detection/pyro-sdis/`, theo yêu cầu trực tiếp của user, không qua gate research plan — xem phản biện ở `research_plan.md` mục 9). Tải bằng `huggingface_hub.snapshot_download(repo_id="pyronear/pyro-sdis", repo_type="dataset")` (`.venv/bin/pip install huggingface_hub pyarrow` trước đó, chưa có trong requirements chính thức). Verify thật:
-  - Dung lượng trên đĩa: `3.1GB` (khớp `download_size=3284043758` bytes trong README metadata). Đã xoá `.cache/huggingface/` (thư mục nội bộ của downloader, không phải data).
-  - **Format thật KHÁC với mô tả `data.yaml`/README:** `data.yaml` ghi `train: pyro-sdis/images/train`, `val: pyro-sdis/images/val` (ngụ ý folder ảnh + label rời kiểu YOLO như D-Fire) nhưng **repo trên HF thực tế KHÔNG có `images/`/`labels/` folder** — chỉ có 11 file: `README.md`, `.gitattributes`, `logo.png`, `data.yaml`, và 7 file `data/{train-0000X-of-00006,val-00000-of-00001}.parquet`. Ảnh + annotation nằm trong parquet (HF `datasets` push-to-hub format), schema mỗi row: `image` (struct `{bytes, path}`, ảnh nhị phân embedded), `annotations` (string nhiều dòng, mỗi dòng `"class_id cx cy w h"` kiểu YOLO), `image_name`, `partner`, `camera`, `date`.
-  - **Verified toàn bộ 33636 row** (train 29537 + val 4099, khớp README): `5499` row `annotations` rỗng (ảnh không có khói) — khớp gần đúng README (`33636 - 28103 = 5533`, chênh lệch nhỏ không đáng ngại. `class_id` xuất hiện trong toàn bộ annotation chỉ có **`"1"`**, KHÔNG có `"0"` — mâu thuẫn với `data.yaml` khai `nc: 1, names: ['smoke']` (lẽ ra single-class phải là `0`). **Phải remap `1→0` khi convert**, đừng tin nguyên văn `data.yaml`.
-  - **CHƯA convert sang cấu trúc YOLO `images/`+`labels/`** để `dataset.py` dùng được — cần viết script đọc parquet (`pyarrow`), decode `image.bytes` ra `.jpg`, ghi lại `annotations` (remap class `1→0`) ra `.txt`, trước khi có thể train/eval chung pipeline với D-Fire. Chưa có nhu cầu cụ thể nào gọi tên việc này trong research plan hiện tại (pyro-sdis không nằm trong gate G0/G1) nên **chưa viết converter** — chỉ tải + verify format theo yêu cầu trực tiếp của user.
-  - `pyarrow` đã cài vào `.venv` (không có trong `requirements.txt` gốc dự kiến — cần thêm nếu sau này viết converter).
-  - `PyroNear-2024`: ~50k ảnh/150k annotation/400 fire, 3 nước (thiếu Chile so với 2025). Gần như tập con của PyroNear-2025 (640 fire, 4 nước) — không có lý do tải riêng.
-  - `DetectiumFire` (kaggle.com/datasets/yimengfuyao/detectiumfire): 22.5k ảnh + 2.5k video thật + 8k ảnh synthetic + 12k cặp RLHF, license Non-Commercial. Giá trị khác biệt thật sự là phần vision-language (VQA/reasoning), map với hướng VLM verifier (P3, đang parked) chứ không phục vụ trực tiếp P0. Server Linux này (`ai2`) có internet ra ngoài trực tiếp (verify `curl` tới `kaggle.com` = 200) — nếu cần tải, tải thẳng trên server này bằng `kaggle` CLI + API token của user, không cần qua vòng máy Windows local.
-  - `FLAME 3`: UAV thermal cận cảnh, khác domain tower camera — đã parked theo gate G3. Biến thể `FLAME3-CV` (Kaggle, 1 burn) nhẹ/không gate; full 6-burn set phải xin quyền tác giả.
-  - `FireSentry` (arXiv 2512.03369, KDD'26): task là dự báo LAN TRUYỀN đám cháy (spread forecasting), khác RQ hiện tại (presence/early detection). Bài báo tháng 12/2025, **chưa xác nhận có link tải dataset công khai**.
-  - `GWFP` (Global Wildfire Prevention Dataset, arXiv 2606.10174): 8 class ảnh (bao gồm flame/smoke/waterdog-fog/NIR/ember/negative) dựng một phần từ HPWREN + Bilkent University. **Tác giả ghi rõ "sẽ public khi paper được accept" — hiện CHƯA có link tải nào tồn tại**, không phải vấn đề gate/quyền mà là chưa release.
-  - Kết luận khảo sát: không có dataset nào trong 4 cái (PyroNear-2024, DetectiumFire, FLAME3-full, FireSentry, GWFP) đủ lý do để ưu tiên tải ngay so với việc đang bị block bởi Step 3-4 (detector cache + G0). Chỉ `pyro-sdis` đáng cân nhắc sớm.
-
-- **Current code state** (consolidated 2026-07-08: 8 file → 5 file trong `tasks/smoke_fire_detection/`, gộp theo pipeline phase — dataset processing / train / eval, dùng argparse subcommand thay vì file riêng cho từng dataset/tác vụ, vì codebase còn nhỏ chưa cần module hóa mạnh)
-  - `tasks/smoke_fire_detection/dataset.py` (gộp `dataset.py` cũ + `figlib_index.py` cũ)
-    - Subcommand `dfire`: D-Fire YOLO split creator. Input args: `--data-root`, `--out`, `--audit-out`, `--val-ratio`, `--seed`, `--workers`. Output: `train.txt`, `val.txt`, optional `test.txt`, `dataset.yaml`, optional audit JSON. Val source: D-Fire `train`, grouping theo label type (`empty`, `smoke_only`, `fire_only`, `smoke_and_fire`).
-    - Subcommand `figlib`: scan FIgLib sequence folders → frame index JSONL + audit JSON + train/val split theo sequence. Input args: `--data-root`, `--index-out`, `--audit-out`, `--val-ratio` (default `0.2`), `--seed`. Verified re-run 2026-07-08 sau merge `tempo/` + xóa `20250123_GilmanFire_tdllns-mobo-c` (archive rỗng): `40362` frame hợp lệ, `511` sequence, `135` unique camera, `261` bad filename frame, `1` empty sequence folder còn lại (`20200831_FIRE_wc-n-mobo-c`). Output: `artifacts/smoke_fire_detection/figlib_index.jsonl`, `figlib_audit.json`.
-    - Đã test: `figlib` subcommand chạy lại trên data thật, số liệu khớp với bản trước khi gộp code (trừ chênh lệch do xóa GilmanFire).
-  - `tasks/smoke_fire_detection/train.py` (không đổi)
-    - Current role: YOLO fine-tune/train.
+- **Code hiện tại**
+  - `tasks/smoke_fire_detection/dataset.py`
+    - `dfire`: tạo YOLO split + audit.
+    - `figlib`: index frame FIgLib + audit + sequence split.
+  - `tasks/smoke_fire_detection/train.py`
+    - YOLO train/fine-tune.
     - Default model: `yolo26n.pt`.
-    - Current pretrained behavior: `YOLO(args.model)` + `pretrained=True`.
-    - Current default run: `dfire_yolo26n_baseline`.
-    - Current project dir: `artifacts/smoke_fire_detection/runs`.
-    - Current resume modes: `auto`, `always`, `never`.
-    - Current resume checkpoint: `{run_dir}/weights/last.pt`.
-  - `tasks/smoke_fire_detection/eval.py` (gộp `eval.py` cũ + `extract_hard_negatives.py` cũ + `figlib_detector_cache.py` cũ — 3 script cũ đều có pattern trùng lặp gần như y hệt: load YOLO, chạy predict, gom `box_records()`; gộp giúp hết duplicate code, không phải chỉ để giảm file)
-    - Subcommand `accuracy`: YOLO accuracy + latency report. Input: `--weights`, `--data`, `--split`, `--out`, `--conf`, `--iou`, `--imgsz`, `--device`, `--warmup`, `--measured`. Output JSON: `mAP50`, `mAP50_95`, `precision`, `recall`, per-class metrics, `mean_ms`/`p50_ms`/`p95_ms`/`fps`.
-    - Subcommand `hard-negatives`: extract false positives from empty-label images. Input: `--weights`, `--data`, `--split`, `--out`, `--review-dir`, `--conf`, `--iou`, `--imgsz`, `--device`, `--limit`, `--max-candidates`, `--max-review-images`. Output: JSONL candidates, summary JSON, optional review images. Current limitation: frame-level only, chưa hỗ trợ sequence/event-level FP mining (cần cho E3).
-    - Subcommand `detector-cache`: chạy YOLO weights qua `figlib_index.jsonl`, cache confidence/latency mỗi frame. Input: `--index`, `--weights`, `--out`, `--conf` (default `0.05`, thấp hơn accuracy để không lọc mất tín hiệu yếu), `--iou`, `--imgsz`, `--device`, `--limit`. Output: `artifacts/smoke_fire_detection/figlib_detector_cache.jsonl`.
-  - `tasks/smoke_fire_detection/temporal_eval.py` (không đổi, cố tình giữ tách khỏi `eval.py` — logic đã unit-test bằng synthetic data ngoài repo, xem note dưới)
-    - Current role: đọc detector cache → alarm theo N-of-M/EMA → event metrics (FA/hour, event precision/recall, TTD) + bootstrap CI theo event + per-event detail JSONL cho camera-split.
-    - Input args: `--cache`, `--out`, `--events-out`, `--score {any,smoke,fire}`, `--thresholds`, `--nofm` (vd `2:3,3:5,5:10`), `--ema-alphas`, `--ema-init {score,zero}`, `--bootstrap-samples` (default `1000`), `--seed`.
-    - Alarm rule: latching (chỉ alarm đầu tiên/sequence), theo đúng công thức trong "Temporal formulas".
-    - **Lý do KHÔNG gộp vào `eval.py`:** file này không import `ultralytics`/`torch` — chỉ đọc JSONL cache có sẵn và tính stat thuần CPU (offline replay). Gộp vào `eval.py` sẽ ép nó phải kéo theo import `ultralytics` không cần thiết, đi ngược nguyên tắc "detector cache là hạ tầng trung tâm, verifier iterate không tốn GPU" (`research_plan.md` mục 4). Đây cũng chính là chỗ "chia 2 file nếu eval quá lớn" mà user yêu cầu.
+    - Runs: `artifacts/smoke_fire_detection/runs/`.
+  - `tasks/smoke_fire_detection/eval.py`
+    - `accuracy`: mAP/precision/recall/latency.
+    - `hard-negatives`: FP từ empty-label images.
+    - `detector-cache`: YOLO trên FIgLib frames, JSONL cache. Try/except per-frame, lỗi ghi `{out}.errors.json`.
+  - `tasks/smoke_fire_detection/temporal_eval.py`
+    - Offline analysis trên detector cache. Không import torch/ultralytics.
+    - `g0`: AUROC (Mann-Whitney U, numpy, tie-corrected) `max_smoke/fire/any_confidence` pre/post ignition. Ignore-band, bootstrap CI event-split + camera-split, gate decision pass/marginal/fail. (merge từ `gate_g0_auroc.py` cũ 2026-07-09, file cũ đã xóa)
+    - `temporal`: N-of-M, EMA, AMOC, bootstrap CI.
   - `tasks/smoke_fire_detection/modal_app.py`
-    - Current app: `smoke-fire-detection-yolo`.
-    - Current volume: `smoke-fire-lab-volume`.
-    - Current GPU: `L4`.
-    - Current functions: `prepare_split`, `train`, `checkpoint_status`, `evaluate`, `extract_hard_negatives`.
-    - Cập nhật 2026-07-08 (theo consolidation trên): `prepare_split()` giờ gọi `tasks.smoke_fire_detection.dataset dfire`, `evaluate()` gọi `tasks.smoke_fire_detection.eval accuracy`, `extract_hard_negatives()` gọi `tasks.smoke_fire_detection.eval hard-negatives`.
-    - Chưa có function cho `dataset figlib`/`eval detector-cache`/`temporal_eval.py` — lý do: FIgLib dataset chưa upload lên Modal volume, thêm function lúc này sẽ không test được (vi phạm §5 "không tạo khi chưa có nhu cầu thực sự"). Server `ai2` giờ đã có `.venv` + `ultralytics`/`torch` riêng (xem "Current environment") nên đang ưu tiên chạy local thay vì upload FIgLib lên Modal.
+    - App: `smoke-fire-detection-yolo`.
+    - Volume: `smoke-fire-lab-volume`.
+    - Functions: `prepare_split`, `train`, `checkpoint_status`, `evaluate`, `extract_hard_negatives`.
+    - Chưa có FIgLib/temporal Modal function vì dataset chưa upload Modal volume.
 
-- **Current D-Fire label schema**
-  - File type: YOLO txt.
-  - Line format: `class_id x_center y_center width height`.
-  - Allowed class ids: `{0, 1}`.
-  - Coordinate type: normalized float.
-  - Valid `x_center`: `0 <= x_center <= 1`.
-  - Valid `y_center`: `0 <= y_center <= 1`.
-  - Valid `width`: `0 < width <= 1`.
-  - Valid `height`: `0 < height <= 1`.
-  - Missing label file: empty label.
-  - Blank label file: empty label.
-  - Invalid line: increments `invalid_label_lines`.
+- **D-Fire**
+  - Path: `datasets/smoke_fire_detection/D-Fire`.
+  - Format: YOLO bbox.
+  - Classes: `0 smoke`, `1 fire`.
+  - Split folders gốc: `train`, `test`.
+  - Label thiếu/rỗng: empty label.
+  - Current local split: `artifacts/smoke_fire_detection/split_local/`.
+  - Local split counts: train `15500`, val `1721`, test `4306`.
+  - Split txt: absolute path, machine-specific.
+  - Baseline weights: `artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`.
+  - Test metrics 2026-07-08: all `P=0.764`, `R=0.714`, `mAP50=0.684`, `mAP50-95=0.404`.
+  - Test smoke: `P=0.822`, `R=0.791`, `mAP50=0.765`.
+  - Test fire: `P=0.707`, `R=0.638`, `mAP50=0.604`.
+  - Latency local GB10: mean `~21ms`, p95 `~27ms`, fps `~46-49`.
+  - Risk: D-Fire near-duplicate split có thể inflate val mAP.
 
-- **Current D-Fire split schema**
-  - **Machine-specific, không portable:** `train.txt`/`val.txt`/`test.txt` chứa absolute path resolve tại máy chạy `dataset.py dfire` — path sinh trên Modal (`/__modal/volumes/...`) không tồn tại trên server `ai2` và ngược lại. `artifacts/smoke_fire_detection/split/` = bản Modal-native (do `prepare_split()` sinh trên volume). `artifacts/smoke_fire_detection/split_local/` = bản path tuyệt đối của server `ai2` (sinh 2026-07-08, cùng seed `20260707` → cùng thành phần ảnh: train 15500/val 1721/test 4306, chỉ khác path), dùng khi chạy `eval.py`/`train.py` local trên server này.
-  - `dataset.yaml.path`: absolute split output dir.
-  - `dataset.yaml.train`: `train.txt`.
-  - `dataset.yaml.val`: `val.txt`.
-  - `dataset.yaml.test`: `test.txt` if test images exist.
-  - `dataset.yaml.names`: `{0: smoke, 1: fire}`.
-  - `train.txt`: one absolute image path per line.
-  - `val.txt`: one absolute image path per line.
-  - `test.txt`: one absolute image path per line.
-  - Audit top-level keys: `train`, `test`.
-  - Audit per-split keys: `images`, `labels`, `empty_labels`, `invalid_label_lines`, `class_counts`.
+- **FIgLib**
+  - Path: `datasets/smoke_fire_detection/FIgLib`.
+  - Snapshot local: 2026-07-08.
+  - Local sequences: `511`.
+  - Indexed events with valid frames: `510` (`20200831_FIRE_wc-n-mobo-c` has 0 valid frames).
+  - Valid frames indexed: `40362`.
+  - JPG on disk: `40623`.
+  - MP4: `510`.
+  - Cameras exact-string: `143` (fix 2026-07-09: 38 sequence dùng convention tên khác `{date}.{time}-{fire}-{camera}` từng bị parse nhầm thành `camera_id="unknown"`, đã sửa `figlib_camera_id_from_sequence`).
+  - Frame cadence: `60s`.
+  - Offsets mostly `-2400..+2400s`.
+  - Folder patterns:
+    - `{YYYYMMDD}_{fire_name}_{camera_id}`.
+    - `{date}.{time}-{fire}-{camera}`.
+  - Parse: `figlib_camera_id_from_sequence()`.
+  - Parse rule: `_` pattern dùng `split("_", 2)`; `-` pattern fallback theo brand `mobo|iqeye`.
+  - Filename signal: Unix timestamp + ignition offset.
+  - Weak label: offset `<0` negative, `>=0` positive.
+  - No bbox/mask/CSV/XML annotations found locally.
+  - Index: `artifacts/smoke_fire_detection/figlib_index.jsonl`.
+  - Audit: `artifacts/smoke_fire_detection/figlib_audit.json`.
+  - Anomalies kept in mind:
+    - `20200831_FIRE_wc-n-mobo-c`: old filename convention, 0 valid frames.
+    - `20250801_BernardoFire_bl-n-mobo-c`: mixed convention, 41 bad frames.
+    - `20250804_CoolFire_bi-w-mobo-c`: mixed convention, 40 bad frames.
+    - `20250123_GilmanFire_tdllns-mobo-c`: empty archive removed.
+  - HPWREN FIgLib is living archive, not fixed paper dataset.
+  - Drive backup: rclone copy started 2026-07-08, vẫn đang chạy nền (chậm, Google Drive throttle nhiều file nhỏ) 2026-07-09 sáng, chưa xong; verify `rclone check` sau khi hoàn tất.
+  - Detector cache: **done** 2026-07-09, `40361/40362` frame (`figlib_detector_cache.jsonl`), 1 frame lỗi (jpg 0-byte) skip có log ở `.errors.json`.
+  - G0 gate: **done** 2026-07-09, `AUROC(smoke)=0.7017` (event CI95 `[0.685,0.719]`, camera CI95 `[0.683,0.720]`), `AUROC(fire)=0.509`, `AUROC(any)=0.705` -> **decision = marginal (0.60-0.80)**. Report: `artifacts/smoke_fire_detection/gate_g0_auroc.json`. Chạy lại bằng `temporal_eval.py g0` (không phải `gate_g0_auroc.py` nữa).
+  - G0 rerun `imgsz=1280`: no artifact/process found at `2026-07-09 08:50 +0700`; still next action, not confirmed running.
 
-- **Current eval report schema**
-  - Context keys: `split`, `weights`, `data`, `conf`, `iou`, `imgsz`, `device`, `command`, `python`, `platform`.
-  - Accuracy keys: `mAP50`, `mAP50_95`, `precision`, `recall`, `classes`.
-  - Per-class keys: `class_id`, `precision`, `recall`, `mAP50`, `mAP50_95`.
-  - Latency keys: `latency_source_images`, `warmup`, `samples`, `mean_ms`, `p50_ms`, `p95_ms`, `fps`.
-  - Current latency formula: `fps = 1000 / mean_ms`.
-  - Side output: `eval.py accuracy` cũng ghi auto-artifact ultralytics (confusion matrix, PR/F1/P/R curve, `predictions.json`) vào `{out_dir}/{split}_accuracy/` (vd `artifacts/smoke_fire_detection/test_accuracy/`) — không nằm trong report JSON, đọc trực tiếp file ảnh/JSON nếu cần.
+- **pyro-sdis**
+  - Path: `datasets/smoke_fire_detection/pyro-sdis/`.
+  - Downloaded 2026-07-08.
+  - Size: `3.1GB`.
+  - Actual format: parquet, not YOLO folders.
+  - Rows verified: `33636`.
+  - Empty annotations: `5499`.
+  - Annotation class id: only `"1"`.
+  - `data.yaml` says single class smoke; converter must remap `1 -> 0`.
+  - No YOLO converter yet.
+  - `pyarrow` installed in `.venv`, not formalized in requirements.
 
-- **Current hard-negative schema**
-  - File type: JSONL.
-  - Unit: candidate image.
-  - Keys: `rank`, `image`, `label`, `split`, `max_confidence`, `detections`.
-  - Detection keys: `class_id`, `class_name`, `confidence`, `xyxy`.
-  - Sort order: `max_confidence` descending.
-  - Current mining source: empty-label images only.
-  - Current review image name: `{rank:04d}_{image_name}`.
+- **External datasets**
+  - PYRONEAR-2025: exists, not downloaded.
+  - HPWREN archive: public, not harvested.
+  - DetectiumFire: parked, VLM/P3 value.
+  - FLAME 3: parked, thermal/UAV domain mismatch.
+  - FireSentry/GWFP: not useful for current P0, availability uncertain/not released.
 
-- **Current FIgLib index schema** (implemented, `tasks/smoke_fire_detection/dataset.py`, subcommand `figlib`)
-  - Target file: `artifacts/smoke_fire_detection/figlib_index.jsonl`.
-  - Unit: frame.
-  - Key: `dataset = FIgLib`.
-  - Key: `sequence_id`.
-  - Key: `camera_id`.
-  - Key: `video_path`.
-  - Key: `frame_path`.
-  - Key: `timestamp_unix`.
-  - Key: `ignition_offset_seconds`.
-  - Key: `weak_event_label`.
-  - Key: `label_source = filename_offset_sign`.
-  - Key: `split`.
-  - Split unit: `sequence_id`.
+- **Schemas**
+  - D-Fire label line: `class_id x_center y_center width height`, normalized.
+  - Eval report: context + `mAP50`, `mAP50_95`, `precision`, `recall`, per-class, latency.
+  - Hard-negative JSONL: `rank`, `image`, `label`, `split`, `max_confidence`, `detections`.
+  - FIgLib index JSONL keys: `sequence_id`, `camera_id`, `video_path`, `frame_path`, `timestamp_unix`, `ignition_offset_seconds`, `weak_event_label`, `split`.
+  - Detector cache keys: FIgLib index keys + `model_weights`, `conf`, `iou`, `imgsz`, `detections`, `max_smoke_confidence`, `max_fire_confidence`, `max_any_confidence`, `latency_ms`.
 
-- **Current FIgLib audit schema** (implemented, output thật đã verify ở trên)
-  - Target file: `artifacts/smoke_fire_detection/figlib_audit.json`.
-  - Key: `sequences`.
-  - Key: `videos`.
-  - Key: `frames`.
-  - Key: `readme_files`.
-  - Key: `missing_video_sequences`.
-  - Key: `empty_sequence_folders`.
-  - Key: `bad_filename_frames`.
-  - Key: `offset_min_seconds`.
-  - Key: `offset_max_seconds`.
+- **Temporal protocol**
+  - Default score: max smoke/fire confidence.
+  - N-of-M: alarm if hits in window >= N.
+  - EMA: alarm if EMA >= threshold.
+  - Alarm latch: first alarm per sequence.
+  - Event start: offset `0`.
+  - TTD: `alarm_offset_seconds - 0`.
+  - False alarm: alarm offset `<0`.
+  - FA/hour: false alarm events / negative window hours.
+  - Operating points: `FA <= 1/camera/day`, `FA <= 1/camera/week`.
+  - CI: bootstrap by event, `>=1000` samples.
 
-- **Current detector cache schema** (implemented, `tasks/smoke_fire_detection/eval.py`, subcommand `detector-cache`, chưa chạy trên data thật)
-  - Target file: `artifacts/smoke_fire_detection/figlib_detector_cache.jsonl`.
-  - Unit: frame prediction.
-  - Key: `sequence_id`.
-  - Key: `camera_id`.
-  - Key: `frame_path`.
-  - Key: `timestamp_unix`.
-  - Key: `ignition_offset_seconds`.
-  - Key: `weak_event_label`.
-  - Key: `model_weights`.
-  - Key: `conf`.
-  - Key: `iou`.
-  - Key: `imgsz`.
-  - Key: `detections`.
-  - Key: `max_smoke_confidence`.
-  - Key: `max_fire_confidence`.
-  - Key: `max_any_confidence`.
-  - Key: `latency_ms`.
+- **Next work**
+  - P0: G0 = marginal → chạy `detector-cache` với `imgsz` lớn hơn (1280) trên FIgLib, đo lại `temporal_eval.py g0`, so sánh AUROC.
+  - P0: nếu vẫn marginal/fail sau imgsz lớn → pivot tile-classifier hoặc fine-tune PYRONEAR-2025 (không xây temporal trên detector mù).
+  - P0: nếu pass sau imgsz lớn → mở G1, chạy `temporal_eval.py temporal` trên detector cache mới.
+  - P0: report AMOC, TTD, FA/hour, event precision/recall (chờ G1).
+  - P0: harvest HPWREN negative days for real FA/hour denominator.
+  - P0: event-level hard-negative mining.
+  - P1: learned temporal verifier only after G0/G1 evidence.
+  - P1: pyro-sdis converter only if needed for training.
+  - P2/P3: calibration, thermal, VLM parked.
 
-- **Temporal formulas**
-  - Default score: `score_t = max(max_smoke_confidence_t, max_fire_confidence_t)`.
-  - Smoke-only score: `score_t = max_smoke_confidence_t`.
-  - Fire-only score: `score_t = max_fire_confidence_t`.
-  - N-of-M hit: `hit_t = score_t >= threshold`.
-  - N-of-M alarm: `sum(hit_{t-M+1:t}) >= N`.
-  - EMA score: `ema_t = alpha * score_t + (1 - alpha) * ema_{t-1}`.
-  - EMA init option: `ema_0 = score_0`.
-  - EMA init option: `ema_0 = 0`.
-  - EMA alarm: `ema_t >= threshold`.
-  - Event alarm time: first frame where temporal verifier alarms.
-  - No alarm: `alarm_time = null`.
-  - FIgLib weak event start: `event_start_offset_seconds = 0`.
-  - TTD: `TTD_seconds = alarm_offset_seconds - event_start_offset_seconds`.
-  - FIgLib weak false alarm: `alarm_offset_seconds < 0`.
-  - Negative window hours: `total_negative_window_seconds / 3600`.
-  - False alarm rate: `false_alarm_events / negative_window_hours`.
-  - Event precision: `true_alarm_events / (true_alarm_events + false_alarm_events)`.
-  - Event recall: `detected_true_events / total_true_events`.
-  - Frame precision: `TP_frames / (TP_frames + FP_frames)`.
-  - Frame recall: `TP_frames / (TP_frames + FN_frames)`.
-  - Frame-level ignore band: offset `0..+180s` loại khỏi train/eval frame-level (TTD event-level vẫn đo từ offset 0).
-  - Alarm latching: chỉ tính alarm đầu tiên mỗi sequence.
-  - AMOC protocol: quét threshold → curve `TTD` vs `false alarm/hour`.
-  - Operating points chuẩn: FA ≤ `1/camera/day` và ≤ `1/camera/week`.
-  - CI: bootstrap theo event, `>=1000` resample; chỉ kết luận khác biệt khi CI không giao.
-
-- **Current pretrained/fine-tune status**
-  - Current YOLO baseline is not random-init.
-  - Current YOLO baseline loads `yolo26n.pt`.
-  - Current YOLO train path passes `pretrained=True`.
-  - Off-the-shelf model role under consideration: zero-shot baseline.
-  - Off-the-shelf model role under consideration: pseudo-label teacher.
-  - Off-the-shelf model role under consideration: proposal generator.
-  - Off-the-shelf model role under consideration: fine-tune starting point.
-  - Benchmark replacement risk: off-the-shelf demo without event false-alarm metric.
-  - Known hard domains: cloud, fog, dust, glare, sunset, lamp, welding, candle, stove, campfire.
-
-- **Current target architecture**
-  - RGB stream.
-  - Lightweight per-frame candidate detector.
-  - Low threshold candidate generation.
-  - Candidate ROI.
-  - Temporal event verifier.
-  - Hard-negative-trained confidence.
-  - Calibrated decision.
-  - Optional abstain.
-  - Optional thermal fusion/verifier.
-  - Optional VLM/human verifier for uncertain clips only.
-
-- **Current next work**
-  - Step 1: preserve current D-Fire YOLO baseline (đang train — chỉ poll `checkpoint_status`). Status: in progress.
-  - Step 2: FIgLib index/audit/split at sequence level, có `camera_id`. Status: **done**, re-run 2026-07-08 sau khi merge 476 sequence mới + xóa 1 archive rỗng (511 sequence, 40362 frame, 135 camera — xem "Current datasets").
-  - Step 3: run detector cache on FIgLib frames. Status: script sẵn sàng (`eval.py detector-cache`, đã gộp từ `figlib_detector_cache.py`), **chưa chạy** — `.venv`/`ultralytics`/`torch` đã cài xong (CUDA verified trên GPU `ai2`), không còn bị chặn bởi thiếu dependency, chỉ chưa tới lượt chạy. Với 511 sequence/40362 frame giờ đã có power đủ cho G0/G1 (xem phản biện ở "Current datasets" > FIgLib), không cần chờ negative-day harvesting để mở G0.
-  - Step 4: G0 transfer check — AUROC pre/post ignition; rẽ nhánh theo `research_plan.md` mục 5. Status: blocked bởi Step 3.
-  - Step 5: harvest thử 5-10 negative days từ HPWREN archive (E1a). Status: chưa làm — cần quyết định cách tải (nextcloud/bulk tool), xem `research_plan.md` mục 8.
-  - Step 6: `N-of-M` + `EMA` + AMOC harness + bootstrap CI. Status: **done** (`temporal_eval.py`, logic verify bằng synthetic data), chờ input thật từ Step 3.
-  - Step 7: report `false alarm/hour`, `event precision`, `event recall`, `TTD` tại operating points chuẩn. Status: script đã tạo output này, chờ data thật.
-  - Step 8: mine hard negatives event-level từ negative days. Status: chưa làm, `eval.py hard-negatives` vẫn frame-level only (đã chạy frame-level trên D-Fire `test` split 2026-07-08: 34 candidate/2005 empty-label image — xem "Modal weights sync").
-  - Step 9: learned verifier (factorized: input × aggregator) chỉ khi G1 pass và đã tải PYRONEAR-2025. Status: parked.
-  - Step 10: thermal/distillation parked theo G3 (`research_plan.md`). Status: parked.
-
-- **Current open assumptions**
-  - FIgLib local subset lacks official annotation files.
-  - FIgLib offset sign can serve as weak label.
-  - D-Fire YOLO baseline can serve as FIgLib proposal generator.
-  - Current hard-negative extractor is insufficient for video/event false alarms.
-  - Current eval script is insufficient for event-level metrics (giờ bù bằng `temporal_eval.py`, riêng biệt khỏi `eval.py`).
-  - Current Modal wrapper has no FIgLib/temporal functions yet (quyết định treo: upload dataset + thêm function, hay chạy local).
-  - FA/hour đo trên 36 pre-ignition window là không đại diện (negative tương quan cao, thiếu fog/cloud đa dạng) — cần negative days.
-  - D-Fire nghi có near-duplicate train/test (gom từ web) — cần dedup audit trước khi tin mAP.
-  - PYRONEAR-2025 và HPWREN archive: verified tồn tại/công khai (2026-07-08), chưa tải về local.
+- **Open risks**
+  - FIgLib weak labels only, no official annotation local.
+  - FIgLib negative window short/correlated; negative-day harvesting still needed.
+  - Camera id exact-string may not equal physical camera identity.
+  - D-Fire bbox mAP not enough for early video false-alarm question.
+  - Current hard-negative extractor frame-level only.
+  - Modal lacks FIgLib data/functions.

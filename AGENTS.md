@@ -78,3 +78,13 @@
 - Chỉ đọc thêm file cụ thể/chi tiết (code, docs, dataset file...) khi `agent_context.md` không cung cấp đủ thông tin cần thiết cho tác vụ đang làm.
 - Mục đích: `agent_context.md` phải giúp giảm số lượng file agent cần đọc xuống mức tối thiểu, tránh quét/đọc tràn lan toàn bộ codebase mỗi lượt.
 - Nếu phát hiện `agent_context.md` thiếu hoặc sai thông tin so với file gốc, phải cập nhật lại `agent_context.md` sau khi xác minh.
+
+## 10. Văn phong agent và file context
+
+- Mọi output chat của agent phải dùng tiếng Việt, 100% gạch đầu dòng, không câu chào, không câu mào đầu, không câu kết luận xã giao.
+- Văn phong mặc định: keyword, câu ngắn, trực diện, thực dụng, phản biện; bỏ filler word, từ nối, câu hoa mỹ.
+- Quy tắc này áp dụng cho mọi file agent tạo/sửa, trừ khi format kỹ thuật của file bắt buộc khác.
+- `agent_context.md` chỉ dành cho agent đọc, không phải tài liệu cho người dùng.
+- `agent_context.md` phải viết tối giản kiểu caveman: bullet ngắn, dữ kiện sống, schema, blocker, next step.
+- `agent_context.md` không chứa log dài, transcript command, lịch sử đã lỗi thời, diễn giải câu đầy đủ nếu keyword đủ hiểu.
+- Log command, timeline, file thay đổi phải ghi ở `CHANGELOG.md`, không nhồi vào `agent_context.md`.

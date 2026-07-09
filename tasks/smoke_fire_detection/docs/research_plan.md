@@ -70,10 +70,16 @@
 1. ✅ E0 (`dfire_yolo26n_baseline_full_vram`) — weights final đã đồng bộ + verify (2026-07-08), đã chạy `eval.py accuracy` chính thức trên `test` split (không phải auto-validation `val`): **all P=0.764 R=0.714 mAP50=0.684 mAP50-95=0.404**; `smoke P=0.822 R=0.791 mAP50=0.765 mAP50-95=0.482`; `fire P=0.707 R=0.638 mAP50=0.604 mAP50-95=0.326`; latency mean `21.6ms` p95 `26.7ms` fps `46.4` (GPU `NVIDIA GB10`, imgsz 640, batch 1). **Lưu ý:** mAP50 trên `test` (0.684) thấp hơn rõ rệt so với auto-validation trên `val` (0.76) — cùng model, khác split, cách nhau ~0.08 mAP50; đáng nghi ngờ thêm cho giả thuyết near-duplicate D-Fire train/val đã nêu ở mục 6 (nếu `val` lẫn near-duplicate của `train` thì mAP `val` bị inflate so với `test` thật). Đã chạy `eval.py hard-negatives` trên `test` split song song.
 2. ✅ FIgLib index + audit (`dataset.py figlib`, đã gộp từ `figlib_index.py` cũ — xem `agent_context.md` mục "Current code state") — done, re-verified 2026-07-08 sau khi merge `tempo/` + xóa 1 archive rỗng: 40362 frame hợp lệ, 511 sequence, 135 camera (xem mục 2 cho anomaly còn lại: 1 sequence dùng filename convention cũ, không có frame hợp lệ).
 3. ✅ Detector cache subcommand (`eval.py detector-cache`, đã gộp từ `figlib_detector_cache.py` cũ) — script sẵn sàng, server `ai2` giờ đã có `.venv` + `ultralytics`/`torch` (CUDA verified hoạt động trên GPU GB10) — có thể chạy ngay, chưa chạy trong lượt này (ưu tiên E0 test-split trước).
-4. ✅ AMOC harness + N-of-M + EMA + bootstrap CI (`temporal_eval.py`, giữ tách riêng khỏi `eval.py` — không phụ thuộc `ultralytics`) — done, logic verify bằng synthetic data, chờ detector cache thật.
-5. Chạy `eval.py detector-cache` thật trên FIgLib (weights final đã đồng bộ) → `temporal_eval.py` → G0 AUROC → rẽ nhánh theo mục 5. **Chưa có script tính AUROC — cần viết thêm (nhỏ, mở rộng `temporal_eval.py` hoặc file riêng), đây là input quyết định hướng đi tiếp theo, ưu tiên cao nhất.**
-6. Song song: quyết định cách tải negative days từ HPWREN (E1a) — xem action items cần user quyết định.
-7. Chỉ khi mở G2: tải PYRONEAR-2025, chạy factorized E2.
+4. ✅ AMOC harness + N-of-M + EMA + bootstrap CI (`temporal_eval.py temporal`, giữ tách riêng khỏi `eval.py` — không phụ thuộc `ultralytics`) — done, logic verify bằng synthetic data, chờ detector cache thật.
+5. ✅ **G0 AUROC — DONE 2026-07-09.** `eval.py detector-cache` chạy thật trên toàn bộ FIgLib (`40361/40362` frame, 1 frame lỗi file rỗng đã skip có log, xem `agent_context.md`), viết mới `gate_g0_auroc.py` (Mann-Whitney U rank-sum bằng numpy, tie-corrected, không thêm dependency `scipy`/`scikit-learn`; ignore-band `180s`; bootstrap CI 1000 resample cả event-split và camera-split). **Đã merge vào `temporal_eval.py` subcommand `g0` (2026-07-09, gọn codebase, cùng profile dependency numpy/rich, không torch/ultralytics) — file `gate_g0_auroc.py` cũ đã xóa, output số học verify identical.** Kết quả thật:
+   - `AUROC(max_smoke_confidence) = 0.7017` — event-split CI95 `[0.6846, 0.7189]`, camera-split CI95 `[0.6830, 0.7195]` (hai CI gần trùng, đều nằm chắc trong khoảng `0.60-0.80`, không giáp biên).
+   - `AUROC(max_fire_confidence) = 0.509` (~random, đúng như dự đoán — fire D-Fire là cận cảnh, không transfer sang camera tháp xa).
+   - `AUROC(max_any_confidence) = 0.705` (gần bằng smoke vì smoke chiếm ưu thế tín hiệu).
+   - **Gate decision: `marginal` (0.60-0.80)** → theo cây quyết định mục 5: thử `imgsz` lớn hơn hoặc tiling trước, đo lại G0 — **chưa kết luận pass/fail cuối cùng**, cần chạy lại bước tiếp theo trước khi quyết định mở G1 hay pivot.
+   - Report đầy đủ: `artifacts/smoke_fire_detection/gate_g0_auroc.json`.
+6. Tiếp nhánh "marginal" (chưa chạy, chưa confirm process): `eval.py detector-cache` với `imgsz` lớn hơn (1280) trên FIgLib → `temporal_eval.py g0` lại → so sánh AUROC trước/sau.
+7. Song song: quyết định cách tải negative days từ HPWREN (E1a) — vẫn cần user quyết định cách tải cụ thể, chưa làm.
+8. Chỉ khi mở G2: tải PYRONEAR-2025, chạy factorized E2.
 
 ## 9. Dataset khảo sát thêm (2026-07-08) — không đi thu thập toàn bộ dataset liên quan
 

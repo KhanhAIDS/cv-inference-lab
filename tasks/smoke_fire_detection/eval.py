@@ -336,13 +336,18 @@ def cmd_detector_cache(args):
     out_path = Path(args.out).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     written = 0
+    failed = []
     with out_path.open("w", encoding="utf-8") as out_file:
         for record in records:
             frame_path = record["frame_path"]
-            start = time.perf_counter()
-            result = model.predict(source=frame_path, **predict_kwargs)[0]
-            latency_ms = (time.perf_counter() - start) * 1000
-            detections = box_records(result)
+            try:
+                start = time.perf_counter()
+                result = model.predict(source=frame_path, **predict_kwargs)[0]
+                latency_ms = (time.perf_counter() - start) * 1000
+                detections = box_records(result)
+            except Exception as exc:
+                failed.append({"frame_path": frame_path, "error": str(exc)})
+                continue
             smoke_confidences = [d["confidence"] for d in detections if d["class_id"] == 0]
             fire_confidences = [d["confidence"] for d in detections if d["class_id"] == 1]
             any_confidences = [d["confidence"] for d in detections]
@@ -365,6 +370,11 @@ def cmd_detector_cache(args):
             }
             out_file.write(json.dumps(cache_record, ensure_ascii=False) + "\n")
             written += 1
+
+    if failed:
+        errors_path = out_path.with_suffix(out_path.suffix + ".errors.json")
+        errors_path.write_text(json.dumps(failed, indent=2), encoding="utf-8")
+        console.print(f"[yellow]{len(failed)} frame(s) failed and were skipped: {errors_path}[/yellow]")
 
     console.print(f"Detector cache saved: {out_path} ({written} frames)")
 

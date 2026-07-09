@@ -5,25 +5,191 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
 from rich.console import Console
 
 console = Console()
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="N-of-M and EMA event-level metrics from FIgLib detector cache")
-    parser.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
-    parser.add_argument("--out", required=True)
-    parser.add_argument("--events-out")
-    parser.add_argument("--score", choices=["any", "smoke", "fire"], default="any")
-    parser.add_argument("--thresholds", default="0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.5,0.6,0.7,0.8")
-    parser.add_argument("--nofm", default="2:3,3:5,5:10")
-    parser.add_argument("--ema-alphas", default="0.1,0.3,0.5")
-    parser.add_argument("--ema-init", choices=["score", "zero"], default="score")
-    parser.add_argument("--bootstrap-samples", type=int, default=1000)
-    parser.add_argument("--seed", type=int, default=20260707)
+    parser = argparse.ArgumentParser(description="Offline event-level analysis on FIgLib detector cache (no torch/ultralytics)")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    g0 = subparsers.add_parser("g0", help="G0 gate: AUROC of detector confidence pre/post ignition")
+    g0.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    g0.add_argument("--out", default="artifacts/smoke_fire_detection/gate_g0_auroc.json")
+    g0.add_argument("--ignore-band-seconds", type=float, default=180)
+    g0.add_argument("--bootstrap-samples", type=int, default=1000)
+    g0.add_argument("--seed", type=int, default=20260707)
+
+    temporal = subparsers.add_parser("temporal", help="N-of-M and EMA event-level metrics (AMOC) from FIgLib detector cache")
+    temporal.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    temporal.add_argument("--out", required=True)
+    temporal.add_argument("--events-out")
+    temporal.add_argument("--score", choices=["any", "smoke", "fire"], default="any")
+    temporal.add_argument("--thresholds", default="0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.5,0.6,0.7,0.8")
+    temporal.add_argument("--nofm", default="2:3,3:5,5:10")
+    temporal.add_argument("--ema-alphas", default="0.1,0.3,0.5")
+    temporal.add_argument("--ema-init", choices=["score", "zero"], default="score")
+    temporal.add_argument("--bootstrap-samples", type=int, default=1000)
+    temporal.add_argument("--seed", type=int, default=20260707)
+
     return parser.parse_args()
 
-def read_cache(cache_path: Path):
+def percentile(values, pct):
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, int(round((pct / 100) * (len(ordered) - 1)))))
+    return ordered[index]
+
+def read_cache_flat(cache_path: Path):
+    records = []
+    for line in cache_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            records.append(json.loads(line))
+    return records
+
+def label_of(record, ignore_band_seconds):
+    offset = record["ignition_offset_seconds"]
+    if offset < 0:
+        return 0
+    if offset >= ignore_band_seconds:
+        return 1
+    return None
+
+def auroc(scores, labels):
+    scores = np.asarray(scores, dtype=float)
+    labels = np.asarray(labels, dtype=int)
+    n_pos = int(labels.sum())
+    n_neg = len(labels) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return None
+    order = np.argsort(scores, kind="mergesort")
+    ranks = np.empty(len(scores), dtype=float)
+    ranks[order] = np.arange(1, len(scores) + 1)
+    sorted_scores = scores[order]
+    start = 0
+    while start < len(sorted_scores):
+        end = start
+        while end + 1 < len(sorted_scores) and sorted_scores[end + 1] == sorted_scores[start]:
+            end += 1
+        if end > start:
+            ranks[order[start:end + 1]] = ranks[order[start:end + 1]].mean()
+        start = end + 1
+    rank_sum_pos = ranks[labels == 1].sum()
+    return float((rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
+
+def auroc_bootstrap_ci(groups, group_ids, score_key, samples, seed):
+    rng = random.Random(seed)
+    values = []
+    for _ in range(samples):
+        resample = [rng.choice(group_ids) for _ in group_ids]
+        scores = []
+        labels = []
+        for group_id in resample:
+            for record in groups[group_id]:
+                scores.append(record[score_key])
+                labels.append(record["_label"])
+        value = auroc(scores, labels)
+        if value is not None:
+            values.append(value)
+    return {
+        "ci95": [percentile(values, 2.5), percentile(values, 97.5)],
+        "n_resamples_used": len(values),
+        "n_resamples_requested": samples,
+    }
+
+def gate_decision(auc):
+    if auc is None:
+        return "undecided", "Khong du frame pos/neg de tinh AUROC."
+    if auc >= 0.80:
+        return "pass", "Detector du tin hieu transfer sang FIgLib -> mo G1 (N-of-M/EMA temporal experiment)."
+    if auc >= 0.60:
+        return "marginal", "Thu imgsz lon hon hoac tiling truoc, do lai G0."
+    return "fail", "D-Fire khong transfer sang khoi xa/nho tren FIgLib -> khong xay temporal tren detector mu; pivot sang tile-classifier hoac fine-tune tren PYRONEAR-2025."
+
+def cmd_g0(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    records = read_cache_flat(cache_path)
+    total_frames = len(records)
+    labeled = []
+    for record in records:
+        label = label_of(record, args.ignore_band_seconds)
+        if label is None:
+            continue
+        record["_label"] = label
+        labeled.append(record)
+    dropped_by_band = total_frames - len(labeled)
+
+    by_sequence = defaultdict(list)
+    by_camera = defaultdict(list)
+    for record in labeled:
+        by_sequence[record["sequence_id"]].append(record)
+        by_camera[record["camera_id"]].append(record)
+
+    sequence_ids = sorted(by_sequence.keys())
+    camera_ids = sorted(by_camera.keys())
+
+    score_keys = {
+        "smoke": "max_smoke_confidence",
+        "fire": "max_fire_confidence",
+        "any": "max_any_confidence",
+    }
+    auroc_by_score = {}
+    for name, key in score_keys.items():
+        scores = [record[key] for record in labeled]
+        labels = [record["_label"] for record in labeled]
+        auroc_by_score[name] = auroc(scores, labels)
+
+    primary_auc = auroc_by_score["smoke"]
+    decision, next_action = gate_decision(primary_auc)
+
+    bootstrap_event = auroc_bootstrap_ci(by_sequence, sequence_ids, "max_smoke_confidence", args.bootstrap_samples, args.seed)
+    bootstrap_camera = auroc_bootstrap_ci(by_camera, camera_ids, "max_smoke_confidence", args.bootstrap_samples, args.seed)
+
+    n_pos = sum(1 for record in labeled if record["_label"] == 1)
+    n_neg = sum(1 for record in labeled if record["_label"] == 0)
+
+    result = {
+        "cache": str(cache_path),
+        "design_decisions": {
+            "ignore_band_seconds": args.ignore_band_seconds,
+            "label_rule": "offset < 0 -> negative (pre-ignition); offset >= ignore_band_seconds -> positive (post-ignition); [0, ignore_band_seconds) excluded",
+            "primary_gate_metric": "max_smoke_confidence",
+            "auroc_method": "mann_whitney_u_rank_sum (numpy, tie-corrected, no scipy/sklearn dependency)",
+            "bootstrap_event_unit": "sequence_id",
+            "bootstrap_camera_unit": "camera_id",
+        },
+        "counts": {
+            "total_frames": total_frames,
+            "frames_dropped_by_ignore_band": dropped_by_band,
+            "frames_used": len(labeled),
+            "n_pos": n_pos,
+            "n_neg": n_neg,
+            "n_events": len(sequence_ids),
+            "n_cameras": len(camera_ids),
+        },
+        "auroc": auroc_by_score,
+        "bootstrap_event_smoke": bootstrap_event,
+        "bootstrap_camera_smoke": bootstrap_camera,
+        "gate": {
+            "name": "G0",
+            "auroc_smoke": primary_auc,
+            "decision": decision,
+            "next_action": next_action,
+        },
+    }
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    console.print(f"G0 AUROC report saved: {out_path}")
+    console.print(f"AUROC(smoke) = {primary_auc} -> gate decision: {decision}")
+
+def read_cache_sequences(cache_path: Path):
     sequences = defaultdict(list)
     for line in cache_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -110,14 +276,7 @@ def evaluate_rule(sequence_ids, sequences, alarm_fn):
     }
     return metrics, per_event
 
-def percentile(values, pct):
-    if not values:
-        return None
-    ordered = sorted(values)
-    index = min(len(ordered) - 1, max(0, int(round((pct / 100) * (len(ordered) - 1)))))
-    return ordered[index]
-
-def bootstrap_ci(sequence_ids, sequences, alarm_fn, samples, seed):
+def temporal_bootstrap_ci(sequence_ids, sequences, alarm_fn, samples, seed):
     if samples <= 0:
         return {}
     rng = random.Random(seed)
@@ -135,13 +294,12 @@ def bootstrap_ci(sequence_ids, sequences, alarm_fn, samples, seed):
         "ttd_mean_seconds_ci95": [percentile(ttd_means, 2.5), percentile(ttd_means, 97.5)],
     }
 
-def main():
-    args = parse_args()
+def cmd_temporal(args):
     cache_path = Path(args.cache).resolve()
     if not cache_path.exists():
         raise FileNotFoundError(cache_path)
 
-    sequences = read_cache(cache_path)
+    sequences = read_cache_sequences(cache_path)
     for frames in sequences.values():
         for frame in frames:
             frame["_score"] = score_of(frame, args.score)
@@ -162,13 +320,13 @@ def main():
             def alarm_fn(frames, threshold=threshold, n=n, m=m):
                 return nofm_alarm_offset(frames, threshold, n, m)
             metrics, per_event = evaluate_rule(sequence_ids, sequences, alarm_fn)
-            ci = bootstrap_ci(sequence_ids, sequences, alarm_fn, args.bootstrap_samples, args.seed)
+            ci = temporal_bootstrap_ci(sequence_ids, sequences, alarm_fn, args.bootstrap_samples, args.seed)
             rows.append({"rule": "n_of_m", "threshold": threshold, "n": n, "m": m, **metrics, **ci, "events": per_event})
         for alpha in ema_alphas:
             def alarm_fn(frames, threshold=threshold, alpha=alpha):
                 return ema_alarm_offset(frames, threshold, alpha, args.ema_init)
             metrics, per_event = evaluate_rule(sequence_ids, sequences, alarm_fn)
-            ci = bootstrap_ci(sequence_ids, sequences, alarm_fn, args.bootstrap_samples, args.seed)
+            ci = temporal_bootstrap_ci(sequence_ids, sequences, alarm_fn, args.bootstrap_samples, args.seed)
             rows.append({"rule": "ema", "threshold": threshold, "alpha": alpha, "ema_init": args.ema_init, **metrics, **ci, "events": per_event})
 
     if args.events_out:
@@ -194,6 +352,13 @@ def main():
         "results": rows,
     }, indent=2), encoding="utf-8")
     console.print(f"Temporal eval saved: {out_path}")
+
+def main():
+    args = parse_args()
+    if args.command == "g0":
+        cmd_g0(args)
+    elif args.command == "temporal":
+        cmd_temporal(args)
 
 if __name__ == "__main__":
     main()
