@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from PIL import Image
 from rich.console import Console
 from ultralytics import YOLO
 
@@ -52,6 +53,9 @@ def parse_args():
     detector_cache.add_argument("--imgsz", type=int, default=640)
     detector_cache.add_argument("--device")
     detector_cache.add_argument("--limit", type=int)
+    detector_cache.add_argument("--tile-grid", help="COLSxROWS, e.g. 2x2 - run detector per native-resolution tile instead of one global resize")
+    detector_cache.add_argument("--tile-overlap", type=float, default=0.15)
+    detector_cache.add_argument("--sequence-ids", help="Comma-separated sequence_id allowlist to restrict the index to (for targeted pilot runs)")
 
     return parser.parse_args()
 
@@ -311,6 +315,37 @@ def cmd_hard_negatives(args):
     console.print(f"Hard negatives saved: {out_path}")
     console.print(f"Summary saved: {summary_path}")
 
+def compute_tiles(width, height, cols, rows, overlap):
+    step_x = width / cols
+    step_y = height / rows
+    tile_w = min(float(width), step_x * (1 + overlap))
+    tile_h = min(float(height), step_y * (1 + overlap))
+    tiles = []
+    for row in range(rows):
+        for col in range(cols):
+            cx = step_x * (col + 0.5)
+            cy = step_y * (row + 0.5)
+            x1 = min(float(width), max(tile_w, cx + tile_w / 2))
+            y1 = min(float(height), max(tile_h, cy + tile_h / 2))
+            x0 = x1 - tile_w
+            y0 = y1 - tile_h
+            tiles.append((x0, y0, x1, y1))
+    return tiles
+
+def tiled_detections(model, frame_path, cols, rows, overlap, predict_kwargs):
+    with Image.open(frame_path) as img:
+        width, height = img.size
+        tiles = compute_tiles(width, height, cols, rows, overlap)
+        crops = [img.crop((int(x0), int(y0), int(x1), int(y1))) for x0, y0, x1, y1 in tiles]
+    results = model.predict(source=crops, **predict_kwargs)
+    detections = []
+    for (x0, y0, x1, y1), result in zip(tiles, results):
+        for detection in box_records(result):
+            dx0, dy0, dx1, dy1 = detection["xyxy"]
+            detection["xyxy"] = [dx0 + x0, dy0 + y0, dx1 + x0, dy1 + y0]
+            detections.append(detection)
+    return detections
+
 def cmd_detector_cache(args):
     index_path = Path(args.index).resolve()
     weights_path = Path(args.weights).resolve()
@@ -320,8 +355,15 @@ def cmd_detector_cache(args):
         raise FileNotFoundError(weights_path)
 
     records = read_index(index_path)
+    if args.sequence_ids:
+        allowlist = set(args.sequence_ids.split(","))
+        records = [record for record in records if record["sequence_id"] in allowlist]
     if args.limit:
         records = records[:args.limit]
+
+    tile_cols = tile_rows = None
+    if args.tile_grid:
+        tile_cols, tile_rows = (int(value) for value in args.tile_grid.lower().split("x"))
 
     model = YOLO(weights_path)
     predict_kwargs = {
@@ -342,9 +384,12 @@ def cmd_detector_cache(args):
             frame_path = record["frame_path"]
             try:
                 start = time.perf_counter()
-                result = model.predict(source=frame_path, **predict_kwargs)[0]
+                if tile_cols:
+                    detections = tiled_detections(model, frame_path, tile_cols, tile_rows, args.tile_overlap, predict_kwargs)
+                else:
+                    result = model.predict(source=frame_path, **predict_kwargs)[0]
+                    detections = box_records(result)
                 latency_ms = (time.perf_counter() - start) * 1000
-                detections = box_records(result)
             except Exception as exc:
                 failed.append({"frame_path": frame_path, "error": str(exc)})
                 continue
@@ -362,6 +407,8 @@ def cmd_detector_cache(args):
                 "conf": args.conf,
                 "iou": args.iou,
                 "imgsz": args.imgsz,
+                "tile_grid": args.tile_grid,
+                "tile_overlap": args.tile_overlap if args.tile_grid else None,
                 "detections": detections,
                 "max_smoke_confidence": max(smoke_confidences) if smoke_confidences else 0.0,
                 "max_fire_confidence": max(fire_confidences) if fire_confidences else 0.0,

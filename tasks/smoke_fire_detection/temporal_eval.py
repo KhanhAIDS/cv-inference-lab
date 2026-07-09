@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 from rich.console import Console
 
 console = Console()
@@ -32,6 +33,42 @@ def parse_args():
     temporal.add_argument("--ema-init", choices=["score", "zero"], default="score")
     temporal.add_argument("--bootstrap-samples", type=int, default=1000)
     temporal.add_argument("--seed", type=int, default=20260707)
+
+    diagnose = subparsers.add_parser("diagnose", help="Rung 0: zero-detection rate, offset-band AUROC, per-sequence AUROC spread (CPU-only, no new GPU run)")
+    diagnose.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    diagnose.add_argument("--out", default="artifacts/smoke_fire_detection/diagnose_g0.json")
+    diagnose.add_argument("--score", choices=["any", "smoke", "fire"], default="smoke")
+    diagnose.add_argument("--ignore-band-seconds", type=float, default=180)
+    diagnose.add_argument("--positive-bands", default="180:600,600:1200,1200:100000", help="Comma-separated start:end offset seconds, open-ended via a large end")
+    diagnose.add_argument("--low-auroc-threshold", type=float, default=0.6)
+    diagnose.add_argument("--silent-confidence-threshold", type=float, default=0.3)
+
+    detection_sizes = subparsers.add_parser("detection-sizes", help="Normalized box-area distribution of confident post-ignition detections, to gauge whether tiling still has headroom")
+    detection_sizes.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    detection_sizes.add_argument("--out", default="artifacts/smoke_fire_detection/detection_sizes.json")
+    detection_sizes.add_argument("--score", choices=["smoke", "fire"], default="smoke")
+    detection_sizes.add_argument("--confidence-threshold", type=float, default=0.3)
+    detection_sizes.add_argument("--ignore-band-seconds", type=float, default=180)
+
+    refine = subparsers.add_parser("refine-tile-agreement", help="Recompute a tiled detector cache keeping only detections confirmed by >=2 overlapping tiles (post-process, no GPU rerun)")
+    refine.add_argument("--cache", required=True, help="Path to a tiled figlib_detector_cache*.jsonl (must contain per-tile detections)")
+    refine.add_argument("--out", required=True)
+    refine.add_argument("--iou-threshold", type=float, default=0.1)
+
+    persistence = subparsers.add_parser("spatial-persistence", help="Recompute confidence as window-averaged confidence of spatially-matching detections across nearby frames (post-process, no GPU rerun)")
+    persistence.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    persistence.add_argument("--out", required=True)
+    persistence.add_argument("--window-frames", type=int, default=5)
+    persistence.add_argument("--distance-factor", type=float, default=3.0, help="Match radius = distance_factor * max(bbox diag of the two detections)")
+    persistence.add_argument("--sequence-ids", help="Comma-separated sequence_id subset, for cheap verification before a full run")
+
+    differencing = subparsers.add_parser("frame-differencing", help="Motion-energy score from a rolling grayscale-median background (no detector, no GPU) -- probe whether silent sequences have any usable signal at all")
+    differencing.add_argument("--cache", required=True, help="Any figlib_detector_cache.jsonl, used only for sequence_id/frame_path/offset listing")
+    differencing.add_argument("--out", required=True)
+    differencing.add_argument("--background-window", type=int, default=5)
+    differencing.add_argument("--thumbnail-size", type=int, default=256)
+    differencing.add_argument("--anomaly-fraction", type=float, default=0.05, help="Fraction of highest-diff pixels averaged into the score, to catch localized motion instead of global illumination drift")
+    differencing.add_argument("--sequence-ids", help="Comma-separated sequence_id subset")
 
     return parser.parse_args()
 
@@ -189,6 +226,344 @@ def cmd_g0(args):
     console.print(f"G0 AUROC report saved: {out_path}")
     console.print(f"AUROC(smoke) = {primary_auc} -> gate decision: {decision}")
 
+def parse_bands(spec):
+    bands = []
+    for part in spec.split(","):
+        if not part:
+            continue
+        start, end = part.split(":")
+        bands.append((float(start), float(end)))
+    return bands
+
+def cmd_diagnose(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    score_key = {
+        "smoke": "max_smoke_confidence",
+        "fire": "max_fire_confidence",
+        "any": "max_any_confidence",
+    }[args.score]
+
+    records = read_cache_flat(cache_path)
+    labeled = []
+    for record in records:
+        label = label_of(record, args.ignore_band_seconds)
+        if label is None:
+            continue
+        record["_label"] = label
+        labeled.append(record)
+
+    positives = [r for r in labeled if r["_label"] == 1]
+    negatives = [r for r in labeled if r["_label"] == 0]
+    neg_scores = [r[score_key] for r in negatives]
+    neg_labels = [0 for _ in negatives]
+
+    zero_rate_positive = sum(1 for r in positives if r[score_key] == 0.0) / len(positives) if positives else None
+    zero_rate_negative = sum(1 for r in negatives if r[score_key] == 0.0) / len(negatives) if negatives else None
+
+    bands = parse_bands(args.positive_bands)
+    band_report = []
+    for start, end in bands:
+        band_positives = [r for r in positives if start <= r["ignition_offset_seconds"] < end]
+        band_zero_rate = sum(1 for r in band_positives if r[score_key] == 0.0) / len(band_positives) if band_positives else None
+        band_auc = auroc(neg_scores + [r[score_key] for r in band_positives], neg_labels + [1 for _ in band_positives]) if band_positives else None
+        band_report.append({
+            "offset_start_seconds": start,
+            "offset_end_seconds": end,
+            "n_positive_frames": len(band_positives),
+            "zero_detection_rate": band_zero_rate,
+            "auroc_vs_all_negative": band_auc,
+        })
+
+    by_sequence = defaultdict(list)
+    for record in labeled:
+        by_sequence[record["sequence_id"]].append(record)
+
+    per_sequence_auroc = []
+    for sequence_id, seq_records in by_sequence.items():
+        seq_pos = [r for r in seq_records if r["_label"] == 1]
+        seq_neg = [r for r in seq_records if r["_label"] == 0]
+        if not seq_pos or not seq_neg:
+            continue
+        value = auroc(
+            [r[score_key] for r in seq_neg] + [r[score_key] for r in seq_pos],
+            [0 for _ in seq_neg] + [1 for _ in seq_pos],
+        )
+        if value is not None:
+            per_sequence_auroc.append({
+                "sequence_id": sequence_id,
+                "auroc": value,
+                "n_positive": len(seq_pos),
+                "n_negative": len(seq_neg),
+                "max_positive_confidence": max(r[score_key] for r in seq_pos),
+                "max_negative_confidence": max(r[score_key] for r in seq_neg),
+            })
+
+    auroc_values = [item["auroc"] for item in per_sequence_auroc]
+    low_auroc = [item for item in per_sequence_auroc if item["auroc"] < args.low_auroc_threshold]
+    silent = [item for item in low_auroc if item["max_positive_confidence"] < args.silent_confidence_threshold and item["max_negative_confidence"] < args.silent_confidence_threshold]
+    confused = [item for item in low_auroc if item["max_negative_confidence"] >= args.silent_confidence_threshold]
+    other = [item for item in low_auroc if item not in silent and item not in confused]
+    buckets = [(0.0, 0.5), (0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.0001)]
+    histogram = [{
+        "range": f"[{lo},{hi})" if hi != 1.0001 else f"[{lo},1.0]",
+        "count": sum(1 for value in auroc_values if lo <= value < hi),
+    } for lo, hi in buckets]
+
+    per_sequence_auroc.sort(key=lambda item: item["auroc"])
+    worst = per_sequence_auroc[:10]
+    best = per_sequence_auroc[-10:]
+
+    result = {
+        "cache": str(cache_path),
+        "score": args.score,
+        "ignore_band_seconds": args.ignore_band_seconds,
+        "n_positive_frames": len(positives),
+        "n_negative_frames": len(negatives),
+        "zero_detection_rate_positive": zero_rate_positive,
+        "zero_detection_rate_negative": zero_rate_negative,
+        "offset_band_auroc": band_report,
+        "per_sequence_auroc_histogram": histogram,
+        "per_sequence_auroc_percentiles": {
+            "p10": percentile(auroc_values, 10),
+            "p25": percentile(auroc_values, 25),
+            "p50": percentile(auroc_values, 50),
+            "p75": percentile(auroc_values, 75),
+            "p90": percentile(auroc_values, 90),
+        },
+        "worst_sequences": worst,
+        "best_sequences": best,
+        "low_auroc_breakdown": {
+            "low_auroc_threshold": args.low_auroc_threshold,
+            "silent_confidence_threshold": args.silent_confidence_threshold,
+            "n_low_auroc_sequences": len(low_auroc),
+            "n_silent": len(silent),
+            "n_confused": len(confused),
+            "n_other": len(other),
+            "silent_meaning": "max confidence stays below threshold on both sides of ignition -> camera likely has no visible plume in this window at all, not a detector failure per se",
+            "confused_meaning": "pre-ignition confidence reaches threshold -> real false-trigger (haze/glare/other), detector is actively wrong not just blind",
+            "silent_sequence_ids": [item["sequence_id"] for item in silent],
+            "confused_sequence_ids": [item["sequence_id"] for item in confused],
+        },
+    }
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    console.print(f"Diagnose report saved: {out_path}")
+    console.print(f"zero_detection_rate_positive={zero_rate_positive} zero_detection_rate_negative={zero_rate_negative}")
+    for band in band_report:
+        console.print(f"band [{band['offset_start_seconds']},{band['offset_end_seconds']}) n={band['n_positive_frames']} auroc={band['auroc_vs_all_negative']} zero_rate={band['zero_detection_rate']}")
+    console.print(f"low-AUROC(<{args.low_auroc_threshold}) sequences: {len(low_auroc)} -> silent={len(silent)} confused={len(confused)} other={len(other)}")
+
+def cmd_detection_sizes(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    areas = []
+    samples = []
+    for record in read_cache_flat(cache_path):
+        if record["ignition_offset_seconds"] < args.ignore_band_seconds:
+            continue
+        detections = [d for d in record["detections"] if d["class_name"] == args.score]
+        if not detections:
+            continue
+        best = max(detections, key=lambda d: d["confidence"])
+        if best["confidence"] < args.confidence_threshold:
+            continue
+        with Image.open(record["frame_path"]) as img:
+            width, height = img.size
+        x1, y1, x2, y2 = best["xyxy"]
+        area = ((x2 - x1) * (y2 - y1)) / (width * height)
+        areas.append(area)
+        samples.append({
+            "sequence_id": record["sequence_id"],
+            "frame_path": record["frame_path"],
+            "confidence": best["confidence"],
+            "normalized_area": area,
+            "image_size": [width, height],
+        })
+
+    samples.sort(key=lambda item: item["normalized_area"])
+    result = {
+        "cache": str(cache_path),
+        "score": args.score,
+        "confidence_threshold": args.confidence_threshold,
+        "ignore_band_seconds": args.ignore_band_seconds,
+        "n_qualifying_detections": len(areas),
+        "normalized_area_percentiles": {f"p{p}": percentile(areas, p) for p in [0, 5, 10, 25, 50, 75, 90, 95, 100]},
+        "smallest_samples": samples[:15],
+    }
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    console.print(f"Detection-sizes report saved: {out_path}")
+    console.print(f"n={len(areas)} percentiles={result['normalized_area_percentiles']}")
+
+def box_iou(box1, box2):
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+    if x2 <= x1 or y2 <= y1:
+        return 0.0
+    intersection = (x2 - x1) * (y2 - y1)
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    union = area1 + area2 - intersection
+    return intersection / union if union > 0 else 0.0
+
+def tile_confirmed_detections(detections, iou_threshold):
+    confirmed = []
+    for i, detection in enumerate(detections):
+        for j, other in enumerate(detections):
+            if i == j:
+                continue
+            if detection["class_id"] == other["class_id"] and box_iou(detection["xyxy"], other["xyxy"]) >= iou_threshold:
+                confirmed.append(detection)
+                break
+    return confirmed
+
+def cmd_refine_tile_agreement(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with out_path.open("w", encoding="utf-8") as out_file:
+        for record in read_cache_flat(cache_path):
+            confirmed = tile_confirmed_detections(record["detections"], args.iou_threshold)
+            smoke_confidences = [d["confidence"] for d in confirmed if d["class_id"] == 0]
+            fire_confidences = [d["confidence"] for d in confirmed if d["class_id"] == 1]
+            any_confidences = [d["confidence"] for d in confirmed]
+            record["detections"] = confirmed
+            record["max_smoke_confidence"] = max(smoke_confidences) if smoke_confidences else 0.0
+            record["max_fire_confidence"] = max(fire_confidences) if fire_confidences else 0.0
+            record["max_any_confidence"] = max(any_confidences) if any_confidences else 0.0
+            out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+            written += 1
+
+    console.print(f"Refined cache saved: {out_path} ({written} frames, iou_threshold={args.iou_threshold})")
+
+def bbox_center_and_diag(xyxy):
+    x1, y1, x2, y2 = xyxy
+    center = ((x1 + x2) / 2, (y1 + y2) / 2)
+    diag = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    return center, diag
+
+def best_match_confidence(center, radius, detections, class_id):
+    best = 0.0
+    for detection in detections:
+        if detection["class_id"] != class_id:
+            continue
+        other_center, _ = bbox_center_and_diag(detection["xyxy"])
+        dist = ((other_center[0] - center[0]) ** 2 + (other_center[1] - center[1]) ** 2) ** 0.5
+        if dist <= radius and detection["confidence"] > best:
+            best = detection["confidence"]
+    return best
+
+def spatial_persistence_scores(frames, window_frames, distance_factor, class_id):
+    scores = [0.0] * len(frames)
+    for i, frame in enumerate(frames):
+        best_score = 0.0
+        for detection in frame["detections"]:
+            if detection["class_id"] != class_id:
+                continue
+            center, diag = bbox_center_and_diag(detection["xyxy"])
+            radius = distance_factor * max(diag, 1e-6)
+            accumulated = detection["confidence"]
+            for j in range(max(0, i - window_frames), i):
+                accumulated += best_match_confidence(center, radius, frames[j]["detections"], class_id)
+            score = accumulated / (window_frames + 1)
+            if score > best_score:
+                best_score = score
+        scores[i] = best_score
+    return scores
+
+def cmd_spatial_persistence(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    sequences = read_cache_sequences(cache_path)
+    if args.sequence_ids:
+        wanted = set(args.sequence_ids.split(","))
+        sequences = {sid: frames for sid, frames in sequences.items() if sid in wanted}
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with out_path.open("w", encoding="utf-8") as out_file:
+        for frames in sequences.values():
+            smoke_scores = spatial_persistence_scores(frames, args.window_frames, args.distance_factor, class_id=0)
+            fire_scores = spatial_persistence_scores(frames, args.window_frames, args.distance_factor, class_id=1)
+            for frame, smoke_score, fire_score in zip(frames, smoke_scores, fire_scores):
+                frame["max_smoke_confidence"] = smoke_score
+                frame["max_fire_confidence"] = fire_score
+                frame["max_any_confidence"] = max(smoke_score, fire_score)
+                out_file.write(json.dumps(frame, ensure_ascii=False) + "\n")
+                written += 1
+
+    console.print(f"Spatial-persistence cache saved: {out_path} ({written} frames, window={args.window_frames}, distance_factor={args.distance_factor})")
+
+def load_gray_thumbnail(frame_path, size):
+    with Image.open(frame_path) as image:
+        return np.asarray(image.convert("L").resize((size, size)), dtype=np.float32)
+
+def frame_differencing_scores(frames, background_window, thumbnail_size, anomaly_fraction):
+    grays = [load_gray_thumbnail(frame["frame_path"], thumbnail_size) for frame in frames]
+    scores = [0.0] * len(frames)
+    for i in range(len(frames)):
+        window = grays[max(0, i - background_window):i]
+        if not window:
+            continue
+        background = np.median(np.stack(window), axis=0)
+        diff = np.abs(grays[i] - background).flatten()
+        k = max(1, int(anomaly_fraction * diff.size))
+        top = np.partition(diff, -k)[-k:]
+        scores[i] = float(top.mean()) / 255.0
+    return scores
+
+def cmd_frame_differencing(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    sequences = read_cache_sequences(cache_path)
+    if args.sequence_ids:
+        wanted = set(args.sequence_ids.split(","))
+        sequences = {sid: frames for sid, frames in sequences.items() if sid in wanted}
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with out_path.open("w", encoding="utf-8") as out_file:
+        for frames in sequences.values():
+            scores = frame_differencing_scores(frames, args.background_window, args.thumbnail_size, args.anomaly_fraction)
+            for frame, score in zip(frames, scores):
+                record = {
+                    "sequence_id": frame["sequence_id"],
+                    "camera_id": frame.get("camera_id"),
+                    "frame_path": frame["frame_path"],
+                    "timestamp_unix": frame["timestamp_unix"],
+                    "ignition_offset_seconds": frame["ignition_offset_seconds"],
+                    "weak_event_label": frame.get("weak_event_label"),
+                    "detections": [],
+                    "max_smoke_confidence": score,
+                    "max_fire_confidence": score,
+                    "max_any_confidence": score,
+                }
+                out_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+                written += 1
+
+    console.print(f"Frame-differencing cache saved: {out_path} ({written} frames, background_window={args.background_window}, thumbnail_size={args.thumbnail_size}, anomaly_fraction={args.anomaly_fraction})")
+
 def read_cache_sequences(cache_path: Path):
     sequences = defaultdict(list)
     for line in cache_path.read_text(encoding="utf-8").splitlines():
@@ -335,7 +710,14 @@ def cmd_temporal(args):
         lines = []
         for row in rows:
             for event in row["events"]:
-                lines.append(json.dumps({**event, "rule": row["rule"], "threshold": row["threshold"]}, ensure_ascii=False))
+                detail = {**event, "rule": row["rule"], "threshold": row["threshold"]}
+                if "n" in row:
+                    detail["n"] = row["n"]
+                    detail["m"] = row["m"]
+                if "alpha" in row:
+                    detail["alpha"] = row["alpha"]
+                    detail["ema_init"] = row["ema_init"]
+                lines.append(json.dumps(detail, ensure_ascii=False))
         events_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
         console.print(f"Per-event detail saved: {events_path}")
 
@@ -359,6 +741,16 @@ def main():
         cmd_g0(args)
     elif args.command == "temporal":
         cmd_temporal(args)
+    elif args.command == "diagnose":
+        cmd_diagnose(args)
+    elif args.command == "detection-sizes":
+        cmd_detection_sizes(args)
+    elif args.command == "refine-tile-agreement":
+        cmd_refine_tile_agreement(args)
+    elif args.command == "spatial-persistence":
+        cmd_spatial_persistence(args)
+    elif args.command == "frame-differencing":
+        cmd_frame_differencing(args)
 
 if __name__ == "__main__":
     main()

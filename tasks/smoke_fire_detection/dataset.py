@@ -7,7 +7,9 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import numpy as np
 import yaml
+from PIL import Image
 from rich.console import Console
 
 console = Console()
@@ -26,6 +28,13 @@ def parse_args():
     dfire.add_argument("--val-ratio", type=float, default=0.1)
     dfire.add_argument("--seed", type=int, default=20260707)
     dfire.add_argument("--workers", type=int)
+
+    dfire_dedup = subparsers.add_parser("dfire-dedup", help="Audit D-Fire train/val/test near-duplicates via perceptual hash")
+    dfire_dedup.add_argument("--split-dir", required=True, help="Folder with train.txt/val.txt/test.txt")
+    dfire_dedup.add_argument("--audit-out", required=True)
+    dfire_dedup.add_argument("--hash-size", type=int, default=8)
+    dfire_dedup.add_argument("--sample-pairs", type=int, default=20)
+    dfire_dedup.add_argument("--workers", type=int)
 
     figlib = subparsers.add_parser("figlib", help="Build FIgLib frame index and audit")
     figlib.add_argument("--data-root", required=True, help="Path to FIgLib dataset root")
@@ -49,7 +58,7 @@ def parse_label_line(line: str):
         return None
     if not (0 <= x_center <= 1 and 0 <= y_center <= 1 and 0 < width <= 1 and 0 < height <= 1):
         return None
-    return class_id
+    return class_id, width * height
 
 def image_paths(split_dir: Path):
     images_dir = split_dir / "images"
@@ -67,6 +76,7 @@ def empty_stats():
         "empty_labels": 0,
         "invalid_label_lines": 0,
         "class_counts": {0: 0, 1: 0},
+        "class_areas": {0: [], 1: []},
     }
 
 def merge_stats(total, item):
@@ -76,6 +86,8 @@ def merge_stats(total, item):
     total["invalid_label_lines"] += item["invalid_label_lines"]
     total["class_counts"][0] += item["class_counts"].get(0, 0)
     total["class_counts"][1] += item["class_counts"].get(1, 0)
+    total["class_areas"][0].extend(item["class_areas"].get(0, []))
+    total["class_areas"][1].extend(item["class_areas"].get(1, []))
 
 def read_label(label_path: Path):
     stats = empty_stats()
@@ -90,12 +102,14 @@ def read_label(label_path: Path):
         return "empty", stats
     class_ids = set()
     for line in lines:
-        class_id = parse_label_line(line)
-        if class_id is None:
+        parsed = parse_label_line(line)
+        if parsed is None:
             stats["invalid_label_lines"] += 1
-        else:
-            stats["class_counts"][class_id] = stats["class_counts"].get(class_id, 0) + 1
-            class_ids.add(class_id)
+            continue
+        class_id, area = parsed
+        stats["class_counts"][class_id] = stats["class_counts"].get(class_id, 0) + 1
+        stats["class_areas"][class_id].append(area)
+        class_ids.add(class_id)
     if 0 in class_ids and 1 in class_ids:
         return "smoke_and_fire", stats
     if 0 in class_ids:
@@ -103,6 +117,19 @@ def read_label(label_path: Path):
     if 1 in class_ids:
         return "fire_only", stats
     return "empty", stats
+
+def percentile(values, pct):
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, int(round((pct / 100) * (len(ordered) - 1)))))
+    return ordered[index]
+
+def value_percentiles(areas):
+    if not areas:
+        return None
+    points = [0, 5, 10, 25, 50, 75, 90, 95, 100]
+    return {f"p{point}": percentile(areas, point) for point in points}
 
 def process_image(args):
     image_path, labels_dir = args
@@ -169,14 +196,100 @@ def cmd_dfire(args):
     console.print(f"Train: {len(train_images)} Val: {len(val_images)} Test: {len(test_images)}")
 
     if args.audit_out:
+        def audit_entry(stats):
+            entry = {key: value for key, value in stats.items() if key != "class_areas"}
+            entry["class_area_normalized_percentiles"] = {
+                "smoke": value_percentiles(stats["class_areas"][0]),
+                "fire": value_percentiles(stats["class_areas"][1]),
+            }
+            return entry
+
         audit_data = {
-            "train": train_stats,
-            "test": test_stats,
+            "train": audit_entry(train_stats),
+            "test": audit_entry(test_stats),
         }
         audit_path = Path(args.audit_out).resolve()
         audit_path.parent.mkdir(parents=True, exist_ok=True)
         audit_path.write_text(json.dumps(audit_data, indent=2), encoding="utf-8")
         console.print(f"Audit saved: {audit_path}")
+
+def dhash(image_path: Path, hash_size: int):
+    with Image.open(image_path) as img:
+        pixels = np.asarray(img.convert("L").resize((hash_size + 1, hash_size), Image.LANCZOS), dtype=np.int16)
+    diff = pixels[:, :-1] > pixels[:, 1:]
+    bits = 0
+    for bit in diff.flatten():
+        bits = (bits << 1) | int(bit)
+    return np.uint64(bits)
+
+def hash_images(paths, hash_size: int, workers: int):
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        return list(executor.map(lambda path: dhash(path, hash_size), paths))
+
+def min_hamming_distances(query_hashes, reference_hashes, chunk_size=500):
+    query_arr = np.array(query_hashes, dtype=np.uint64)
+    reference_arr = np.array(reference_hashes, dtype=np.uint64)
+    min_dist = np.empty(len(query_arr), dtype=np.int64)
+    min_idx = np.empty(len(query_arr), dtype=np.int64)
+    for start in range(0, len(query_arr), chunk_size):
+        chunk = query_arr[start:start + chunk_size]
+        dist = np.bitwise_count(np.bitwise_xor(chunk[:, None], reference_arr[None, :]))
+        min_dist[start:start + chunk_size] = dist.min(axis=1)
+        min_idx[start:start + chunk_size] = dist.argmin(axis=1)
+    return min_dist, min_idx
+
+def dedup_report(query_paths, query_hashes, reference_paths, reference_hashes, sample_pairs):
+    min_dist, min_idx = min_hamming_distances(query_hashes, reference_hashes)
+    thresholds = [0, 2, 5, 8, 10]
+    order = np.argsort(min_dist)
+    sample = [
+        {
+            "query_image": str(query_paths[i]),
+            "nearest_reference_image": str(reference_paths[min_idx[i]]),
+            "hamming_distance": int(min_dist[i]),
+        }
+        for i in order[:sample_pairs]
+    ]
+    return {
+        "count_le_threshold": {str(t): int((min_dist <= t).sum()) for t in thresholds},
+        "min_distance_percentiles": value_percentiles(min_dist.tolist()),
+        "closest_pairs_sample": sample,
+    }
+
+def cmd_dfire_dedup(args):
+    split_dir = Path(args.split_dir).resolve()
+    workers = worker_count(args.workers)
+
+    def read_list(name):
+        list_path = split_dir / name
+        if not list_path.exists():
+            return []
+        return [Path(line) for line in list_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    train_paths = read_list("train.txt")
+    val_paths = read_list("val.txt")
+    test_paths = read_list("test.txt")
+
+    console.print(f"Hashing train={len(train_paths)} val={len(val_paths)} test={len(test_paths)} images...")
+    train_hashes = hash_images(train_paths, args.hash_size, workers)
+    val_hashes = hash_images(val_paths, args.hash_size, workers)
+    test_hashes = hash_images(test_paths, args.hash_size, workers)
+
+    audit = {
+        "hash_size_bits": args.hash_size * args.hash_size,
+        "train_count": len(train_paths),
+        "val_count": len(val_paths),
+        "test_count": len(test_paths),
+    }
+    if val_paths:
+        audit["val_vs_train"] = dedup_report(val_paths, val_hashes, train_paths, train_hashes, args.sample_pairs)
+    if test_paths:
+        audit["test_vs_train"] = dedup_report(test_paths, test_hashes, train_paths, train_hashes, args.sample_pairs)
+
+    audit_path = Path(args.audit_out).resolve()
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    audit_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
+    console.print(f"Audit saved: {audit_path}")
 
 FIGLIB_CAMERA_BRANDS = ("mobo", "iqeye")
 
@@ -286,6 +399,8 @@ def main():
     args = parse_args()
     if args.command == "dfire":
         cmd_dfire(args)
+    elif args.command == "dfire-dedup":
+        cmd_dfire_dedup(args)
     elif args.command == "figlib":
         cmd_figlib(args)
 

@@ -1,0 +1,47 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_tile2x2_silentpilot_refined.jsonl",
+  "design_decisions": {
+    "ignore_band_seconds": 180,
+    "label_rule": "offset < 0 -> negative (pre-ignition); offset >= ignore_band_seconds -> positive (post-ignition); [0, ignore_band_seconds) excluded",
+    "primary_gate_metric": "max_smoke_confidence",
+    "auroc_method": "mann_whitney_u_rank_sum (numpy, tie-corrected, no scipy/sklearn dependency)",
+    "bootstrap_event_unit": "sequence_id",
+    "bootstrap_camera_unit": "camera_id"
+  },
+  "counts": {
+    "total_frames": 10345,
+    "frames_dropped_by_ignore_band": 397,
+    "frames_used": 9948,
+    "n_pos": 4827,
+    "n_neg": 5121,
+    "n_events": 131,
+    "n_cameras": 68
+  },
+  "auroc": {
+    "smoke": 0.5281619650126762,
+    "fire": 0.5311887782819634,
+    "any": 0.5535425345948535
+  },
+  "bootstrap_event_smoke": {
+    "ci95": [
+      0.5169213589002428,
+      0.5409955502317336
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "bootstrap_camera_smoke": {
+    "ci95": [
+      0.5153229412822076,
+      0.5402986813694955
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "gate": {
+    "name": "G0",
+    "auroc_smoke": 0.5281619650126762,
+    "decision": "fail",
+    "next_action": "D-Fire khong transfer sang khoi xa/nho tren FIgLib -> khong xay temporal tren detector mu; pivot sang tile-classifier hoac fine-tune tren PYRONEAR-2025."
+  }
+}

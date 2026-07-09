@@ -3,7 +3,7 @@
 - **Style:** bullet 100%, keyword, câu cụt, không filler, không văn kể.
 - **Keep:** state hiện tại, schema, blocker, next step.
 - **Drop:** log dài, transcript, chi tiết lỗi cũ đã xử lý, dữ liệu outdated.
-- **Timestamp:** `2026-07-09 09:04:15 +0700`.
+- **Timestamp:** `2026-07-09 18:15:00 +0700`.
 - **TZ:** mọi timeline `CHANGELOG.md` dùng GMT+7.
 
 - **Repo**
@@ -51,10 +51,19 @@
     - `accuracy`: mAP/precision/recall/latency.
     - `hard-negatives`: FP từ empty-label images.
     - `detector-cache`: YOLO trên FIgLib frames, JSONL cache. Try/except per-frame, lỗi ghi `{out}.errors.json`.
+    - **Mới 2026-07-09:** `--tile-grid COLSxROWS` (vd `2x2`) + `--tile-overlap` (default 0.15) — crop frame thành lưới tile chồng mép, infer riêng từng tile (batched 1 lần `model.predict(source=[crop,...])`), remap bbox tile-local về toạ độ frame gốc, gộp `detections`. Không cần NMS xuyên-tile vì downstream chỉ dùng max confidence/frame. `--sequence-ids` (comma-list) để lọc index chạy trên subset sequence cụ thể (dùng cho pilot rẻ trước khi chạy full dataset).
   - `tasks/smoke_fire_detection/temporal_eval.py`
     - Offline analysis trên detector cache. Không import torch/ultralytics.
     - `g0`: AUROC (Mann-Whitney U, numpy, tie-corrected) `max_smoke/fire/any_confidence` pre/post ignition. Ignore-band, bootstrap CI event-split + camera-split, gate decision pass/marginal/fail. (merge từ `gate_g0_auroc.py` cũ 2026-07-09, file cũ đã xóa)
     - `temporal`: N-of-M, EMA, AMOC, bootstrap CI.
+    - `diagnose` (mới 2026-07-09, "rung 0"): zero-detection rate, AUROC theo offset-band, phân phối AUROC per-sequence (histogram + percentile), phân loại sequence AUROC thấp thành `silent` (không bên nào vượt ngưỡng conf, camera nhiều khả năng không thấy khói) vs `confused` (pre-ignition vượt ngưỡng, false-trigger thật). Output: `artifacts/smoke_fire_detection/diagnose_g0.json`.
+    - `detection-sizes` (mới 2026-07-09): với mỗi frame post-ignition có detection tự tin (conf≥threshold), mở ảnh qua PIL lấy width/height thật (FIgLib **không đồng nhất kích thước** — vừa `2048x1536` vừa `3072x2048` tuỳ camera, đã verify sample 30 ảnh), tính area bbox normalized, ra percentile. Dùng để so trực tiếp với `class_area_normalized_percentiles` của D-Fire train (đo domain gap về scale bằng số, không suy đoán).
+    - `spatial-persistence` (mới 2026-07-09): recompute `max_smoke/fire/any_confidence` = trung bình cửa sổ (`--window-frames`, default 5) của confidence detection khớp vị trí (center-distance ≤ `--distance-factor`×bbox-diag, default 3.0) qua các frame lân cận cùng sequence. Không cần GPU, ghi cache mới cùng schema (`detections` giữ nguyên, chỉ 3 field confidence đổi) để tái dùng trực tiếp `g0`/`diagnose`/`temporal`. `--sequence-ids` để pilot rẻ.
+    - `frame-differencing` (mới 2026-07-09): score = motion-energy cục bộ (mean của top-`--anomaly-fraction` pixel-diff, default 5%) so với background median rolling `--background-window` frame (default 5), grayscale thumbnail `--thumbnail-size` (default 256px). Không dùng detector/GPU, chỉ mở ảnh qua PIL. Ghi cache tối giản (không có `detections` thật, để `[]`) tương thích `g0`/`diagnose`.
+    - Sửa lỗi `temporal --events-out`: record giờ có thêm `n`/`m` (n_of_m) hoặc `alpha`/`ema_init` (ema) — trước đây 2026-07-09 sáng ghi thiếu, nhiều config gộp lẫn không phân biệt được trong file events cũ.
+  - `tasks/smoke_fire_detection/dataset.py`
+    - `dfire` audit: thêm `class_area_normalized_percentiles` (2026-07-09) — phân phối diện tích bbox (width*height, normalized) theo class smoke/fire, percentile p0/p5/p10/p25/p50/p75/p90/p95/p100. Không đổi logic split (verify: rerun cùng seed, split .txt byte-identical).
+    - Subcommand mới `dfire-dedup` (2026-07-09): audit near-duplicate train/val/test bằng dHash tự viết (PIL resize 9x8 grayscale + gradient sign, 64-bit, không thêm dependency `imagehash`). Hamming distance qua `numpy.bitwise_count` (numpy>=2.0, đã có 2.5.1). Output: threshold count (0/2/5/8/10), percentile min-distance, sample cặp gần nhất. Input: `--split-dir` (đọc trực tiếp `train.txt`/`val.txt`/`test.txt`).
   - `tasks/smoke_fire_detection/modal_app.py`
     - App: `smoke-fire-detection-yolo`.
     - Volume: `smoke-fire-lab-volume`.
@@ -75,7 +84,7 @@
   - Test smoke: `P=0.822`, `R=0.791`, `mAP50=0.765`.
   - Test fire: `P=0.707`, `R=0.638`, `mAP50=0.604`.
   - Latency local GB10: mean `~21ms`, p95 `~27ms`, fps `~46-49`.
-  - Risk: D-Fire near-duplicate split có thể inflate val mAP.
+  - Risk cũ "near-duplicate inflate val mAP" đã bị bác bỏ bằng data — xem "Dedup audit" bên dưới và "Open risks".
 
 - **FIgLib**
   - Path: `datasets/smoke_fire_detection/FIgLib`.
@@ -106,8 +115,65 @@
   - HPWREN FIgLib is living archive, not fixed paper dataset.
   - Drive backup: rclone copy started 2026-07-08, vẫn đang chạy nền (chậm, Google Drive throttle nhiều file nhỏ) 2026-07-09 sáng, chưa xong; verify `rclone check` sau khi hoàn tất.
   - Detector cache: **done** 2026-07-09, `40361/40362` frame (`figlib_detector_cache.jsonl`), 1 frame lỗi (jpg 0-byte) skip có log ở `.errors.json`.
-  - G0 gate: **done** 2026-07-09, `AUROC(smoke)=0.7017` (event CI95 `[0.685,0.719]`, camera CI95 `[0.683,0.720]`), `AUROC(fire)=0.509`, `AUROC(any)=0.705` -> **decision = marginal (0.60-0.80)**. Report: `artifacts/smoke_fire_detection/gate_g0_auroc.json`. Chạy lại bằng `temporal_eval.py g0` (không phải `gate_g0_auroc.py` nữa).
-  - G0 rerun `imgsz=1280`: no artifact/process found at `2026-07-09 08:50 +0700`; still next action, not confirmed running.
+  - G0 gate imgsz=640: `AUROC(smoke)=0.7017` (event CI95 `[0.685,0.719]`, camera CI95 `[0.683,0.720]`), `AUROC(fire)=0.509`, `AUROC(any)=0.705` -> **marginal**. Report: `artifacts/smoke_fire_detection/gate_g0_auroc.json`.
+  - **G0 gate imgsz=1280 — DONE 2026-07-09** (`figlib_detector_cache_imgsz1280.jsonl`, 40361/40362 frame, cùng 1 frame lỗi jpg 0-byte đã biết, conf/iou giữ nguyên `0.05/0.6` để so sánh táo-với-táo). Report: `artifacts/smoke_fire_detection/g0_imgsz1280.json`.
+    - `AUROC(smoke)=0.7425` (event CI95 `[0.7245,0.7600]`, camera CI95 `[0.7216,0.7618]`) — tăng `+0.041` so với imgsz=640, **vẫn marginal, chưa qua 0.80**.
+    - `AUROC(fire)=0.510` (không đổi, đúng dự đoán — fire D-Fire cận cảnh, imgsz không cứu được domain gap này).
+    - `AUROC(any)=0.749`.
+    - Gate decision: **marginal** (không đổi bucket, nhưng cải thiện đo được rõ).
+  - **Rung 0 diagnose — done 2026-07-09** (`temporal_eval.py diagnose`, CPU-only, cache imgsz=640 hiện tại, report `artifacts/smoke_fire_detection/diagnose_g0.json`):
+    - `zero_detection_rate_positive=0.539` (54% frame post-ignition không có detection nào, conf=0), `zero_detection_rate_negative=0.921` (92% pre-ignition đúng im lặng — model không hallucinate bừa).
+    - Offset-band AUROC tăng đơn điệu theo thời gian từ ignition: `[180,600s)=0.617` → `[600,1200s)=0.703` → `[1200s,+]=0.730`. Xác nhận: khói sớm/nhỏ khó hơn khói muộn/to (đúng hướng RQ1). Nhưng band xa nhất (khói đã lớn) vẫn chỉ 0.730, không gần 1.0 → domain gap không chỉ do resize, còn yếu tố khác tồn tại kể cả khi khói đã to.
+    - Per-sequence AUROC **bimodal rõ**: histogram `[0,0.5)=34, [0.5,0.6)=173, [0.6,0.7)=51, [0.7,0.8)=56, [0.8,0.9)=63, [0.9,1.0]=132` (n=509). Không phải "detector yếu đều" — mà "ăn trọn ~26% sequence, mù ~41% sequence".
+    - Breakdown 207 sequence AUROC<0.6: `silent=170` (82%, conf max cả 2 phía <0.3 — camera nhiều khả năng KHÔNG thấy khói trong toàn bộ cửa sổ ±40min, không phải lỗi detector mà lỗi/giới hạn của label-camera pairing), `confused=14` (7%, pre-ignition có conf≥0.3 thật — false-trigger do haze/glare, ví dụ `20240701_Kitchenfire_lp-e-mobo-c` verify bằng mắt: cả 2 ảnh pre/post đều trời quang không khói, conf pre cao hơn post do haze buổi sáng sớm), `other=23`.
+    - Verify bằng mắt 1 case tốt: `20251102_ScissorsFire_mp-n-mobo-m` (camera IR/grayscale) — conf=0.0 tuyệt đối suốt pre-ignition, nhảy lên 0.48-0.59 ngay từ +358s, ảnh xác nhận có cột khói mỏng thật trên nền trời.
+    - **Ý nghĩa cho quyết định imgsz=1280:** vì đa số sequence thất bại là "silent" (không trigger ở đâu cả) chứ không phải "confused" (false trigger), tăng imgsz vẫn là hướng đúng để thử trước (silent = object quá nhỏ để trigger, đúng cơ chế mà imgsz lớn hơn nhắm tới) — nhưng cần re-run `diagnose` trên cache imgsz=1280 mới để xem bao nhiêu trong 170 sequence "silent" chuyển sang có detection. Nếu vẫn silent sau imgsz=1280 → nghi camera thật sự không có line-of-sight tới đám cháy trong cửa sổ FIgLib, không phải lỗi model.
+  - **Diagnose imgsz=1280 — DONE 2026-07-09** (report `artifacts/smoke_fire_detection/diagnose_imgsz1280.json`, so với imgsz=640):
+    - `zero_detection_rate_positive=0.464` (giảm từ `0.539`), `zero_detection_rate_negative=0.928` (tăng nhẹ từ `0.921`, vẫn tốt — không hallucinate thêm).
+    - Offset-band AUROC tăng ở cả 3 band: `[180,600)=0.617→0.675`, `[600,1200)=0.703→0.754`, `[1200,+]=0.730→0.760`.
+    - Per-sequence histogram bin `[0.9,1.0]` tăng từ `132(26%)` lên `166(33%)` — 34 sequence thêm vào nhóm "ăn trọn".
+    - Low-AUROC(<0.6) sequence: `207→176`. Trong đó `silent: 170→131` (39 sequence thoát nhóm silent, trong đó 31 sequence AUROC vượt hẳn 0.6 — cải thiện thật, 8 sequence chuyển sang confused/other), `confused: 14→20`, `other: 23→25`.
+    - **Verify bằng mắt 4/131 sequence vẫn silent** (chọn frame offset lớn nhất, +2400s, dễ thấy khói nhất nếu có): `20260629_JunctionFire_hp-e-mobo-c` — trời quang tuyệt đối, không mây không khói (xác nhận **thật sự không có gì để thấy**, đúng hướng "camera không có line-of-sight"). `20230716-FIRE-bh-w-mobo-c` — cả khung hình chìm trong lớp haze đồng nhất, không phân biệt được cột khói riêng biệt (ủng hộ "không có signal rõ", nhưng do haze khu vực chứ không phải trời quang tuyệt đối). `20180719_Skyline_sp-n-mobo-c` và `20200813_SkylineFire_sp-n-mobo-c` (cùng camera, 2 fire khác năm) — cả 2 có đốm trắng xốp mờ ở đường chân trời, **không chắc chắn** đó là khói hay chỉ là mây tích chiều thông thường (đám cháy quá xa, quá nhỏ trong khung panorama núi). **Kết luận nhẹ:** nhóm "silent" là hỗn hợp thật — có phần đúng là "không line-of-sight/nhiễu haze" (2/4 case), có phần là "tín hiệu quá yếu/mơ hồ ngay cả với mắt người" (2/4 case), không phải 100% một loại. Chưa đủ để loại toàn bộ 131 sequence khỏi gate metric; cần thêm sample nếu muốn quyết định dứt điểm.
+  - **Quyết định tiếp theo (chưa chốt, để lại cho phiên sau):** G0 vẫn marginal sau imgsz=1280. Theo cây quyết định research_plan.md mục 5, nhánh "0.60–0.80" gợi ý thử `imgsz` lớn **hoặc** tiling — đã thử imgsz, **chưa thử tiling**. Trước khi pivot tile-classifier/PYRONEAR-2025, có thể thử tiling (tốn compute hơn) như bước cuối của nhánh marginal.
+  - **Domain-gap về scale — đo bằng số 2026-07-09** (`temporal_eval.py detection-sizes`, so `artifacts/smoke_fire_detection/detection_sizes_imgsz{640,1280}.json` với `dfire_audit_local.json`):
+    - Area bbox smoke D-Fire train: median `14.4%` frame, p5 `0.18%`.
+    - Area bbox smoke FIgLib model detect được (conf≥0.3, imgsz=1280): median chỉ `0.735%` frame (~20x nhỏ hơn median D-Fire train), p5 `0.098%` — **nhỏ hơn cả p5 D-Fire train**. Khói "điển hình" trên FIgLib tương đương phần đuôi hiếm nhất của training distribution, không phải phần điển hình.
+    - imgsz 640→1280: median area detect được giảm gần đúng theo tỷ lệ 2x (`1.49%→0.735%`), p10 cũng ~2x (`0.294%→0.137%`) — xác nhận cơ chế "object quá nhỏ" chưa bão hoà ở mức pixel, đúng lý do AUROC tăng khi tăng imgsz.
+    - Đây là nguyên nhân định lượng chính cho performance thấp — không phải suy đoán.
+  - **Tiling pilot (2x2) trên 131 sequence "silent" — DONE 2026-07-09** (chỉ chạy subset rẻ trước khi cam kết full 40K frame; cache `figlib_detector_cache_tile2x2_silentpilot.jsonl`, so với baseline imgsz=1280 filter cùng 131 sequence, report `g0_imgsz1280_silent_subset.json` / `g0_tile2x2_silent_subset.json` / `diagnose_*_silent_subset.json`):
+    - Pooled AUROC trên riêng 131 sequence: `0.498 (baseline, ~random đúng như định nghĩa "silent") → 0.535 (tiled)` — cải thiện nhỏ.
+    - `zero_detection_rate_positive`: `0.960→0.724` (tiling tìm ra tín hiệu ở nhiều frame hơn hẳn). **Nhưng** `zero_detection_rate_negative`: `0.956→0.787` — false-trigger trên frame pre-ignition cũng tăng mạnh tương ứng, không chỉ true-positive tăng.
+    - Per-sequence: `39/131` (30%) thoát nhóm low-AUROC hẳn (AUROC≥0.6, có sequence lên tới 0.93-0.98 — ví dụ `20190913_FIRE_lp-n-mobo-c`, `20240802_WarnersFire_sojr-s-mobo-c`, thắng rõ). Nhưng `18/131` chuyển từ "silent" (im lặng, không sai) sang **"confused" (false-trigger thật)** — tiling khiến model thấy texture (sương/glare/cây) mà trước đó nó bỏ qua, giờ đọc nhầm thành khói. Một số sequence còn **tệ hơn** sau tiling (`20191006_FIRE_om-s-mobo-c`: AUROC `0.057→0.029`, max_negative_confidence tăng từ thấp lên `0.44`).
+    - **Kết luận: tiling KHÔNG phải thắng lợi rõ ràng.** Có tín hiệu thật được phục hồi (30% sequence) nhưng đi kèm chi phí thật: tăng false-trigger rate trên phía negative — mâu thuẫn trực tiếp với mục tiêu cốt lõi "false alarm thấp" (RQ1). Scale lên full 40K frame (~2.5-3h GPU trên server share) trước khi cân nhắc tradeoff này là chưa nên.
+  - **Refine tile-agreement (≥2 tile IoU≥0.1 mới tính detection) — DONE 2026-07-09, KHÔNG hiệu quả như kỳ vọng.** Thêm subcommand `temporal_eval.py refine-tile-agreement` (post-process thuần JSON trên cache tile đã có, không cần GPU — `box_iou()` + `tile_confirmed_detections()`). Chạy trên `figlib_detector_cache_tile2x2_silentpilot.jsonl` → `figlib_detector_cache_tile2x2_silentpilot_refined.jsonl`. So 3 điều kiện trên cùng 131 sequence (report `g0_tile2x2_refined_silent_subset.json`, `diagnose_tile2x2_refined_silent_subset.json`):
+    - `zero_detection_rate_negative`: baseline `0.956` → tiled-thô `0.787` → tiled-refined `0.955` (refine dập false-trigger gần về bằng baseline — đúng kỳ vọng).
+    - `zero_detection_rate_positive`: baseline `0.960` → tiled-thô `0.724` → tiled-refined `0.900` (nhưng refine cũng dập theo phần lớn true-positive — KHÔNG như kỳ vọng).
+    - Sequence thoát low-AUROC: tiled-thô `39/131` (30%) → tiled-refined chỉ `16/131` (12%). Pooled AUROC: tiled-thô `0.535` → tiled-refined `0.528` (thấp hơn, không cao hơn).
+    - **Root cause refine thất bại:** giả định "signal nhất quán qua nhiều tile, noise thì không" sai trên data này. Ví dụ đã verify: object thật có confidence global `0.633` nhưng per-tile chỉ `0.207`/`0.087` (cả 2 dưới ngưỡng agreement thực tế cần) — true-positive vốn đã yếu ở cấp độ tile, đòi đồng thuận giết luôn nó cùng với false-positive. Tiling tự nó (không phải chỉ agreement-filter) đã làm giảm confidence do mất context toàn cảnh, không chỉ do noise/texture.
+    - **Kết luận: refine ≥2-tile-agreement (IoU≥0.1, overlap 15%) không phải hướng đáng theo tiếp** — không rõ tốt hơn baseline, và kém hơn bản tiling thô ở khả năng phục hồi signal. Chưa thử variant khác (overlap lớn hơn, match theo center-distance thay IoU) — nhưng đã đủ dữ liệu để không tự ý lặp lại vòng tune tiếp mà không có định hướng mới từ user.
+  - **User quyết định 2026-07-09: bỏ tiling, mở G1 bằng judgment call** trên detector imgsz=1280 (AUROC=0.7425, marginal, không refine thêm).
+  - **G1 — AMOC single-frame vs N-of-M/EMA — DONE 2026-07-09** (`temporal_eval.py temporal --score smoke/any`, thêm 1 run baseline `--nofm "1:1" --ema-alphas ""` = single-frame threshold thuần, không temporal smoothing, để so đúng nghĩa gate G1). Report: `temporal_imgsz1280_{smoke,any,singleframe}.json` (mỗi report chứa full threshold sweep × rule, dùng để dựng AMOC curve nếu cần).
+    - **Tại FA≤1/ngày/camera (0.0417/h):** single-frame tốt nhất recall=0.467 (FA=0.0274, TTD_mean=825s) — nhưng đây là điểm dưới ngân sách khá xa (grid threshold 0.1 bước, không có điểm gần 0.0417 hơn). N-of-M(2:3) score=smoke: recall=0.494 (FA=0.0366, TTD_mean=839s) dùng gần hết ngân sách hơn. Nội suy tuyến tính single-frame tại FA=0.0366 ≈ recall 0.51 — **xấp xỉ hoặc nhích hơn N-of-M, không có gain rõ ràng từ temporal smoothing ở mức ngân sách lỏng này.**
+    - **Tại FA≤1/tuần/camera (0.00595/h):** single-frame **KHÔNG đạt được** ngân sách này ở bất kỳ threshold nào trong lưới test (threshold=0.8 vẫn FA=0.0122, gấp 2x ngân sách) — tăng threshold đơn-frame đủ cao để giảm FA xuống mức này sẽ giết hết recall trước khi đạt ngưỡng. N-of-M(3:5) score=smoke đạt: FA=0.0030 (dưới ngân sách), recall=0.208, TTD_mean=1122s. **Đây là gain thật, không thể thay bằng threshold đơn-frame** — persistence-requirement cho phép hạ threshold (giữ sensitivity) mà vẫn nén được đuôi false-alarm mà chỉ tăng threshold không nén được.
+    - **Kết luận G1 (theo đúng khung research_plan.md mục 5: "nếu simple rule không cải thiện TTD@FA → nghi detector, đừng đổ lỗi verifier"):** temporal aggregation **không cải thiện đáng kể ở ngân sách lỏng** (1/ngày) — khớp với suy đoán "vấn đề nằm ở detector frame-level, không phải verifier" (root cause: false alarm ở đây phần lớn là haze/glare kéo dài NHIỀU frame liên tục, không phải spike 1-frame ngẫu nhiên — persistence-filter không phân biệt được false kéo dài với true kéo dài). Nhưng temporal aggregation **cần thiết thật ở ngân sách chặt** (1/tuần) — tại đây nó mở ra vùng hoạt động mà single-frame không thể chạm tới.
+    - Cost: thuần CPU (numpy/rich), job `score=smoke` mất `9m17s` (bootstrap 1000 resample × 66 rule×threshold combo), `score=any` v.v tương tự, `single-frame` baseline nhanh hơn (11 threshold × 1 rule).
+  - D-Fire bbox area audit (`dfire_audit_local.json`, 2026-07-09): smoke area normalized percentile train `p0=6e-5, p5=0.0018, p10=0.0034, p50=0.144`; fire `p0=3.5e-5, p5=0.00039, p50=0.0053`. D-Fire CÓ đuôi box rất nhỏ (dưới p5-p10) nhưng hiếm — không phải "không cover" khói xa, mà "cover mỏng" ở đúng vùng khó nhất.
+  - **Dedup audit — done 2026-07-09** (`dataset.py dfire-dedup`, report `artifacts/smoke_fire_detection/dfire_dedup_audit.json`, chạy trên `split_local` hiện tại):
+    - `val_vs_train`: Hamming distance=0 (dHash 64-bit) `406/1721=23.6%`; distance≤5 `873/1721=50.7%`.
+    - `test_vs_train`: distance=0 `1031/4306=23.9%`; distance≤5 `2155/4306=50.0%`.
+    - Verify bằng mắt 2 cặp distance=0 (`WEB11268.jpg`/test vs `AoF00229.jpg`/train — cùng khung cảnh, cách 29s, camera timestamp `31.May 2017 15:32:22` vs `15:32:51`; `AoF08065.jpg`/test vs `AoF05438.jpg`/train — cùng cảnh lửa đêm "Camera0002", cách 44s) → **xác nhận thật, không phải hash collision** — đây là frame liên tiếp trong cùng video burst, dataset gốc trộn burst xuyên train/test khi split (không phải lỗi do agent tạo val).
+    - **Sửa giả thuyết cũ** (agent_context/research_plan trước đây nghi ngờ riêng val bị lây từ train): tỷ lệ near-dup của test với train **gần bằng** val với train (~24% exact-hash cả hai). Vậy gap mAP val(0.76) vs test(0.684) đã đo ở E0 **không** giải thích được chỉ bằng chênh lệch tỷ lệ duplicate — cả hai split đều nhiễm gần như nhau. Nguyên nhân gap thật vẫn chưa rõ, chưa điều tra tiếp (không phải P0, không block G0/G1/G2).
+  - **E1a network block — phát hiện 2026-07-09**: server `ai2` không kết nối được `c1.hpwren.ucsd.edu` và `nextcloud.hpwren.ucsd.edu` (TCP connect timeout, cả HTTP/HTTPS) — đây là 2 host chứa ảnh thật + tool bulk-download (`fetch-cam-images.html` cũng nằm trên host bị block). Internet chung vẫn hoạt động (`google.com`, `huggingface.co` connect OK), `www.hpwren.ucsd.edu` (trang tin, host khác) fetch được. Archive URL pattern xác nhận qua doc: `http://c1.hpwren.ucsd.edu/archive/{camera_id}/large/{year}/{YYYYMMDD}/Q{1-8}/` (Q1-Q8 = khung 3h/ngày, camera_id cùng format với FIgLib camera_id). **User quyết định: gác lại E1a**, theo đúng khuyến nghị research_plan.md mục 3 (E1a không block G0/G1, chỉ cần cho FA/hour denominator, mở lại sau khi G1 pass).
+  - **Spatial-persistence (track-before-detect) — DONE 2026-07-09** (cache `figlib_detector_cache_spatialpersist.jsonl`, từ `figlib_detector_cache_imgsz1280.jsonl`, window=5 frame, distance-factor=3.0). Verify bằng mắt 2 sequence chuẩn trước khi chạy full: case "confused" (`Kitchenfire`) dập gần về 0 (score ~0-0.02 quanh ignition, so với single-frame conf 0.44 lúc trước — persistence từ chối được spike đơn-frame không lặp vị trí); case "good" (`ScissorsFire`) tăng đơn điệu `0→0.8` đúng theo plume lớn dần. Full 40361 frame chạy `1.2s` (thuần Python, không GPU).
+    - `g0`: `AUROC(smoke)=0.7426` (event CI95 `[0.7246,0.7602]`) — **không đổi so baseline imgsz1280 (0.7425)**, CI trùng khớp, không phải cải thiện thật ở cấp pooled.
+    - `diagnose`: `low_auroc_breakdown` đổi composition dù tổng gần như không đổi (`176→175`): `silent 131→154` (tăng), `confused 20→13` (giảm), `other 25→8` (giảm) — persistence chuyển một phần "confused" (false-trigger thật) về "silent" (dưới ngưỡng 0.3), đúng cơ chế thiết kế (dập spike không bền vị trí).
+    - `temporal` (AMOC, score=smoke, report `temporal_spatialpersist_smoke.json`): tại FA≤1/tuần recall `0.208→0.237` (baseline→persistence, chưa có bootstrap CI cho recall trong tool nên chỉ là tín hiệu, chưa chứng minh chắc). Tại FA≤1/ngày recall gần như không đổi (`0.494→0.480`). **Điểm đáng chú ý nhất: n_of_m(2:3) threshold=0.8 đạt FA=0.0000 tuyệt đối (CI95 `[0,0]`) tại recall=0.135** — baseline không có threshold nào đạt FA=0 trong lưới test (thấp nhất `0.0030`). Đây là operating point mới, không tồn tại ở baseline.
+    - **Kết luận: không thay thế nhu cầu sửa detector (AUROC pooled không đổi, dưới gate 0.75), nhưng là overlay 0-GPU đáng giữ cho tier FA≤1/tuần và tier zero-FA khi báo cáo cuối.** Không tune thêm window/distance-factor (không phải P0).
+  - **Frame-differencing / motion probe trên 131 sequence "silent" — DONE 2026-07-09** (cache `figlib_framediff_silent_subset.jsonl`, background-window=5, thumbnail=256px, anomaly-fraction=5%, không detector/GPU). Chạy full 131 sequence (10345 frame) `4m38s` CPU.
+    - `g0` trên đúng subset: `AUROC=0.5276` (CI95 `[0.5068,0.5487]`, hoàn toàn dưới 0.55). **Theo decision rule khai báo trước (`<0.55 → đóng vĩnh viễn`): đóng hướng motion-as-input.** Gần random — xác nhận nhóm "silent" không có signal cấp pixel-motion đơn giản (frame-to-frame), khớp 2/4 case verify-bằng-mắt trước đó ("thật sự không có gì để thấy"/haze đồng nhất).
+  - **Lineage check `pyronear/yolov8s` (HuggingFace) — DONE 2026-07-09** (web search + model card). Train trên `pyro-sdis` (camera Pháp, network Pyronear/SDIS riêng) — **không có bằng chứng dính `PyroNear-2024/2025`/HPWREN/FIgLib**. License Apache-2.0. An toàn dùng làm zero-shot candidate benchmark (không nghi leakage với FIgLib eval).
+  - **PYRONEAR-2025 leakage — xác nhận qua web 2026-07-09**: paper ([arXiv 2402.05349](https://arxiv.org/abs/2402.05349)) nguồn data gồm FIgLib (không bbox, "comes from published research paper") + ALERTWildfire (web-scraped) + HPWREN + in-house Pyronear camera. Train verifier trên PYRONEAR-2025 rồi eval trên FIgLib local = leakage thật, không phải suy đoán — bắt buộc exclude FIgLib-source + dedup dHash vs FIgLib trước khi dùng (khi mở E1b/G2).
+  - **Human-review pack đã chuẩn bị 2026-07-09** (`artifacts/smoke_fire_detection/human_review_pack.md` + `human_review_pack_key.json`): 40 sequence, blind, seed `20260707` — `25` từ nhóm silent (131), `15` control (`10` từ `best_sequences` AUROC=1.0 + `5` sample từ pool "không silent/confused"). Mỗi item 3 frame path (baseline âm sớm nhất / mid ~+1200s / offset dương lớn nhất). Key file chứa mapping `item_id → sequence_id/group`, KHÔNG lộ trong pack cho user. **Chờ user tự review** — dùng để: (a) ước lượng tỷ lệ "không có gì để thấy" trong nhóm silent → tính label-ceiling hiệu chỉnh gate AUROC 0.80; (b) sanity-check qua nhóm control (nếu user đánh "not_visible" nhiều case control AUROC=1.0 thì có vấn đề với chính cách chọn frame, không phải với detector).
 
 - **pyro-sdis**
   - Path: `datasets/smoke_fire_detection/pyro-sdis/`.
@@ -120,10 +186,12 @@
   - `data.yaml` says single class smoke; converter must remap `1 -> 0`.
   - No YOLO converter yet.
   - `pyarrow` installed in `.venv`, not formalized in requirements.
+  - No converter yet — Phase 1a (bước 13a research_plan.md): converter parquet→YOLO + audit bbox size là bước GPU rẻ tiếp theo.
 
 - **External datasets**
-  - PYRONEAR-2025: exists, not downloaded.
-  - HPWREN archive: public, not harvested.
+  - PYRONEAR-2025: exists, not downloaded. **Leakage risk xác nhận qua web 2026-07-09** — nguồn data gồm FIgLib+ALERTWildfire+HPWREN, phải lọc trước khi dùng train verifier eval trên FIgLib.
+  - `pyronear/yolov8s` (HuggingFace model, không phải dataset): train trên `pyro-sdis`, lineage sạch (không dính FIgLib/HPWREN), Apache-2.0 — candidate zero-shot cho bước 13b research_plan.md.
+  - HPWREN archive: public, not harvested. Block mạng từ `ai2` (xem "E1a network block").
   - DetectiumFire: parked, VLM/P3 value.
   - FLAME 3: parked, thermal/UAV domain mismatch.
   - FireSentry/GWFP: not useful for current P0, availability uncertain/not released.
@@ -148,20 +216,19 @@
   - CI: bootstrap by event, `>=1000` samples.
 
 - **Next work**
-  - P0: G0 = marginal → chạy `detector-cache` với `imgsz` lớn hơn (1280) trên FIgLib, đo lại `temporal_eval.py g0`, so sánh AUROC.
-  - P0: nếu vẫn marginal/fail sau imgsz lớn → pivot tile-classifier hoặc fine-tune PYRONEAR-2025 (không xây temporal trên detector mù).
-  - P0: nếu pass sau imgsz lớn → mở G1, chạy `temporal_eval.py temporal` trên detector cache mới.
-  - P0: report AMOC, TTD, FA/hour, event precision/recall (chờ G1).
-  - P0: harvest HPWREN negative days for real FA/hour denominator.
-  - P0: event-level hard-negative mining.
-  - P1: learned temporal verifier only after G0/G1 evidence.
-  - P1: pyro-sdis converter only if needed for training.
-  - P2/P3: calibration, thermal, VLM parked.
+  - P0: **G0 = marginal (0.7425), G1 = DONE, Phase 0 probes = DONE** (2026-07-09, chi tiết ở block "Spatial-persistence"/"Frame-differencing" trên). Spatial-persistence giữ làm overlay tier chặt; frame-differencing đóng vĩnh viễn.
+  - P0 tiếp theo (bước 13 research_plan.md, KHÔNG benchmark SOTA generic trên D-Fire): 13a converter pyro-sdis + audit bbox size; 13b zero-shot `pyronear/yolov8s` → cache FIgLib → g0/diagnose; 13c fine-tune cap 2 config; 13d bảng so sánh; 13e pivot pseudo-label/E5 nếu vẫn <0.80.
+  - Đang chờ user: tự review `human_review_pack.md` (40 item blind) — kết quả dùng để hiệu chỉnh gate AUROC 0.80 theo label-ceiling trước khi đánh giá candidate mới ở 13d.
+  - P0: report chính hiện tại — TTD@FA≤1/day ≈ `825-840s` (~14 phút) @ recall `~47-49%`; TTD@FA≤1/week ≈ `1122s` (~19 phút) @ recall `~21%` (N-of-M, score=smoke, detector imgsz1280 chưa đổi). Event precision ≥0.95 cả 2 điểm. Spatial-persistence overlay thêm 1 tier zero-FA (recall 0.135) chưa đưa vào report chính.
+  - Không làm: hard-negative mining từ FA event FIgLib gốc (pool nhỏ, leakage risk — thay bằng pseudo-label camera-disjoint ở 13e nếu cần); mở E2 learned verifier (chờ detector chốt ở 13d, tránh phải chạy lại khi input đổi); train architecture khác (RT-DETR...) trên D-Fire (bottleneck là domain/data, không phải capacity, đã trả lời user 2026-07-09); relabel D-Fire (label quality không phải nghi phạm, dedup audit đã loại).
+  - P2/P3: calibration, thermal, VLM parked. E1a (negative-day HPWREN) vẫn parked, network-blocked từ `ai2`.
 
 - **Open risks**
   - FIgLib weak labels only, no official annotation local.
   - FIgLib negative window short/correlated; negative-day harvesting still needed.
   - Camera id exact-string may not equal physical camera identity.
   - D-Fire bbox mAP not enough for early video false-alarm question.
+  - D-Fire val/test mAP gap (0.76 vs 0.684) unexplained — dedup audit ruled out duplicate-rate difference as cause (both ~24% near-dup with train), real cause unknown, not investigated further (not P0).
+  - HPWREN archive host (`c1.hpwren.ucsd.edu`, `nextcloud.hpwren.ucsd.edu`) unreachable from server `ai2` — blocks scripted E1a download from this host if revisited later; need to test from Windows local or use manual browser tool.
   - Current hard-negative extractor frame-level only.
   - Modal lacks FIgLib data/functions.

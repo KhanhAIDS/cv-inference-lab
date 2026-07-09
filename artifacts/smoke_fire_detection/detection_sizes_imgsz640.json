@@ -1,0 +1,170 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache.jsonl",
+  "score": "smoke",
+  "confidence_threshold": 0.3,
+  "ignore_band_seconds": 180,
+  "n_qualifying_detections": 5479,
+  "normalized_area_percentiles": {
+    "p0": 0.0006235372350052634,
+    "p5": 0.0020555876838865097,
+    "p10": 0.0029394817049999133,
+    "p25": 0.005865959476665239,
+    "p50": 0.014859053659563415,
+    "p75": 0.029312416730522373,
+    "p90": 0.06925018150940332,
+    "p95": 0.11402882195537245,
+    "p100": 0.674114394780716
+  },
+  "smallest_samples": [
+    {
+      "sequence_id": "20200601_WILDLAND-DRILLS_pi-e-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200601_WILDLAND-DRILLS_pi-e-mobo-c/1591044965_+00720.jpg",
+      "confidence": 0.41350698471069336,
+      "normalized_area": 0.0006235372350052634,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570384956_+00781.jpg",
+      "confidence": 0.3377400040626526,
+      "normalized_area": 0.0006257689610862371,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20200601_WILDLAND-DRILLS_ml-s-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200601_WILDLAND-DRILLS_ml-s-mobo-c/1591044975_+00180.jpg",
+      "confidence": 0.4278615713119507,
+      "normalized_area": 0.0006343307608194237,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20190922_FIRE_ml-w-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20190922_FIRE_ml-w-mobo-c/1569185357_+01500.jpg",
+      "confidence": 0.3010833263397217,
+      "normalized_area": 0.0006408531064892031,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20200601_WILDLAND-DRILLS_pi-e-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200601_WILDLAND-DRILLS_pi-e-mobo-c/1591044905_+00660.jpg",
+      "confidence": 0.3386651277542114,
+      "normalized_area": 0.0006498169169096476,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570385076_+00901.jpg",
+      "confidence": 0.3691706359386444,
+      "normalized_area": 0.0006558157362945849,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570385015_+00840.jpg",
+      "confidence": 0.4009111821651459,
+      "normalized_area": 0.000662735773528785,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570385135_+00960.jpg",
+      "confidence": 0.39340972900390625,
+      "normalized_area": 0.0006744171381167045,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570384895_+00720.jpg",
+      "confidence": 0.35692283511161804,
+      "normalized_area": 0.0006762754822702277,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570385195_+01020.jpg",
+      "confidence": 0.45946264266967773,
+      "normalized_area": 0.0006813349978074257,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20191006_FIRE_om-n-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20191006_FIRE_om-n-mobo-c/1570385255_+01080.jpg",
+      "confidence": 0.4081045091152191,
+      "normalized_area": 0.0006834390732279871,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20190924_FIRE_ml-w-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20190924_FIRE_ml-w-mobo-c/1569362778_+00421.jpg",
+      "confidence": 0.35739248991012573,
+      "normalized_area": 0.0007436603974397826,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20200806_SpringsFire_lp-w-mobo-m",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200806_SpringsFire_lp-w-mobo-m/1596764948_+00960.jpg",
+      "confidence": 0.3791026771068573,
+      "normalized_area": 0.0007496901956187685,
+      "image_size": [
+        3072,
+        2048
+      ]
+    },
+    {
+      "sequence_id": "20200615_Rainbow_rm-e-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200615_Rainbow_rm-e-mobo-c/1592254922_+01440.jpg",
+      "confidence": 0.4529813230037689,
+      "normalized_area": 0.0007609881363824419,
+      "image_size": [
+        2048,
+        1536
+      ]
+    },
+    {
+      "sequence_id": "20200601_WILDLAND-DRILLS_pi-e-mobo-c",
+      "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200601_WILDLAND-DRILLS_pi-e-mobo-c/1591045025_+00780.jpg",
+      "confidence": 0.47165146470069885,
+      "normalized_area": 0.0007617759926977404,
+      "image_size": [
+        2048,
+        1536
+      ]
+    }
+  ]
+}
