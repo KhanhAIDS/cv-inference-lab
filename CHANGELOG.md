@@ -1,178 +1,22 @@
-- **2026-07-09 10:52:31 +0700**
-  - **Task:** user phản biện domain-gap hypothesis (D-Fire có cover khói xa, nhiều điều kiện) + hỏi rõ thuật ngữ ("hướng detector", "rung") + yêu cầu chạy "rung 0" (audit CPU-only, miễn phí) theo plan đã đề xuất ở lượt trước.
-  - **Commands đã chạy:**
-    - Đọc `dataset.py` để kiểm tra audit D-Fire hiện có (chỉ có class_counts, chưa có bbox size).
-    - Sửa `dataset.py`: `parse_label_line` trả thêm `width*height` (area normalized); `empty_stats`/`merge_stats`/`read_label` tích lũy `class_areas` theo class; thêm `percentile()`, `area_percentiles()`; `cmd_dfire` build audit có `class_area_normalized_percentiles` (bỏ raw array khỏi JSON, chỉ giữ percentile p0/p5/p10/p25/p50/p75/p90/p95/p100).
-    - `.venv/bin/python -m py_compile tasks/smoke_fire_detection/dataset.py` — pass.
-    - Backup 3 file split cũ vào scratchpad, chạy lại `dataset.py dfire --data-root datasets/smoke_fire_detection/D-Fire --out artifacts/smoke_fire_detection/split_local --audit-out artifacts/smoke_fire_detection/dfire_audit_local.json` (seed mặc định 20260707, giống lượt tạo split gốc) — counts khớp cũ (train 15500/val 1721/test 4306), `diff` 3 file `train.txt`/`val.txt`/`test.txt` trước/sau — **identical**, chỉ audit JSON có thêm field mới.
-    - Sửa `temporal_eval.py`: thêm subcommand `diagnose` (rung 0) — `parse_bands`, `cmd_diagnose`: zero-detection rate positive/negative, AUROC theo offset-band (`180:600,600:1200,1200:100000`), per-sequence AUROC (histogram theo bucket, percentile, top10 worst/best), breakdown sequence AUROC<0.6 thành `silent` (max conf 2 phía <0.3) / `confused` (pre-ignition conf≥0.3) / `other`.
-    - `.venv/bin/python -m py_compile tasks/smoke_fire_detection/temporal_eval.py` — pass.
-    - `temporal_eval.py diagnose --cache artifacts/smoke_fire_detection/figlib_detector_cache.jsonl --out artifacts/smoke_fire_detection/diagnose_g0.json` — chạy trên cache thật (imgsz=640 hiện có, không cần GPU).
-    - Verify tay bằng ảnh thật (`Read` tool): sequence AUROC thấp nhất `20240701_Kitchenfire_lp-e-mobo-c` (offset -2221 conf 0.44, offset +1200 conf 0.18) — cả 2 ảnh trời quang, không khói; sequence AUROC cao `20251102_ScissorsFire_mp-n-mobo-m` (camera IR/grayscale, offset -242 conf 0.0, offset +658 conf 0.52) — ảnh xác nhận có cột khói mỏng thật.
-  - **Kết quả (quan trọng, xem chi tiết số liệu ở `agent_context.md`):**
-    - D-Fire bbox area: smoke p5=0.0018 (0.18% frame), p0=6e-5; fire p5=0.00039, p0=3.5e-5 — D-Fire CÓ đuôi box rất nhỏ nhưng hiếm (<5-10% sample).
-    - FIgLib offset-band AUROC tăng đơn điệu theo thời gian: 0.617 → 0.703 → 0.730 (band xa nhất vẫn không gần 1.0).
-    - Per-sequence AUROC bimodal: 132/509 (26%) AUROC≥0.9, 207/509 (41%) AUROC<0.6.
-    - Trong 207 sequence AUROC thấp: 170 (82%) là `silent` (camera nhiều khả năng không thấy khói trong toàn bộ cửa sổ), 14 (7%) là `confused` (false-trigger thật do haze/glare), 23 `other`.
+- **2026-07-10 15:33:03 +0700**
+  - **Task:** user cung cấp đánh giá mắt cho human review pack, 40 item.
+  - **Phạm vi đánh giá:** chỉ xem 3 ảnh tĩnh của từng item; không xem video liên quan hoặc ảnh khác.
+  - **Commands đã chạy:** `sed -n`, `rg -n`, cập nhật text bằng `perl -0pi`, kiểm tra timestamp bằng `TZ=Asia/Ho_Chi_Minh date`.
   - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/dataset.py` (sửa: bbox area audit).
-    - `tasks/smoke_fire_detection/temporal_eval.py` (sửa: thêm subcommand `diagnose`).
-    - `agent_context.md` (sửa: thêm block "Rung 0 diagnose", "D-Fire bbox area audit", code state, timestamp).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: thêm bước 6 "Rung 0 diagnose DONE" vào mục 8, renumber bước 7/8 → 8/9).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/dfire_audit_local.json` (re-gen, thêm field mới, counts không đổi).
-    - `artifacts/smoke_fire_detection/split_local/train.txt`, `val.txt`, `test.txt` (re-gen cùng seed, nội dung **không đổi**, đã diff xác nhận).
-    - `artifacts/smoke_fire_detection/split_local/dataset.yaml` (re-gen, nội dung tương đương).
-    - `artifacts/smoke_fire_detection/diagnose_g0.json` (mới).
-  - **Chưa xong (lúc đó):** nhánh "marginal" (`imgsz=1280`) vẫn chưa chạy; E1a vẫn chờ quyết định cách tải; rclone chưa re-check.
+    - `artifacts/smoke_fire_detection/human_review_pack.md` (thêm context review, điền nhận xét item 01-40).
+    - `CHANGELOG.md` (append entry).
+  - **Files thay đổi gián tiếp:** không có.
 
-- **2026-07-09 11:29:00 +0700**
-  - **Task:** tiếp nhánh "marginal" theo research_plan.md bước 7 (chạy `detector-cache` imgsz=1280) + làm thêm 2 việc song song không cần GPU: dedup audit D-Fire (perceptual hash, item (b) còn treo ở E0) và quyết định E1a (negative-day harvesting).
-  - **Commands đã chạy:**
-    - Verify env: `uname -a` (host `ai2`, `aarch64`), `nvidia-smi -L` (`NVIDIA GB10`) — khớp `agent_context.md`, không cần update phần env.
-    - `ps aux | grep detector-cache` — confirm chưa có process cũ nào chạy trùng trước khi start job mới.
-    - `.venv/bin/python -c "import torch, ultralytics"` — torch `2.12.1+cu130` cuda OK, ultralytics `8.4.90`.
-    - Chạy background: `.venv/bin/python tasks/smoke_fire_detection/eval.py detector-cache --index artifacts/smoke_fire_detection/figlib_index.jsonl --weights artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt --out artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --conf 0.05 --iou 0.6 --imgsz 1280` (giữ nguyên conf/iou như lần imgsz=640 để so sánh táo-với-táo). Start `04:16 UTC` = `11:16 +0700`.
-    - Sửa `dataset.py`: thêm subcommand `dfire-dedup` — hàm `dhash()` (PIL grayscale resize 9x8 + gradient sign, tự viết, không thêm dependency `imagehash`), `hash_images()` (ThreadPoolExecutor), `min_hamming_distances()` (`numpy.bitwise_count`, numpy>=2.0), `dedup_report()`, `cmd_dfire_dedup()`. `.venv/bin/python -m py_compile tasks/smoke_fire_detection/dataset.py` — pass.
-    - `.venv/bin/python tasks/smoke_fire_detection/dataset.py dfire-dedup --split-dir artifacts/smoke_fire_detection/split_local --audit-out artifacts/smoke_fire_detection/dfire_dedup_audit.json` — 18s, hash 21527 ảnh (train 15500 + val 1721 + test 4306).
-    - Verify bằng mắt (`Read` tool) 2 cặp distance=0: `WEB11268.jpg`(test)/`AoF00229.jpg`(train) và `AoF08065.jpg`(test)/`AoF05438.jpg`(train) — cả 2 xác nhận là frame thật cùng burst video, cách nhau vài chục giây.
-    - `WebSearch` + `WebFetch` (`https://www.hpwren.ucsd.edu/news/20210318/`) để tìm cơ chế tải bulk HPWREN — tìm ra URL pattern `http://c1.hpwren.ucsd.edu/archive/{camera}/large/{year}/{date}/Q{1-8}/` và tool form `fetch-cam-images.html`.
-    - `curl -v -m 10 http://c1.hpwren.ucsd.edu/...` — TCP connect timeout. Test thêm `https://c1...`, `https://nextcloud.hpwren.ucsd.edu` — cùng timeout. Test đối chứng `https://www.google.com`, `https://huggingface.co`, `https://www.hpwren.ucsd.edu` — cả 3 connect OK → xác nhận block cụ thể ở host lưu ảnh, không phải mất mạng toàn bộ.
-    - Hỏi user hướng xử lý E1a qua `AskUserQuestion` → **user chọn gác lại** (khớp khuyến nghị research_plan.md mục 3).
-  - **Kết quả:**
-    - Dedup audit: `val_vs_train` distance=0 `406/1721=23.6%`, distance≤5 `873/1721=50.7%`; `test_vs_train` distance=0 `1031/4306=23.9%`, distance≤5 `2155/4306=50.0%`. Tỷ lệ near-dup của val và test với train **gần bằng nhau** → bác bỏ giả thuyết cũ "val bị lây từ train nhiều hơn test nên val mAP inflate hơn". Nguyên nhân gap mAP val(0.76)/test(0.684) còn lại chưa rõ, không điều tra tiếp (không phải P0).
-    - E1a: parked theo quyết định user, do host archive HPWREN không kết nối được từ server `ai2`.
-    - Detector-cache imgsz=1280: chạy nền, tại thời điểm ghi entry này (`~04:29 UTC`) đã xử lý ~20212/40361 frame (~50%), rate quan sát được ~1538 frame/phút, ETA ước tính hoàn tất `~04:42 UTC` = `~11:42 +0700`. Kết quả `g0`/`diagnose` so sánh trước/sau sẽ ghi ở entry tiếp theo sau khi job xong.
-  - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/dataset.py` (sửa: thêm subcommand `dfire-dedup`).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: bước 1 mục 8 thêm kết quả dedup audit; bước 8 mục 8 cập nhật quyết định E1a).
-    - `agent_context.md` (sửa: thêm `dfire-dedup` vào code state, thêm block "Dedup audit", "E1a network block", cập nhật Open risks, xoá risk cũ đã bác bỏ, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/dfire_dedup_audit.json` (mới).
-    - `artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl` (đang sinh, chưa hoàn tất tại thời điểm ghi entry).
-  - **Chưa xong (lúc đó):** chờ detector-cache imgsz=1280 hoàn tất → chạy `temporal_eval.py g0` + `temporal_eval.py diagnose` trên cache mới, so sánh AUROC và số sequence "silent" trước/sau với imgsz=640.
 
-- **2026-07-09 11:55:00 +0700**
-  - **Task:** detector-cache imgsz=1280 chạy nền xong (40361/40362 frame, 1 lỗi jpg 0-byte đã biết) → chạy `g0` + `diagnose` trên cache mới, so sánh với imgsz=640, verify bằng mắt sequence "silent" còn lại, sửa nhỏ code quality (đổi tên hàm `area_percentiles` → `value_percentiles` vì giờ dùng chung cho cả area bbox và Hamming distance).
-  - **Commands đã chạy:**
-    - `tail`/`wc -l`/`cat` job output + errors file `figlib_detector_cache_imgsz1280.jsonl.errors.json` — confirm 40361/40362 frame, đúng 1 frame lỗi cũ (jpg 0-byte, cùng frame với run imgsz=640).
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py g0 --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/g0_imgsz1280.json`.
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py diagnose --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/diagnose_imgsz1280.json`.
-    - Query `figlib_index.jsonl` lấy frame offset lớn nhất (+2400s) của 4 sequence mẫu trong danh sách `silent_sequence_ids` (imgsz=1280) — `20180719_Skyline_sp-n-mobo-c`, `20200813_SkylineFire_sp-n-mobo-c`, `20230716-FIRE-bh-w-mobo-c`, `20260629_JunctionFire_hp-e-mobo-c` — verify bằng mắt (`Read` tool) từng ảnh.
-    - `Edit` `dataset.py`: đổi tên `area_percentiles` → `value_percentiles` (replace_all) vì hàm giờ dùng cho cả bbox area và Hamming distance dedup, giữ tên cũ sẽ gây hiểu nhầm. `.venv/bin/python -m py_compile` — pass.
-  - **Kết quả:**
-    - `AUROC(smoke)`: `0.7017 → 0.7425` (`+0.041`, event CI95 mới `[0.7245,0.7600]`) — **vẫn marginal (0.60–0.80), chưa qua 0.80**. `AUROC(fire)` không đổi (`~0.51`, đúng dự đoán). `AUROC(any) = 0.749`.
-    - `zero_detection_rate_positive`: `0.539 → 0.464`. Offset-band AUROC tăng ở cả 3 band (`0.617→0.675`, `0.703→0.754`, `0.730→0.760`).
-    - Per-sequence: bin `[0.9,1.0]` tăng `132(26%)→166(33%)`. Low-AUROC(<0.6) sequence giảm `207→176`; trong đó silent giảm `170→131` (39 sequence thoát nhóm silent, 31/39 AUROC vượt hẳn 0.6, 8/39 chuyển sang confused/other).
-    - Verify bằng mắt 4 sequence vẫn silent: **1/4** trời quang tuyệt đối (đúng "không line-of-sight"), **1/4** chìm trong haze khu vực đồng nhất (không phân biệt được plume riêng), **2/4** có đốm mờ ở đường chân trời không chắc chắn là khói hay mây thường (tín hiệu quá yếu/xa, ambiguous cả với mắt người). Kết luận: nhóm "silent" là **hỗn hợp thật**, không phải 100% một loại nguyên nhân — chưa đủ để loại toàn bộ 131 sequence khỏi gate metric.
-    - Quyết định tiếp theo (thử tiling / mở G1 bằng judgment call / pivot tile-classifier-PYRONEAR-2025) **chưa chốt**, để phiên làm việc sau quyết định có chủ đích.
+- **2026-07-10 15:43:36 +0700**
+  - **Task:** user yêu cầu dọn mạnh tay artifacts, ưu tiên giảm Git lag; xác nhận JSON/cache có thể tái tạo.
+  - **Commands đã chạy:** `find ... -exec rm -rf`, `find ... -delete`, `perl -0pi` strip image links, `du -sh artifacts`, `git status --short`.
+  - **Kết quả:** `artifacts/` `219 MB/165 file` → `5.2 MB/3 file`; xóa `human_review_pack_images/` untracked (`120` JPEG, `68 MB`) — nghi phạm Git scan chính.
   - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/dataset.py` (sửa: rename `area_percentiles` → `value_percentiles`).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: bước 7 mục 8 đánh dấu DONE với kết quả đầy đủ + 3 hướng quyết định tiếp theo).
-    - `agent_context.md` (sửa: cập nhật G0/diagnose imgsz=1280, verify bằng mắt, Next work, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl` (hoàn tất, 40361 dòng) + `.errors.json` (1 entry).
-    - `artifacts/smoke_fire_detection/g0_imgsz1280.json` (mới).
-    - `artifacts/smoke_fire_detection/diagnose_imgsz1280.json` (mới).
-  - **Chưa xong (lúc đó):** quyết định hướng tiếp theo cho G0 marginal (tiling / mở G1 / pivot) — cần user quyết định ở phiên sau; G1 (`temporal_eval.py temporal`) chưa chạy trên cache imgsz=1280.
-
-- **2026-07-09 13:20:00 +0700**
-  - **Task:** user hỏi "performance thấp do đâu" + yêu cầu làm bước tiếp theo. Đo định lượng nguyên nhân domain-gap (thêm `detection-sizes`), thêm tiling vào `eval.py detector-cache`, pilot rẻ trên 131 sequence "silent" trước khi cam kết GPU full-dataset.
-  - **Commands đã chạy:**
-    - Thêm subcommand `temporal_eval.py detection-sizes` (`--score`, `--confidence-threshold`, `--ignore-band-seconds`) — mở ảnh qua PIL lấy width/height thật (phát hiện FIgLib không đồng nhất size: vừa `2048x1536` vừa `3072x2048`, verify sample 30 ảnh ngẫu nhiên), tính normalized bbox area của detection tự tin nhất mỗi frame post-ignition. `.venv/bin/python -m py_compile` — pass.
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py detection-sizes --cache artifacts/smoke_fire_detection/figlib_detector_cache.jsonl --out artifacts/smoke_fire_detection/detection_sizes_imgsz640.json` (1.6s, n=5479).
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py detection-sizes --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/detection_sizes_imgsz1280.json` (1.4s, n=7201).
-    - Thêm `--tile-grid`/`--tile-overlap`/`--sequence-ids` vào `eval.py detector-cache` (`compute_tiles()`, `tiled_detections()` — crop PIL, batch `model.predict(source=[crop,...])`, remap bbox tile-local→frame-global). `.venv/bin/python -m py_compile` — pass.
-    - Smoke-test tiling: `--limit 6` (không lỗi) rồi `--sequence-ids "20160604_FIRE_rm-n-mobo-c" --limit 45` để verify remap coordinate đúng vị trí thật (so với detection gốc đã biết) — coordinate khớp, nhưng confidence giảm (0.633→0.207) cho case cụ thể này — cảnh báo sớm tiling không tự động thắng.
-    - Trích `silent_sequence_ids` (131 sequence) từ `diagnose_imgsz1280.json` → verify khớp 10345 frame trong `figlib_index.jsonl`.
-    - Chạy nền: `eval.py detector-cache --tile-grid 2x2 --sequence-ids "<131 ids>" --imgsz 1280` → `figlib_detector_cache_tile2x2_silentpilot.jsonl` (10345 frame, 0 lỗi).
-    - Lọc `figlib_detector_cache_imgsz1280.jsonl` theo đúng 131 sequence_id → baseline subset khớp 10345 frame (để so táo-với-táo).
-    - `temporal_eval.py g0` + `diagnose` trên cả 2 subset (baseline vs tiled) → copy report vào `artifacts/smoke_fire_detection/{g0,diagnose}_{imgsz1280,tile2x2}_silent_subset.json`.
-  - **Kết quả:**
-    - **Domain-gap định lượng:** area bbox smoke FIgLib detect được (median `0.735%` frame, imgsz=1280) nhỏ hơn ~20x median D-Fire train (`14.4%`), nhỏ hơn cả p5 D-Fire train (`0.18%` vs FIgLib p5 `0.098%`). imgsz 640→1280 giảm area-floor gần đúng tỷ lệ 2x (median `1.49%→0.735%`) — xác nhận cơ chế "vật thể quá nhỏ" là nguyên nhân chính, chưa bão hoà.
-    - **Tiling pilot — kết quả hỗn hợp:** pooled AUROC trên 131 sequence `0.498→0.535`. `39/131` (30%) thoát nhóm low-AUROC (tín hiệu thật). Nhưng `zero_detection_rate_negative` `0.956→0.787` (false-trigger tăng mạnh) và `18/131` chuyển từ "silent" sang "confused" (false-trigger thật, không còn "im lặng nhưng đúng"). Một số sequence tệ hơn rõ (`20191006_FIRE_om-s-mobo-c` AUROC `0.057→0.029`). **Không phải thắng lợi rõ ràng** — mâu thuẫn trực tiếp mục tiêu FA thấp (RQ1).
-    - Quyết định scale tiling full dataset / refine / bỏ **chưa chốt**, cần user quyết định (nêu rõ 4 hướng trong research_plan.md).
-  - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/temporal_eval.py` (sửa: thêm `detection-sizes`, import `PIL.Image`).
-    - `tasks/smoke_fire_detection/eval.py` (sửa: thêm tiling `--tile-grid`/`--tile-overlap`/`--sequence-ids`, import `PIL.Image`, hàm `compute_tiles`/`tiled_detections`).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: thêm bước 8-9 mục 8 với kết quả domain-gap + tiling pilot, renumber E1a/G2 → bước 10-11).
-    - `agent_context.md` (sửa: thêm code state `detection-sizes`/tiling, block "Domain-gap về scale", "Tiling pilot", cập nhật Next work, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/detection_sizes_imgsz640.json`, `detection_sizes_imgsz1280.json` (mới).
-    - `artifacts/smoke_fire_detection/figlib_detector_cache_tile2x2_silentpilot.jsonl` (mới, 10345 dòng).
-    - `artifacts/smoke_fire_detection/g0_imgsz1280_silent_subset.json`, `g0_tile2x2_silent_subset.json`, `diagnose_imgsz1280_silent_subset.json`, `diagnose_tile2x2_silent_subset.json` (mới, copy từ scratchpad sau khi tính).
-  - **Chưa xong (lúc đó):** quyết định hướng tiling (scale full / refine / bỏ) — hỏi user, đang chờ trả lời.
-
-- **2026-07-09 13:45:00 +0700**
-  - **Task:** user chọn "refine tiling trước" (qua `AskUserQuestion`). Implement + test refine ≥2-tile-agreement trên cache pilot đã có (không cần GPU rerun).
-  - **Commands đã chạy:**
-    - Thêm subcommand `temporal_eval.py refine-tile-agreement` (`box_iou()`, `tile_confirmed_detections()`, `cmd_refine_tile_agreement()`) — đọc cache tile đã có, giữ lại detection chỉ khi có ≥1 detection khác (class khớp, IoU≥`--iou-threshold` default 0.1) xác nhận, recompute `max_smoke/fire/any_confidence` từ detection đã lọc. `.venv/bin/python -m py_compile` — pass.
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py refine-tile-agreement --cache artifacts/smoke_fire_detection/figlib_detector_cache_tile2x2_silentpilot.jsonl --out artifacts/smoke_fire_detection/figlib_detector_cache_tile2x2_silentpilot_refined.jsonl` (0.36s, thuần CPU/JSON, không GPU).
-    - `temporal_eval.py g0` + `diagnose` trên cache refined → `g0_tile2x2_refined_silent_subset.json`, `diagnose_tile2x2_refined_silent_subset.json`.
-  - **Kết quả: refine KHÔNG hiệu quả như kỳ vọng.** So 3 điều kiện trên cùng 131 sequence:
-    - `zero_detection_rate_negative`: baseline `0.956` → tiled-thô `0.787` → tiled-refined `0.955` (dập false-trigger về gần baseline — đúng kỳ vọng).
-    - `zero_detection_rate_positive`: baseline `0.960` → tiled-thô `0.724` → tiled-refined `0.900` (dập theo luôn phần lớn true-positive — KHÔNG như kỳ vọng).
-    - Sequence thoát low-AUROC: tiled-thô `39/131` (30%) → tiled-refined chỉ `16/131` (12%). Pooled AUROC: `0.535→0.528` (thấp hơn).
-    - Root cause: giả thuyết "signal nhất quán qua tile, noise thì không" sai trên data này — true-positive vốn đã yếu ở cấp per-tile (case cụ thể: global confidence `0.633` nhưng per-tile chỉ `0.207`/`0.087`, dưới ngưỡng cần để agreement giữ lại nó).
-  - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/temporal_eval.py` (sửa: thêm `refine-tile-agreement`).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: thêm kết quả refine vào bước 9 mục 8, cập nhật 4 hướng quyết định còn lại).
-    - `agent_context.md` (sửa: thêm block "Refine tile-agreement", cập nhật Next work, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/figlib_detector_cache_tile2x2_silentpilot_refined.jsonl` (mới).
-    - `artifacts/smoke_fire_detection/g0_tile2x2_refined_silent_subset.json`, `diagnose_tile2x2_refined_silent_subset.json` (mới).
-  - **Chưa xong (lúc đó):** quyết định hướng cuối cho nhánh tiling/marginal (scale tiling-thô full / thử refine variant khác / bỏ tiling mở G1 / pivot) — hỏi lại user, đang chờ trả lời.
-
-- **2026-07-09 14:20:00 +0700**
-  - **Task:** user chọn "bỏ tiling, mở G1 bằng judgment call" (qua `AskUserQuestion`). Chạy G1 (AMOC single-frame vs N-of-M/EMA) trên detector cache imgsz=1280 full dataset, đúng khung gate G1 của research_plan.md.
-  - **Commands đã chạy:**
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py temporal --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/temporal_imgsz1280_smoke.json --events-out artifacts/smoke_fire_detection/temporal_imgsz1280_smoke_events.jsonl --score smoke` (nền, `9m17s`, bootstrap 1000×66 combo).
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py temporal --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/temporal_imgsz1280_any.json --score any` (nền, so sánh phụ).
-    - `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py temporal --cache artifacts/smoke_fire_detection/figlib_detector_cache_imgsz1280.jsonl --out artifacts/smoke_fire_detection/temporal_imgsz1280_singleframe.json --score smoke --nofm "1:1" --ema-alphas ""` (nền, baseline single-frame thuần — n=1,m=1 tương đương alarm ngay khi 1 frame vượt threshold, không temporal smoothing, để so đúng nghĩa gate G1).
-    - Script Python ad-hoc so `best recall dưới ngân sách FA` giữa 3 report ở 2 mức ngân sách chuẩn (`1/day`=0.04167/h, `1/week`=0.00595/h theo research_plan.md mục 4).
-  - **Kết quả:**
-    - **FA≤1/ngày/camera:** single-frame recall=`0.467` (FA=0.0274, TTD_mean=825s) vs N-of-M(2:3) score=smoke recall=`0.494` (FA=0.0366, TTD_mean=839s). Nội suy tuyến tính single-frame tại FA=0.0366 ≈ `0.51` — **xấp xỉ hoặc nhích hơn N-of-M, không có gain rõ ràng từ temporal smoothing** ở ngân sách lỏng này.
-    - **FA≤1/tuần/camera:** single-frame **không đạt được** ngân sách này ở bất kỳ threshold test (threshold=0.8 vẫn FA=0.0122, gấp 2x ngân sách). N-of-M(3:5) score=smoke đạt FA=0.0030, recall=`0.208`, TTD_mean=1122s — **gain thật, chỉ tăng threshold đơn-frame không đạt được.**
-    - Kết luận G1 (đúng khung research_plan.md mục 5: "nếu simple rule không cải thiện TTD@FA → nghi detector, đừng đổ lỗi verifier"): temporal aggregation không cải thiện ở ngân sách lỏng (khớp giả thuyết root cause ở detector — false alarm là haze/glare kéo dài nhiều frame, không phải spike ngẫu nhiên nên persistence-filter không tách được), nhưng **cần thiết thật ở ngân sách chặt** (mở ra vùng hoạt động single-frame không chạm tới được).
-    - Số báo cáo chính: TTD@FA≤1/day ≈ `825-840s` (~14 phút) @ recall `~47-49%`; TTD@FA≤1/week ≈ `1122s` (~19 phút) @ recall `~21%`. Event precision ≥0.95 cả 2 điểm.
-  - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: thêm bước 10 mục 8 với kết quả G1 đầy đủ, renumber E1a/G2 → 11/12).
-    - `agent_context.md` (sửa: thêm block "G1", cập nhật Next work gọn lại theo trạng thái mới, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/temporal_imgsz1280_smoke.json`, `temporal_imgsz1280_smoke_events.jsonl`, `temporal_imgsz1280_any.json`, `temporal_imgsz1280_singleframe.json` (mới).
-  - **Chưa xong:** G0+G1 đã có số liệu đầy đủ, không còn nhánh "chưa quyết định" treo. Đề xuất bước tiếp theo (event-level hard-negative mining / mở E2 factorized / E1a khi có cách tải khác) chưa được user xác nhận.
-
-- **2026-07-09 18:15:00 +0700**
-  - **Task:** user hỏi phản biện "nên benchmark SOTA rồi build/fine-tune model tốt nhất không?" (dùng model `claude-fable-5`, Plan mode) → lập plan chi tiết cho agent khác (adversarial review qua subagent Plan + fact-check web trước khi chốt), lưu tại `/home/tts01/.claude/plans/h-y-c-c-c-file-iterative-island.md`. Đổi sang `claude-sonnet-5`, user yêu cầu thực thi plan + hỏi thêm: có cần train model khác (RF-DETR...) hay relabel D-Fire không. Trả lời: không cần (bottleneck là domain/scale gap đã đo bằng số, không phải capacity/label quality) — thực thi Phase 0 của plan (4 probe 0-GPU).
-  - **Commands đã chạy:**
-    - `uname -a`, `nvidia-smi -L`, check `.venv` — verify env khớp `agent_context.md` (host `ai2`, GPU `GB10`).
-    - WebFetch/WebSearch: model card `pyronear/yolov8s` (HuggingFace) + GitHub `pyro-mlops`/`pyro-engine` → xác nhận train trên `pyro-sdis`, không dính PyroNear-2024/2025/HPWREN/FIgLib. WebSearch xác nhận nguồn data PYRONEAR-2025 ([arXiv 2402.05349](https://arxiv.org/abs/2402.05349)) gồm FIgLib+ALERTWildfire+HPWREN.
-    - Sửa `temporal_eval.py`: fix `cmd_temporal` — `events-out` giờ ghi thêm `n`/`m` (n_of_m) hoặc `alpha`/`ema_init` (ema) vào mỗi event record (trước đó nhiều config gộp lẫn, không phân biệt được).
-    - Thêm subcommand `temporal_eval.py spatial-persistence`: `bbox_center_and_diag()`, `best_match_confidence()`, `spatial_persistence_scores()`, `cmd_spatial_persistence()` — recompute confidence = trung bình cửa sổ 5-frame của detection khớp vị trí (center-distance ≤ 3×bbox-diag). `.venv/bin/python -m py_compile` — pass. Verify bằng mắt 2 sequence chuẩn (`ScissorsFire` good, `Kitchenfire` confused) trước khi chạy full — đúng hướng kỳ vọng.
-    - Chạy `spatial-persistence` full 40361 frame (`1.2s`) → `figlib_detector_cache_spatialpersist.jsonl`. Chạy `g0` + `diagnose` + `temporal --score smoke` (nền, `~9-10 phút` — lưu ý: `nohup ... &` bên trong lệnh backgrounded khiến harness báo "completed" ngay khi tiến trình con detach, không phải khi job thật xong; phải tự `ps`/chờ PID để xác nhận) trên cache mới.
-    - Thêm subcommand `temporal_eval.py frame-differencing`: `load_gray_thumbnail()`, `frame_differencing_scores()`, `cmd_frame_differencing()` — score = motion-energy cục bộ (top-5% pixel-diff) so background median rolling 5-frame, thumbnail 256px, không detector/GPU. `.venv/bin/python -m py_compile` — pass. Verify timing 2 sequence nhỏ trước khi chạy full.
-    - Trích 131 `silent_sequence_ids` từ `diagnose_imgsz1280.json` → chạy `frame-differencing` full trên subset (10345 frame, `4m38s`) → `g0` trên subset.
-    - Script Python ad-hoc: sinh human-review pack — lấy `silent_sequence_ids` (131) + `best_sequences` (top 10 AUROC=1.0) + sample 5 từ pool "không silent/confused" (`random.Random(20260707)`), chọn 25 silent + 15 control, trộn blind, mỗi sequence lấy 3 frame path (baseline âm sớm nhất / mid ~+1200s / offset dương lớn nhất) từ `figlib_index.jsonl` → `human_review_pack.md` (hiển thị cho user) + `human_review_pack_key.json` (mapping group, không lộ trong pack).
-    - Sửa `research_plan.md` + `agent_context.md` (chi tiết ở "Files thay đổi trực tiếp").
-  - **Kết quả:**
-    - **Spatial-persistence:** AUROC pooled không đổi (`0.7426` vs baseline `0.7425`, CI event `[0.7246,0.7602]` trùng khớp) — dưới gate 0.75. Nhưng breakdown per-sequence đổi thật: `confused 20→13`, `other 25→8` (persistence dập một phần false-trigger đơn-frame thành "silent"). AMOC: FA≤1/tuần recall `0.208→0.237` (chưa có CI recall để khẳng định chắc); **mở operating point mới FA=0.0000 tuyệt đối (CI `[0,0]`) tại recall=0.135** — baseline không đạt được FA=0 ở bất kỳ threshold nào test. Quyết định: giữ làm overlay 0-GPU cho tier FA≤1/tuần + tier zero-FA, không thay thế nhu cầu sửa detector.
-    - **Frame-differencing trên 131 sequence silent:** AUROC = `0.5276` (CI95 `[0.5068,0.5487]`, hoàn toàn dưới 0.55) → theo decision rule khai báo trước, **đóng vĩnh viễn hướng motion-as-input**. Khớp 2/4 case verify-bằng-mắt trước đó.
-    - **Lineage `pyronear/yolov8s`:** train trên `pyro-sdis`, sạch, không dính FIgLib/HPWREN — an toàn dùng zero-shot benchmark ở bước tiếp theo.
-    - **PYRONEAR-2025 leakage:** xác nhận qua web là rủi ro thật (không phải suy đoán) — nguồn data trộn FIgLib+ALERTWildfire+HPWREN.
-    - Human-review pack: 40 item đã sinh, chờ user tự review.
-  - **Files thay đổi trực tiếp:**
-    - `tasks/smoke_fire_detection/temporal_eval.py` (sửa: fix events-out schema; thêm subcommand `spatial-persistence`, `frame-differencing`).
-    - `tasks/smoke_fire_detection/docs/research_plan.md` (sửa: thêm bước 12-14 mục 8 — Phase 0 probes, benchmark detector candidate đúng domain).
-    - `agent_context.md` (sửa: thêm code state mới, block "Spatial-persistence", "Frame-differencing", "Lineage check pyronear/yolov8s", "PYRONEAR-2025 leakage", "Human-review pack", cập nhật pyro-sdis/External datasets/Next work, timestamp).
-    - `CHANGELOG.md` (append entry này).
-  - **Files thay đổi gián tiếp (do chạy script):**
-    - `artifacts/smoke_fire_detection/figlib_detector_cache_spatialpersist.jsonl`, `g0_spatialpersist.json`, `diagnose_spatialpersist.json`, `temporal_spatialpersist_smoke.json`, `temporal_spatialpersist_smoke_events.jsonl` (mới).
-    - `artifacts/smoke_fire_detection/figlib_framediff_silent_subset.jsonl`, `g0_framediff_silent_subset.json` (mới).
-    - `artifacts/smoke_fire_detection/human_review_pack.md`, `human_review_pack_key.json` (mới).
-  - **Chưa xong:** chờ user tự review `human_review_pack.md` (dùng hiệu chỉnh gate AUROC 0.80). Bước 13 research_plan.md (converter pyro-sdis, zero-shot `pyronear/yolov8s`, fine-tune, bảng so sánh) chưa chạy — kế tiếp trong phiên sau.
+    - `artifacts/smoke_fire_detection/human_review_pack.md` (sửa: text-only, giữ review; xóa image links).
+    - `agent_context.md` (sửa: trạng thái artifact sau cleanup).
+    - `CHANGELOG.md` (append entry).
+  - **Files xóa trực tiếp:**
+    - Toàn bộ `artifacts/smoke_fire_detection/*`, ngoại trừ `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`, `human_review_pack.md`, `human_review_pack_key.json`.
+    - Bao gồm: toàn bộ `*.json`, `*.jsonl`, cache detector, cache temporal/tile/frame-diff, report, audit, split, ảnh review, `args.yaml`, `results.csv`.
+  - **Files thay đổi gián tiếp:** không có.

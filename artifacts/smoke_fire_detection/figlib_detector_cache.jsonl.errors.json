@@ -1,6 +1,0 @@
-[
-  {
-    "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20231110.112257-Border36Fire-om-w-mobo-c/1699646403_+02226.jpg",
-    "error": "OpenCV(5.0.0) /io/opencv/modules/imgcodecs/src/loadsave.cpp:1291: error: (-215:Assertion failed) !buf.empty() in function 'imdecode_'\n"
-  }
-]

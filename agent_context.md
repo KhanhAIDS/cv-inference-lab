@@ -3,7 +3,7 @@
 - **Style:** bullet 100%, keyword, câu cụt, không filler, không văn kể.
 - **Keep:** state hiện tại, schema, blocker, next step.
 - **Drop:** log dài, transcript, chi tiết lỗi cũ đã xử lý, dữ liệu outdated.
-- **Timestamp:** `2026-07-09 18:15:00 +0700`.
+- **Timestamp:** `2026-07-10 15:43:36 +0700`.
 - **TZ:** mọi timeline `CHANGELOG.md` dùng GMT+7.
 
 - **Repo**
@@ -216,6 +216,7 @@
   - CI: bootstrap by event, `>=1000` samples.
 
 - **Next work**
+  - **Artifact cleanup 2026-07-10:** xóa toàn bộ JSON/JSONL, cache, report, split, ảnh review, args/metrics train đã xong. Giữ duy nhất `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`, `human_review_pack.md`, `human_review_pack_key.json`. Mọi output cũ trong context: historical; cần thì tái tạo.
   - P0: **G0 = marginal (0.7425), G1 = DONE, Phase 0 probes = DONE** (2026-07-09, chi tiết ở block "Spatial-persistence"/"Frame-differencing" trên). Spatial-persistence giữ làm overlay tier chặt; frame-differencing đóng vĩnh viễn.
   - P0 tiếp theo (bước 13 research_plan.md, KHÔNG benchmark SOTA generic trên D-Fire): 13a converter pyro-sdis + audit bbox size; 13b zero-shot `pyronear/yolov8s` → cache FIgLib → g0/diagnose; 13c fine-tune cap 2 config; 13d bảng so sánh; 13e pivot pseudo-label/E5 nếu vẫn <0.80.
   - Đang chờ user: tự review `human_review_pack.md` (40 item blind) — kết quả dùng để hiệu chỉnh gate AUROC 0.80 theo label-ceiling trước khi đánh giá candidate mới ở 13d.
