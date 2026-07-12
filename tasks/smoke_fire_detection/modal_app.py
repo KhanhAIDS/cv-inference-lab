@@ -505,6 +505,177 @@ def artifact_status(run_name: str = "yolo26x_pyro_sdis"):
     }
 
 
+@app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=1800)
+def verify_resume_patch():
+    import shutil
+    import numpy as np
+    import torch
+    import yaml
+    from PIL import Image
+    from ultralytics import YOLO
+
+    test_dir = Path("/tmp/verify_resume_patch")
+    shutil.rmtree(test_dir, ignore_errors=True)
+    img_dir = test_dir / "images" / "train"
+    lbl_dir = test_dir / "labels" / "train"
+    img_dir.mkdir(parents=True)
+    lbl_dir.mkdir(parents=True)
+    rng = np.random.RandomState(42)
+    for i in range(20):
+        arr = rng.randint(0, 255, (128, 128, 3), dtype=np.uint8)
+        Image.fromarray(arr).save(img_dir / f"img{i:04d}.jpg")
+        if i < 15:
+            (lbl_dir / f"img{i:04d}.txt").write_text("0 0.5 0.5 0.3 0.3\n")
+        else:
+            (lbl_dir / f"img{i:04d}.txt").write_text("")
+    data = {"path": str(test_dir), "train": "images/train", "val": "images/train", "names": {0: "smoke"}}
+    data_path = test_dir / "dataset.yaml"
+    data_path.write_text(yaml.safe_dump(data, sort_keys=False))
+    run_dir = test_dir / "runs" / "verify_patch"
+
+    def make_on_save(rd, stop_after_n=0):
+        counter = {"calls": 0}
+        def on_save(trainer):
+            resume_path = rd / "weights" / "last_resume.pt"
+            tmp = resume_path.with_suffix(".pt.tmp")
+            src = rd / "weights" / "last.pt"
+            shutil.copy2(src, tmp)
+            tmp.replace(resume_path)
+            counter["calls"] += 1
+            if stop_after_n and counter["calls"] >= stop_after_n:
+                trainer.stop = True
+        return on_save
+
+    def inspect_checkpoint(path):
+        if not path.exists():
+            return {"exists": False}
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        is_dict = isinstance(ckpt, dict)
+        updates = ckpt.get("updates") if is_dict else None
+        
+        # Sometimes step is inside optimizer
+        opt_step = None
+        if is_dict and ckpt.get("optimizer") is not None:
+            opt = ckpt["optimizer"]
+            if hasattr(opt, "state"):
+                for group in opt.state.values():
+                    if "step" in group:
+                        opt_step = float(group["step"])
+                        break
+
+        return {
+            "exists": True,
+            "bytes": path.stat().st_size,
+            "sha256": sha256_path(path),
+            "top_keys": sorted(ckpt.keys()) if is_dict else [],
+            "epoch": ckpt.get("epoch") if is_dict else None,
+            "updates": updates,
+            "optimizer_step": opt_step,
+            "optimizer_present": ckpt.get("optimizer") is not None if is_dict else False,
+            "scaler_present": ckpt.get("scaler") is not None if is_dict else False,
+            "train_args_present": ckpt.get("train_args") is not None if is_dict else False,
+            "ema_present": ckpt.get("ema") is not None if is_dict else False,
+        }
+
+    model1 = YOLO("yolo26x.pt")
+    model1.add_callback("on_model_save", make_on_save(run_dir, stop_after_n=1))
+    model1.train(
+        data=str(data_path), epochs=4, imgsz=128, batch=20, patience=0,
+        seed=42, workers=0, device="0", amp=True, save_period=1,
+        project=str(run_dir.parent), name=run_dir.name, exist_ok=True,
+    )
+    inv1_resume = inspect_checkpoint(run_dir / "weights" / "last_resume.pt")
+    inv1_last = inspect_checkpoint(run_dir / "weights" / "last.pt")
+    inv1_best = inspect_checkpoint(run_dir / "weights" / "best.pt")
+    result = {
+        "invocation_1": {
+            "last_resume.pt": inv1_resume,
+            "last.pt_stripped": inv1_last,
+            "best.pt_stripped": inv1_best,
+        }
+    }
+    if not inv1_resume.get("optimizer_present"):
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 1 FAILED: last_resume.pt has no optimizer. {result}")
+    
+    if inv1_resume.get("epoch") is None or inv1_resume.get("epoch") < 0:
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 1 FAILED: Invalid epoch. {result}")
+        
+    inv1_epoch = inv1_resume["epoch"]
+
+    resume_path = run_dir / "weights" / "last_resume.pt"
+    resume_sha_before = sha256_path(resume_path)
+    
+    model2 = YOLO(str(resume_path))
+    model2.add_callback("on_model_save", make_on_save(run_dir, stop_after_n=1))
+    model2.train(resume=str(resume_path), data=str(data_path))
+    
+    inv2_resume = inspect_checkpoint(run_dir / "weights" / "last_resume.pt")
+    inv2_last = inspect_checkpoint(run_dir / "weights" / "last.pt")
+    result["invocation_2"] = {
+        "resume_source_sha256": resume_sha_before,
+        "last_resume.pt": inv2_resume,
+        "last.pt_stripped": inv2_last,
+    }
+    
+    inv2_epoch = inv2_resume.get("epoch")
+    if inv2_epoch is None or inv2_epoch <= inv1_epoch:
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 2 FAILED: epoch did not increase. inv1={inv1_epoch}, inv2={inv2_epoch}. {result}")
+        
+    if not inv2_resume.get("optimizer_present"):
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 2 FAILED: optimizer lost after resume. {result}")
+
+    if inv2_resume["sha256"] == resume_sha_before:
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 2 FAILED: weight hash did not change. {result}")
+        
+    inv1_progress = inv1_resume.get("updates") or inv1_resume.get("optimizer_step") or 0
+    inv2_progress = inv2_resume.get("updates") or inv2_resume.get("optimizer_step") or 0
+    if inv2_progress <= inv1_progress:
+        shutil.rmtree(test_dir, ignore_errors=True)
+        raise ValueError(f"INVOCATION 2 FAILED: updates/step did not increase. inv1={inv1_progress}, inv2={inv2_progress}. {result}")
+
+    result["epoch_increased"] = True
+    result["inv1_epoch"] = inv1_epoch
+    result["inv2_epoch"] = inv2_epoch
+    result["inv1_progress"] = inv1_progress
+    result["inv2_progress"] = inv2_progress
+    shutil.rmtree(test_dir, ignore_errors=True)
+    return result
+
+
+@app.function(image=yolo_image, volumes={"/workspace": volume}, timeout=3600)
+def audit_checkpoint(run_name: str = "yolo26x_pyro_sdis"):
+    import torch
+
+    run_dir = Path("/workspace/artifacts/smoke_fire_detection/runs") / run_name
+    result = {"run_dir": str(run_dir)}
+    for name in ("last.pt", "last_resume.pt", "best.pt"):
+        path = run_dir / "weights" / name
+        entry = {"exists": path.exists()}
+        if path.exists():
+            entry["bytes"] = path.stat().st_size
+            entry["sha256"] = sha256_path(path)
+            ckpt = torch.load(path, map_location="cpu", weights_only=False)
+            entry["top_keys"] = sorted(ckpt.keys()) if isinstance(ckpt, dict) else ["not_dict"]
+            entry["epoch"] = ckpt.get("epoch") if isinstance(ckpt, dict) else None
+            entry["optimizer_present"] = ckpt.get("optimizer") is not None if isinstance(ckpt, dict) else False
+            entry["optimizer_type"] = type(ckpt.get("optimizer")).__name__ if isinstance(ckpt, dict) and ckpt.get("optimizer") is not None else None
+            entry["train_args_present"] = ckpt.get("train_args") is not None if isinstance(ckpt, dict) else False
+            entry["ema_present"] = ckpt.get("ema") is not None if isinstance(ckpt, dict) else False
+        result[name] = entry
+    manifest_path = run_dir / "checkpoint_manifest.json"
+    result["manifest_exists"] = manifest_path.exists()
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        result["manifest_completed_epoch"] = manifest.get("completed_epoch")
+        result["manifest_stop_reason"] = manifest.get("stop_reason")
+    return result
+
+
 @app.function(image=yolo_image, volumes={"/workspace": volume}, timeout=3600)
 def verify_checkpoint_load(run_name: str = "yolo26x_pyro_sdis"):
     import torch
@@ -621,6 +792,10 @@ def pyro_sdis_cli(
         print(artifact_status.remote(run_name))
     elif action == "verify-checkpoint":
         print(verify_checkpoint_load.remote(run_name))
+    elif action == "audit-checkpoint":
+        print(audit_checkpoint.remote(run_name))
+    elif action == "verify-patch":
+        print(verify_resume_patch.remote())
     else:
         raise ValueError(f"unsupported action: {action}")
 
