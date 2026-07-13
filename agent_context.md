@@ -216,6 +216,7 @@
   - CI: bootstrap by event, `>=1000` samples.
 
 - **Next work**
+  - **Budget run in progress 2026-07-13:** Modal `yolo26x_pyro_sdis_budget9`; warm-start `yolo26x_pyro_sdis/weights/best.pt`; fresh `resume=never`; batch `4`; invocation 1 cap `3` epoch/`20000s`; paid spend `$20.967052`, cap `$29.50`; `run_metadata.json` + `args.yaml` đã có, chưa checkpoint epoch 1. Không launch invocation 2 trước verify `last_resume.pt`.
   - **Step 13.a PARTIAL 2026-07-12:** converter `dataset.py pyro-sdis`; strict source `1`→output `0`; atomic output; shard hash gate snapshot `artifacts/smoke_fire_detection/pyro_sdis_snapshot.json`; audit bbox/dimension/disk/runtime. Modal CPU test `3` pass. Volume `smoke-fire-step13-volume` có sẵn. Upload parquet fail `WinError 10054`; converter/chkpt 1 chưa chạy; FIgLib chưa upload. Retry upload, upload snapshot, chạy `modal run tasks/smoke_fire_detection/modal_app.py --action convert`.
   - **Step 13.0 DONE 2026-07-11:** `human_review_labels.json` đủ 40 item: `visible_smoke=23`, `fire_only=5`, `ambiguous=5`, `not_visible=7`. `fire_only` loại smoke-only, giữ any-fire. Windows local: không chạy Python theo quyết định user. Execution target: Modal/Colab/Kaggle/remote GPU. `yolo26x` duy nhất; cap paid `20 USD`; ưu tiên free quota; upload threshold `4h`; checkpoint portable. Dependency lock: `tasks/smoke_fire_detection/requirements*.lock`; runtime report phải ghi identity + versions.
   - **Artifact cleanup 2026-07-10:** xóa toàn bộ JSON/JSONL, cache, report, split, ảnh review, args/metrics train đã xong. Giữ duy nhất `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`, `human_review_pack.md`, `human_review_pack_key.json`. Mọi output cũ trong context: historical; cần thì tái tạo.
@@ -245,7 +246,9 @@
   - Candidate: `pyronear/yolov8s`, HF commit `cd075ce`, SHA-256 `2898ecdf96eae513cdca995e4325d3536472016db2131588c7c4e27d5a829483`.
   - Remaining: cost/quota dashboard ledger unknown; detection-size audit timeout; final camera-held-out test not run.
 
-- **Step 13.c PARTIAL 2026-07-12:** `train_portable.py` mới; Modal `train_candidate`/`artifact_status`; fixed `yolo26x`, Pyro-SDIS snapshot/audit/lock/code hash gate, `imgsz=1280`, `20` epoch, patience `5`, seed `20260707`, `save_period=1`.
+- **Step 13.c PARTIAL 2026-07-12:** `train.py`; Modal `train_candidate`/`artifact_status`; fixed `yolo26x`, Pyro-SDIS snapshot/audit/lock/code hash gate, `imgsz=1280`, `20` epoch, patience `5`, seed `20260707`, `save_period=1`.
+
+- **Code layout 2026-07-13:** `modal_app.py` Modal; `dataset.py` dataset; `train.py` train/exact-resume; `eval.py` detector test/eval; `temporal_eval.py` eval logic CPU; `test_pyro_sdis_converter.py` unit test dataset.
   - Lock: base `requirements.lock` + CUDA `requirements-cu130.lock`; image pin torch `2.12.1+cu130`, torchvision `0.27.1+cu130`; 2 hash ghi runtime manifest.
   - Checkpoint: manifest atomic + SHA-256 `last.pt`/`best.pt`; callback `on_model_save` commit Volume mỗi epoch; resume chặn config/hash lệch; data runtime override khi resume; stop epoch/runtime boundary.
   - Paid gate: full train block khi dashboard cost/quota unknown; cap `20`, long-block threshold `18`; không bịa cost.

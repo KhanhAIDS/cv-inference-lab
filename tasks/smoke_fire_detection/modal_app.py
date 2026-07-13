@@ -439,9 +439,11 @@ def train_candidate(
     subset_images: int = 0,
     free_quota: bool = False,
     paid_spend_usd: float = -1.0,
+    paid_cap_usd: float = 20.0,
+    paid_stop_threshold_usd: float = 18.0,
     code_commit: str = "unverified",
 ):
-    from tasks.smoke_fire_detection.train_portable import parse_args, run_training
+    from tasks.smoke_fire_detection.train import parse_args, run_training
 
     if code_commit == "unverified":
         raise ValueError("code_commit is required for portable training")
@@ -469,6 +471,8 @@ def train_candidate(
         "--dataset-archive-manifest", "/workspace/artifacts/smoke_fire_detection/pyro_sdis_yolo_archive.json",
         "--smoke-batches", str(smoke_batches),
         "--subset-images", str(subset_images),
+        "--paid-cap-usd", str(paid_cap_usd),
+        "--paid-stop-threshold-usd", str(paid_stop_threshold_usd),
     ]
     if smoke_only:
         command.append("--smoke-only")
@@ -496,7 +500,7 @@ def audit_batch4(
     import math
     import statistics
     import torch
-    from tasks.smoke_fire_detection.train_portable import (
+    from tasks.smoke_fire_detection.train import (
         STAGING_COUNTS,
         runtime_metadata,
         prepare_resume_gate_subset,
@@ -733,7 +737,7 @@ def verify_strict_staging(
     snapshot: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
     report_out: str = "artifacts/smoke_fire_detection/pyro_sdis_strict_staging_report.json",
 ):
-    from tasks.smoke_fire_detection.train_portable import (
+    from tasks.smoke_fire_detection.train import (
         read_json,
         sha256_file,
         stage_dataset_archive,
@@ -1063,7 +1067,7 @@ def audit_checkpoint(run_name: str = "yolo26x_pyro_sdis"):
 def verify_checkpoint_load(run_name: str = "yolo26x_pyro_sdis"):
     import torch
     from ultralytics import YOLO
-    from tasks.smoke_fire_detection.train_portable import checkpoint_resume_state
+    from tasks.smoke_fire_detection.train import checkpoint_resume_state
 
     volume.reload()
     run_dir = Path("/workspace/artifacts/smoke_fire_detection/runs") / run_name
@@ -1130,6 +1134,8 @@ def pyro_sdis_cli(
     dataset_stage_max_seconds: int = 600,
     free_quota: bool = False,
     paid_spend_usd: float = -1.0,
+    paid_cap_usd: float = 20.0,
+    paid_stop_threshold_usd: float = 18.0,
 ):
     code_commit = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -1169,11 +1175,14 @@ def pyro_sdis_cli(
             dataset_stage_max_seconds=dataset_stage_max_seconds,
             free_quota=free_quota,
             paid_spend_usd=paid_spend_usd,
+            paid_cap_usd=paid_cap_usd,
+            paid_stop_threshold_usd=paid_stop_threshold_usd,
             code_commit=code_commit,
         ))
     elif action == "train":
         print(train_candidate.remote(
             run_name=run_name,
+            model=model,
             smoke_only=False,
             batch=batch,
             smoke_batches=smoke_batches,
@@ -1183,6 +1192,8 @@ def pyro_sdis_cli(
             dataset_stage_max_seconds=dataset_stage_max_seconds,
             free_quota=free_quota,
             paid_spend_usd=paid_spend_usd,
+            paid_cap_usd=paid_cap_usd,
+            paid_stop_threshold_usd=paid_stop_threshold_usd,
             code_commit=code_commit,
         ))
     elif action == "artifact-status":
