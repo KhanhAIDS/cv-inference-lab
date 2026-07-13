@@ -1,8 +1,10 @@
 import argparse
+import hashlib
 import json
 import platform
 import sys
 import time
+from collections import defaultdict
 from itertools import cycle, islice
 from pathlib import Path
 
@@ -53,6 +55,12 @@ def parse_args():
     detector_cache.add_argument("--imgsz", type=int, default=640)
     detector_cache.add_argument("--device")
     detector_cache.add_argument("--limit", type=int)
+    detector_cache.add_argument("--data-root", default=".", help="Runtime root for relative frame_path values")
+    detector_cache.add_argument("--split", choices=["dev", "test", "all"], default="all")
+    detector_cache.add_argument("--batch", type=int, default=1)
+    detector_cache.add_argument("--resume", action="store_true")
+    detector_cache.add_argument("--candidate-revision", default="")
+    detector_cache.add_argument("--pilot", action="store_true")
     detector_cache.add_argument("--tile-grid", help="COLSxROWS, e.g. 2x2 - run detector per native-resolution tile instead of one global resize")
     detector_cache.add_argument("--tile-overlap", type=float, default=0.15)
     detector_cache.add_argument("--sequence-ids", help="Comma-separated sequence_id allowlist to restrict the index to (for targeted pilot runs)")
@@ -158,6 +166,71 @@ def read_index(index_path: Path):
         if line.strip():
             records.append(json.loads(line))
     return records
+
+def sha256_file(path: Path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+def model_class_map(model):
+    names = model.names
+    items = names.items() if isinstance(names, dict) else enumerate(names)
+    class_map = {str(int(class_id)): str(name) for class_id, name in items}
+    smoke = [int(class_id) for class_id, name in class_map.items() if "smoke" in name.lower()]
+    fire = [int(class_id) for class_id, name in class_map.items() if "fire" in name.lower()]
+    if not smoke:
+        raise ValueError(f"model.names has no smoke class: {class_map}")
+    return {"names": class_map, "smoke_class_id": smoke[0], "fire_class_id": fire[0] if fire else None}
+
+def frame_key(record):
+    return record["sequence_id"], int(record["timestamp_unix"]), int(record["ignition_offset_seconds"])
+
+def load_resume_keys(path: Path):
+    if not path.exists():
+        return set()
+    keys = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            record = json.loads(line)
+            key = frame_key(record)
+            if key in keys:
+                raise ValueError(f"duplicate frame key in cache: {key}")
+            keys.add(key)
+    return keys
+
+def resolve_frame_path(record, data_root: Path):
+    path = Path(record["frame_path"])
+    if not path.is_absolute():
+        path = data_root / path
+    return path
+
+def pilot_records(records, limit):
+    grouped = defaultdict(list)
+    for record in records:
+        grouped[record["sequence_id"]].append(record)
+    selected = []
+    used_cameras = set()
+    sequence_limit = max(1, (limit + 2) // 3)
+    for sequence_id in sorted(grouped):
+        sequence = sorted(grouped[sequence_id], key=lambda item: item["ignition_offset_seconds"])
+        camera_id = sequence[0]["camera_id"]
+        if camera_id in used_cameras:
+            continue
+        used_cameras.add(camera_id)
+        negative = [record for record in sequence if record["ignition_offset_seconds"] < 0]
+        positive = [record for record in sequence if record["ignition_offset_seconds"] >= 0]
+        choices = []
+        if negative:
+            choices.append(negative[-1])
+        if positive:
+            choices.append(positive[0])
+            choices.append(positive[-1])
+        selected.extend(choices)
+        if len(used_cameras) >= sequence_limit:
+            break
+    return selected[:limit]
 
 def cmd_accuracy(args):
     weights_path = Path(args.weights).resolve()
@@ -355,9 +428,14 @@ def cmd_detector_cache(args):
         raise FileNotFoundError(weights_path)
 
     records = read_index(index_path)
+    if args.split != "all":
+        records = [record for record in records if record.get("split") == args.split]
     if args.sequence_ids:
         allowlist = set(args.sequence_ids.split(","))
         records = [record for record in records if record["sequence_id"] in allowlist]
+    if args.pilot:
+        records = pilot_records(records, args.limit or 30)
+        args.limit = None
     if args.limit:
         records = records[:args.limit]
 
@@ -366,6 +444,11 @@ def cmd_detector_cache(args):
         tile_cols, tile_rows = (int(value) for value in args.tile_grid.lower().split("x"))
 
     model = YOLO(weights_path)
+    class_map = model_class_map(model)
+    weights_hash = sha256_file(weights_path)
+    smoke_class_id = class_map["smoke_class_id"]
+    fire_class_id = class_map["fire_class_id"]
+    data_root = Path(args.data_root).resolve()
     predict_kwargs = {
         "conf": args.conf,
         "iou": args.iou,
@@ -377,46 +460,83 @@ def cmd_detector_cache(args):
 
     out_path = Path(args.out).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    resume_keys = load_resume_keys(out_path) if args.resume else set()
+    pending = [record for record in records if frame_key(record) not in resume_keys]
+    if args.resume:
+        mode = "a"
+    else:
+        mode = "w"
     written = 0
     failed = []
-    with out_path.open("w", encoding="utf-8") as out_file:
-        for record in records:
-            frame_path = record["frame_path"]
-            try:
-                start = time.perf_counter()
-                if tile_cols:
-                    detections = tiled_detections(model, frame_path, tile_cols, tile_rows, args.tile_overlap, predict_kwargs)
-                else:
-                    result = model.predict(source=frame_path, **predict_kwargs)[0]
-                    detections = box_records(result)
-                latency_ms = (time.perf_counter() - start) * 1000
-            except Exception as exc:
-                failed.append({"frame_path": frame_path, "error": str(exc)})
-                continue
-            smoke_confidences = [d["confidence"] for d in detections if d["class_id"] == 0]
-            fire_confidences = [d["confidence"] for d in detections if d["class_id"] == 1]
-            any_confidences = [d["confidence"] for d in detections]
-            cache_record = {
-                "sequence_id": record["sequence_id"],
-                "camera_id": record["camera_id"],
-                "frame_path": frame_path,
-                "timestamp_unix": record["timestamp_unix"],
-                "ignition_offset_seconds": record["ignition_offset_seconds"],
-                "weak_event_label": record["weak_event_label"],
-                "model_weights": str(weights_path),
-                "conf": args.conf,
-                "iou": args.iou,
-                "imgsz": args.imgsz,
-                "tile_grid": args.tile_grid,
-                "tile_overlap": args.tile_overlap if args.tile_grid else None,
-                "detections": detections,
-                "max_smoke_confidence": max(smoke_confidences) if smoke_confidences else 0.0,
-                "max_fire_confidence": max(fire_confidences) if fire_confidences else 0.0,
-                "max_any_confidence": max(any_confidences) if any_confidences else 0.0,
-                "latency_ms": latency_ms,
-            }
-            out_file.write(json.dumps(cache_record, ensure_ascii=False) + "\n")
-            written += 1
+    with out_path.open(mode, encoding="utf-8") as out_file:
+        for batch_start in range(0, len(pending), max(1, args.batch)):
+            batch = pending[batch_start:batch_start + max(1, args.batch)]
+            if tile_cols or len(batch) == 1:
+                batches = [[record] for record in batch]
+            else:
+                batches = [batch]
+            for current_batch in batches:
+                paths = [resolve_frame_path(record, data_root) for record in current_batch]
+                try:
+                    start = time.perf_counter()
+                    if tile_cols:
+                        detections_by_record = [tiled_detections(model, paths[0], tile_cols, tile_rows, args.tile_overlap, predict_kwargs)]
+                    else:
+                        results = model.predict(source=[str(path) for path in paths], **predict_kwargs)
+                        if len(results) != len(current_batch):
+                            raise ValueError(f"batch alignment mismatch: {len(current_batch)} records, {len(results)} results")
+                        detections_by_record = [box_records(result) for result in results]
+                    elapsed_ms = (time.perf_counter() - start) * 1000
+                    latencies = [elapsed_ms / len(current_batch)] * len(current_batch)
+                except Exception as batch_error:
+                    if len(current_batch) == 1:
+                        failed.append({"frame_path": str(paths[0]), "error": str(batch_error)})
+                        continue
+                    detections_by_record = []
+                    latencies = []
+                    for record, path in zip(current_batch, paths):
+                        try:
+                            start = time.perf_counter()
+                            result = model.predict(source=str(path), **predict_kwargs)[0]
+                            detections_by_record.append(box_records(result))
+                            latencies.append((time.perf_counter() - start) * 1000)
+                        except Exception as exc:
+                            failed.append({"frame_path": str(path), "error": str(exc)})
+                            detections_by_record.append(None)
+                            latencies.append(None)
+                for record, path, detections, latency_ms in zip(current_batch, paths, detections_by_record, latencies):
+                    if detections is None:
+                        continue
+                    smoke_confidences = [d["confidence"] for d in detections if d["class_id"] == smoke_class_id]
+                    fire_confidences = [d["confidence"] for d in detections if fire_class_id is not None and d["class_id"] == fire_class_id]
+                    any_confidences = [d["confidence"] for d in detections]
+                    cache_record = {
+                        "sequence_id": record["sequence_id"],
+                        "camera_id": record["camera_id"],
+                        "frame_path": str(path),
+                        "frame_path_index": record["frame_path"],
+                        "timestamp_unix": record["timestamp_unix"],
+                        "ignition_offset_seconds": record["ignition_offset_seconds"],
+                        "weak_event_label": record["weak_event_label"],
+                        "model_weights": str(weights_path),
+                        "conf": args.conf,
+                        "iou": args.iou,
+                        "imgsz": args.imgsz,
+                        "split": record.get("split"),
+                        "candidate_revision": args.candidate_revision,
+                        "weights_sha256": weights_hash,
+                        "class_map": class_map,
+                        "tile_grid": args.tile_grid,
+                        "tile_overlap": args.tile_overlap if args.tile_grid else None,
+                        "detections": detections,
+                        "max_smoke_confidence": max(smoke_confidences) if smoke_confidences else 0.0,
+                        "max_fire_confidence": max(fire_confidences) if fire_confidences else 0.0,
+                        "max_any_confidence": max(any_confidences) if any_confidences else 0.0,
+                        "latency_ms": latency_ms,
+                    }
+                    out_file.write(json.dumps(cache_record, ensure_ascii=False) + "\n")
+                    out_file.flush()
+                    written += 1
 
     if failed:
         errors_path = out_path.with_suffix(out_path.suffix + ".errors.json")

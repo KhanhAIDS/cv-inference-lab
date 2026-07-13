@@ -1,0 +1,56 @@
+{
+  "dataset": "Pyro-SDIS",
+  "shards": {
+    "train-00000-of-00006.parquet": "7cebaeff1d94d23513a59a5652ce04303d02297dd6126dbf9d4ea0d37d7eabae",
+    "train-00001-of-00006.parquet": "feb69d99b41e42cf9d73582ef2ff4237c7bbf5ad3f733a5ca0418e00795bd5b5",
+    "train-00002-of-00006.parquet": "79ac3a22306cdafad474b4f56288b254d400e30ef1b2ed7d1e961cefd32e6858",
+    "train-00003-of-00006.parquet": "ce112887c5eb1a44fe4e5bae6843714a9574c89fa5d5215580b1e2ed4b64822e",
+    "train-00004-of-00006.parquet": "1352d4d6b2443019fac83967b463bd0daab9030987363f26bae4ba8691653884",
+    "train-00005-of-00006.parquet": "05c000f07253dd60858a629119a5a2d94c8f8427b54f6f2fd503bbe06f933065",
+    "val-00000-of-00001.parquet": "d3929f81f755625e35c8b18f27f95cff8726bc279cedaf1c3d048b0fd35d6c57"
+  },
+  "expected_shard_hashes_provided": true,
+  "shard_hashes_match_snapshot": true,
+  "images": {
+    "train": 29537,
+    "val": 4099
+  },
+  "total_images": 33636,
+  "empty_annotations": 5499,
+  "bbox_count": 32109,
+  "source_class_counts": {
+    "1": 32109
+  },
+  "output_class_counts": {
+    "0": 32109
+  },
+  "invalid_records": 0,
+  "duplicate_filenames": 0,
+  "image_dimensions": {
+    "1280x720": 33636
+  },
+  "bbox_area_normalized_percentiles": {
+    "p0": 5.1023097428600705e-05,
+    "p5": 0.00023751179492000036,
+    "p10": 0.00033696590625000223,
+    "p25": 0.0006541142327999991,
+    "p50": 0.0013769122031900072,
+    "p75": 0.0031385893936999973,
+    "p90": 0.0071530175929900046,
+    "p95": 0.012284445331199998,
+    "p100": 0.8859427515680001
+  },
+  "output_bytes": 3284866401,
+  "runtime_seconds": 326.905470392,
+  "expected_invariants": {
+    "train_images": 29537,
+    "val_images": 4099,
+    "total_images": 33636,
+    "empty_annotations": 5499,
+    "bbox_count": 32109,
+    "source_class": 1,
+    "output_class": 0,
+    "image_dimensions": "1280x720"
+  },
+  "invariant_differences": {}
+}

@@ -103,12 +103,13 @@
     - **Lineage check `pyronear/yolov8s`:** train trên `pyro-sdis` (camera Pháp, network riêng), không dính `PyroNear-2024/2025`/HPWREN/FIgLib. An toàn dùng làm candidate zero-shot ở bước 13b.
     - **Xác nhận qua web:** PYRONEAR-2025 nguồn data gồm cả FIgLib (không bbox) + ALERTWildfire + HPWREN trộn chung — train verifier trên nó rồi eval FIgLib local là leakage thật (không phải suy đoán), bắt buộc exclude FIgLib-source + dedup dHash trước khi dùng (mục 3, E1b).
     - Human-review pack đã chuẩn bị (`artifacts/smoke_fire_detection/human_review_pack.md`, 40 sequence blind: 25 silent + 15 control) — **chờ user tự review**, dùng để tính label-ceiling hiệu chỉnh gate AUROC 0.80.
-13. **Benchmark detector candidate đúng domain (KHÔNG benchmark generic SOTA architecture trên D-Fire — bottleneck là data/domain đã đo bằng số ở bước 8, không phải capacity model):**
-    a. Converter `pyro-sdis` (parquet→YOLO, remap class `1→0`) + audit bbox size, so với D-Fire train/FIgLib detected — kiểm chứng "pyro-sdis có khói nhỏ thật không" trước khi fine-tune.
-    b. Zero-shot `pyronear/yolov8s` → detector-cache FIgLib full → `g0`/`diagnose` (1 lượt GPU, lineage đã sạch theo bước 12).
-    c. Fine-tune có cap (tối đa 2 config) từ kết quả 13a/13b, imgsz 1280.
-    d. Bảng tổng so AUROC + recall@matched-FA + TTD@FA cho mọi candidate (D-Fire baseline, zero-shot, fine-tune) — chốt winner bằng CI không giao.
-    e. Nếu winner vẫn <0.80 (hiệu chỉnh theo label-ceiling từ human-review pack): pseudo-label self-training camera-disjoint trên FIgLib train split, rồi probe rẻ (embedding + linear probe) trước khi cân nhắc pivot E5 tile-classifier.
+13. **Benchmark candidate đúng domain:**
+    - **13.0 — state/hạ tầng:** labels review có schema cố định; `visible_smoke=23`, `fire_only=5`, `ambiguous=5`, `not_visible=7`. `fire_only` loại khỏi smoke-only, giữ trong any-fire. Windows local không chạy Python; Modal/Colab/Kaggle/remote GPU là execution target. `yolo26x` là YOLO26 candidate duy nhất; D-Fire nano chỉ control. Paid cap `20 USD`, ưu tiên free quota, upload full FIgLib chỉ khi ước lượng `≤4 giờ`; checkpoint portable giữa runtime. Dependency lock + runtime identity/version bắt buộc trong report.
+    - **13a — Pyro-SDIS:** converter parquet→YOLO, giữ source split, remap `1→0`, atomic output, audit shard SHA-256/bbox/disk/runtime. Không upload FIgLib trước checkpoint này pass.
+    - **13b — FIgLib/baseline/zero-shot:** probe upload gần `1 GiB`; nếu full `>4 giờ` hoặc lỗi lặp, dùng subset deterministic 64 sequence, camera-disjoint, chỉ exploratory. Full split camera-disjoint `70% dev/30% final`; subset `44/20`. Khóa hash final trước chọn candidate. Baseline D-Fire và `pyronear/yolov8s` chạy dev cùng frame universe/protocol, có paired bootstrap; không mở final.
+    - **13c — YOLO26x:** fine-tune Pyro-SDIS, `imgsz=1280`, tổng `20` epoch, patience `5`, seed `20260707`; Pyro val mAP50-95 chọn checkpoint. Mỗi epoch lưu/sync `last.pt`, `best.pt`, hash, manifest; resume chỉ khi code/config/dataset/checkpoint tương thích. Runtime đổi: verify hash, smoke 30 batch, không đổi architecture/config cốt lõi. Projected paid `18 USD`: dừng block dài; actual `20 USD`: dừng paid.
+    - **13d — chọn candidate:** dev: D-Fire nano, Pyronear zero-shot, YOLO26x. Winner: lower CI paired `ΔAUROC>0` và delta camera cùng chiều; CI chứa 0 là tie. Tie: inference cost/camera-tháng. Khóa dev winner rồi mới mở final camera-held-out cho baseline, Pyronear, winner.
+    - **13e — fail:** full-FIgLib final winner raw AUROC `<0.80`: chỉ proposal pseudo-label camera-disjoint, embedding linear probe, E5 tile-classifier; không chạy experiment mới, không tiling, PYRONEAR-2025, learned verifier, E1a.
 14. Chỉ khi mở G2: tải PYRONEAR-2025 (đã lọc FIgLib-source), chạy factorized E2 (đầu vào có thể thêm spatial-persistence feature từ bước 12).
 
 ## 9. Dataset khảo sát thêm (2026-07-08) — không đi thu thập toàn bộ dataset liên quan

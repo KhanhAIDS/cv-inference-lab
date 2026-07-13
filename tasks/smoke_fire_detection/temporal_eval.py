@@ -70,6 +70,14 @@ def parse_args():
     differencing.add_argument("--anomaly-fraction", type=float, default=0.05, help="Fraction of highest-diff pixels averaged into the score, to catch localized motion instead of global illumination drift")
     differencing.add_argument("--sequence-ids", help="Comma-separated sequence_id subset")
 
+    compare = subparsers.add_parser("compare-candidates", help="Paired AUROC comparison for two aligned detector caches")
+    compare.add_argument("--baseline-cache", required=True)
+    compare.add_argument("--candidate-cache", required=True)
+    compare.add_argument("--out", required=True)
+    compare.add_argument("--ignore-band-seconds", type=float, default=180)
+    compare.add_argument("--bootstrap-samples", type=int, default=1000)
+    compare.add_argument("--seed", type=int, default=20260707)
+
     return parser.parse_args()
 
 def percentile(values, pct):
@@ -85,6 +93,103 @@ def read_cache_flat(cache_path: Path):
         if line.strip():
             records.append(json.loads(line))
     return records
+
+def cache_key(record):
+    return record["sequence_id"], int(record["timestamp_unix"]), int(record["ignition_offset_seconds"])
+
+def paired_auroc_bootstrap(groups, group_ids, base_key, candidate_key, samples, seed):
+    rng = random.Random(seed)
+    deltas = []
+    for _ in range(samples):
+        scores_base = []
+        scores_candidate = []
+        labels = []
+        for group_id in (rng.choice(group_ids) for _ in group_ids):
+            for record in groups[group_id]:
+                scores_base.append(record[base_key])
+                scores_candidate.append(record[candidate_key])
+                labels.append(record["_label"])
+        base_value = auroc(scores_base, labels)
+        candidate_value = auroc(scores_candidate, labels)
+        if base_value is not None and candidate_value is not None:
+            deltas.append(candidate_value - base_value)
+    return {
+        "ci95": [float(np.percentile(deltas, 2.5)), float(np.percentile(deltas, 97.5))] if deltas else [None, None],
+        "n_resamples_used": len(deltas),
+        "n_resamples_requested": samples,
+    }
+
+def cmd_compare_candidates(args):
+    baseline = {cache_key(record): record for record in read_cache_flat(Path(args.baseline_cache))}
+    candidate = {cache_key(record): record for record in read_cache_flat(Path(args.candidate_cache))}
+    if set(baseline) != set(candidate):
+        missing_baseline = sorted(set(candidate) - set(baseline))
+        missing_candidate = sorted(set(baseline) - set(candidate))
+        raise ValueError(json.dumps({"alignment_mismatch": {
+            "missing_baseline": missing_baseline[:10],
+            "missing_candidate": missing_candidate[:10],
+            "missing_baseline_count": len(missing_baseline),
+            "missing_candidate_count": len(missing_candidate),
+        }}))
+    paired = []
+    for key in sorted(baseline):
+        base_record = baseline[key]
+        candidate_record = candidate[key]
+        label = label_of(base_record, args.ignore_band_seconds)
+        if label is None:
+            continue
+        paired.append({
+            "sequence_id": base_record["sequence_id"],
+            "camera_id": base_record["camera_id"],
+            "_label": label,
+            "base_smoke": base_record["max_smoke_confidence"],
+            "candidate_smoke": candidate_record["max_smoke_confidence"],
+        })
+    groups_event = defaultdict(list)
+    groups_camera = defaultdict(list)
+    for record in paired:
+        groups_event[record["sequence_id"]].append(record)
+        groups_camera[record["camera_id"]].append(record)
+    baseline_scores = [record["base_smoke"] for record in paired]
+    candidate_scores = [record["candidate_smoke"] for record in paired]
+    labels = [record["_label"] for record in paired]
+    baseline_auroc = auroc(baseline_scores, labels)
+    candidate_auroc = auroc(candidate_scores, labels)
+    event_bootstrap = paired_auroc_bootstrap(
+        groups_event,
+        sorted(groups_event),
+        "base_smoke",
+        "candidate_smoke",
+        args.bootstrap_samples,
+        args.seed,
+    )
+    camera_bootstrap = paired_auroc_bootstrap(
+        groups_camera,
+        sorted(groups_camera),
+        "base_smoke",
+        "candidate_smoke",
+        args.bootstrap_samples,
+        args.seed + 1,
+    )
+    report = {
+        "baseline_cache": str(Path(args.baseline_cache).resolve()),
+        "candidate_cache": str(Path(args.candidate_cache).resolve()),
+        "ignore_band_seconds": args.ignore_band_seconds,
+        "paired_frames": len(paired),
+        "paired_events": len(groups_event),
+        "paired_cameras": len(groups_camera),
+        "baseline_auroc_smoke": baseline_auroc,
+        "candidate_auroc_smoke": candidate_auroc,
+        "delta_auroc_smoke": candidate_auroc - baseline_auroc,
+        "paired_bootstrap_event": event_bootstrap,
+        "paired_bootstrap_camera": camera_bootstrap,
+        "winner_rule": "event and camera lower CI > 0",
+        "decision": "candidate_better" if event_bootstrap["ci95"][0] > 0 and camera_bootstrap["ci95"][0] > 0 else "tie_or_not_proven",
+    }
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    console.print(f"Candidate comparison saved: {out_path}")
 
 def label_of(record, ignore_band_seconds):
     offset = record["ignition_offset_seconds"]
@@ -751,6 +856,8 @@ def main():
         cmd_spatial_persistence(args)
     elif args.command == "frame-differencing":
         cmd_frame_differencing(args)
+    elif args.command == "compare-candidates":
+        cmd_compare_candidates(args)
 
 if __name__ == "__main__":
     main()

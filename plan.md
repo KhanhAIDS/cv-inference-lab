@@ -1,0 +1,573 @@
+- **Kế hoạch bước 13 — Pyro-SDIS, FIgLib, YOLO26x, multi-platform free compute, paid cap 20 USD**
+
+- **Mục tiêu**
+  - Cải thiện detector khói xa/nhỏ.
+  - D-Fire `yolo26n`: control lịch sử; không phải model cuối.
+  - Candidate:
+    - `pyronear/yolov8s`: zero-shot domain model.
+    - `yolo26x`: candidate YOLO26 fine-tune duy nhất; thay toàn bộ đề xuất `yolo26m/l/s` trước đây.
+  - Không hạ model xuống YOLO26 scale nhỏ hơn vì budget, VRAM hoặc giới hạn phiên.
+  - Nếu runtime hiện tại hết quota, timeout hoặc sắp vượt paid cap:
+    - lưu checkpoint;
+    - đồng bộ artifact;
+    - resume trên runtime miễn phí khác.
+  - Gate chính: raw FIgLib smoke AUROC `≥0.80`.
+  - Human visibility: phân tầng phụ; không hạ gate.
+  - Paid compute cap tuyệt đối: `20 USD` tổng cộng trên mọi nền tảng.
+  - Free quota/credit:
+    - ưu tiên sử dụng trước paid compute;
+    - không tính vào paid cap;
+    - vẫn ghi usage trong cost report.
+  - Runtime hợp lệ:
+    - Modal account/workspace được user sở hữu hoặc được phép dùng;
+    - Google Colab;
+    - Kaggle;
+    - runtime GPU miễn phí khác được user sở hữu hoặc được phép dùng.
+  - Không dùng nhiều tài khoản để né điều khoản, quota hoặc hạn chế của nhà cung cấp.
+  - Upload full FIgLib chỉ khi pilot ngoại suy `≤4 giờ` trên storage target đã chọn.
+
+- **Phân công cố định**
+  - Mỗi worker làm phần được giao từ đầu đến cuối:
+    - code;
+    - chạy job;
+    - debug;
+    - test;
+    - report;
+    - artifact/checkpoint.
+  - Không đổi owner giữa phần.
+  - Không tách reviewer riêng.
+
+- **Ràng buộc Windows**
+  - Không cài Python mới.
+  - Không tạo virtualenv.
+  - Không cài package local.
+  - Không chạy project Python local.
+  - Không dùng `py`, `python`, `.venv/bin/python`.
+  - Local chỉ dùng:
+    - PowerShell;
+    - Git;
+    - `modal.exe`;
+    - trình duyệt cho Colab/Kaggle;
+    - upload/download file.
+  - Python chỉ chạy trong remote runtime/container; không tải Python project environment về máy.
+  - Mỗi remote runtime phải ghi:
+    - Python version;
+    - Ultralytics version;
+    - Torch/CUDA version;
+    - GPU model;
+    - dependency lock/hash.
+  - GTX 1650: không train, không full inference.
+
+- **Data transfer/storage policy**
+  - FIgLib local: `34.58 GB`, `41,191` file.
+  - Không giả định storage/quota/price của provider; kiểm tra dashboard tại thời điểm chạy.
+  - Không có GPU compute trong lúc chỉ upload dữ liệu.
+  - Không giả định tốc độ mạng.
+  - Upload probe `~1 GiB`; đo wall time thật.
+  - Công thức:
+    - `estimated_full_hours = probe_seconds × 34.58 / probe_GiB × 1.25 / 3600`.
+    - `1.25`: overhead nhiều file.
+  - Quyết định:
+    - `≤4 giờ`: upload full.
+    - `>4 giờ`, timeout, lỗi lặp: dừng full; dùng subset 64 sequence.
+  - Dataset portable:
+    - deterministic manifest;
+    - SHA-256 từng shard;
+    - đường dẫn runtime được resolve lúc chạy;
+    - không ghi Windows absolute path vào index/artifact.
+  - Modal dùng Volume v2 khi lưu dataset trên Modal.
+  - Colab/Kaggle/runtime khác dùng storage persistent tương ứng hoặc tải deterministic shard theo manifest.
+
+- **13.0 — Sửa state và hạ tầng**
+  - Tạo `human_review_labels.json`:
+    - `item_id`;
+    - `sequence_id`;
+    - `group`;
+    - `visibility_label`;
+    - `original_note`;
+    - `baseline_offset`;
+    - `mid_offset`;
+    - `latest_offset`.
+  - Nhãn:
+    - `visible_smoke`: 23.
+    - `fire_only`: 5.
+    - `ambiguous`: 5.
+    - `not_visible`: 7.
+  - `fire_only`:
+    - không tính positive trong smoke-only visibility analysis;
+    - tính positive trong any-fire analysis.
+  - Cập nhật `agent_context.md`:
+    - review đã xong;
+    - Windows local;
+    - Python local bị cấm theo quyết định user;
+    - Modal/Colab/Kaggle/remote GPU là execution targets;
+    - YOLO26x là candidate YOLO26 duy nhất;
+    - paid cap `20 USD`;
+    - free quota ưu tiên trước;
+    - upload threshold `4 giờ`;
+    - checkpoint phải portable giữa runtime.
+  - Cập nhật bước 13 trong `research_plan.md`:
+    - thay toàn bộ `yolo26m/l/s` bằng `yolo26x`;
+    - D-Fire nano chỉ control;
+    - thêm FIgLib full/subset decision;
+    - thêm camera-held-out final test;
+    - thêm multi-platform checkpoint/resume;
+    - thêm paid-compute gate.
+  - Pin execution environment:
+    - Python version per runtime;
+    - Ultralytics version tương thích `yolo26x`;
+    - Torch/CUDA;
+    - NumPy;
+    - PyArrow;
+    - Pillow;
+    - PyYAML;
+    - Rich.
+  - Tạo dependency lock có thể cài trên Modal, Colab, Kaggle và runtime Linux tương thích.
+  - Mọi report ghi dependency versions và runtime identity.
+  - Tạo Modal Volume khi dùng Modal:
+    - `modal volume create --version 2 smoke-fire-step13-volume`
+
+- **Public CLI/API cần thêm**
+  - `dataset.py pyro-sdis`:
+    - parquet → YOLO;
+    - giữ source split;
+    - remap `1→0`;
+    - atomic output;
+    - audit đầy đủ.
+  - `dataset.py figlib`:
+    - thêm `--split-mode camera-disjoint`;
+    - thêm `--subset-manifest`;
+    - path root truyền từ runtime;
+    - không lưu Windows path.
+  - `eval.py detector-cache`:
+    - resolve smoke/fire class bằng `model.names`;
+    - fail nếu thiếu smoke;
+    - thêm batch inference;
+    - thêm candidate revision/hash/class map;
+    - thêm split/subset filter;
+    - resume an toàn theo frame key;
+    - kiểm alignment.
+  - `temporal_eval.py`:
+    - thêm `--split dev|test|all`;
+    - thêm `compare-candidates`;
+    - paired bootstrap CI của `ΔAUROC`, `Δrecall`, `ΔTTD`;
+    - không dùng marginal-CI overlap làm significance.
+  - `train_portable.py`:
+    - một entry point dùng chung cho Modal/Colab/Kaggle/runtime Linux;
+    - init hoặc resume từ checkpoint;
+    - validate code/config/dataset hash trước resume;
+    - lưu `last.pt`, `best.pt`, run state, metrics;
+    - sync checkpoint sau mỗi epoch;
+    - graceful stop trước timeout hoặc paid cap.
+  - `modal_app.py`:
+    - `convert_pyro_sdis`;
+    - `build_figlib_index`;
+    - `probe_detector`;
+    - `cache_candidate`;
+    - `run_temporal`;
+    - `train_candidate` gọi chung `train_portable.py`;
+    - `benchmark_gpu`;
+    - `compare_candidates`;
+    - `artifact_status`.
+  - Notebook thin wrapper cho Colab/Kaggle:
+    - chỉ mount/download data;
+    - cài dependency lock;
+    - gọi `train_portable.py`;
+    - sync artifact;
+    - không chứa training logic riêng.
+  - Thêm PowerShell staging wrapper:
+    - tạo upload probe;
+    - tạo deterministic subset manifest;
+    - đóng gói checkpoint bundle;
+    - verify SHA-256 sau download/upload;
+    - không chạy Python local.
+
+- **13a — Pyro-SDIS converter/audit**
+  - Upload parquet lên execution storage đã chọn.
+  - Modal command khi dùng Modal:
+    - `modal volume put smoke-fire-step13-volume "datasets\smoke_fire_detection\pyro-sdis" "/datasets/smoke_fire_detection/"`
+  - Chạy converter trên CPU remote:
+    - Modal: `modal run tasks/smoke_fire_detection/modal_app.py::convert_pyro_sdis`.
+    - Runtime khác: gọi cùng converter qua CLI; không fork logic.
+  - Resource mục tiêu:
+    - CPU: 4 physical cores hoặc tương đương.
+    - RAM: 16 GiB hoặc đủ để converter pass.
+    - Không GPU.
+  - Validation:
+    - train `29,537`;
+    - val `4,099`;
+    - tổng `33,636`;
+    - empty annotation `5,499`;
+    - bbox `32,109`;
+    - source class chỉ `1`;
+    - output class chỉ `0`;
+    - invalid `0`;
+    - duplicate filename `0`;
+    - ảnh `1280×720`.
+  - Các count chỉ được xem invariant khi parquet shard hash khớp snapshot.
+  - Nếu hash khác:
+    - không ép count;
+    - fail checkpoint;
+    - báo diff.
+  - Checkpoint 1:
+    - audit;
+    - shard SHA-256;
+    - bbox percentiles;
+    - disk usage;
+    - runtime;
+    - CPU/RAM cost hoặc free-quota usage;
+    - command;
+    - files trực tiếp/gián tiếp.
+  - Không upload FIgLib trước khi checkpoint 1 pass.
+
+- **13b — FIgLib, split, baseline và zero-shot**
+
+- **13b.1 — Probe upload FIgLib**
+  - PowerShell staging:
+    - chọn sequence theo seed `20260707`;
+    - tối đa một sequence/camera;
+    - trải đều năm;
+    - tổng gần `1 GiB`;
+    - ghi `figlib_upload_probe_manifest.json`.
+  - Upload timed lên storage target đã chọn.
+  - Modal command khi dùng Modal:
+    - `Measure-Command { modal volume put smoke-fire-step13-volume "artifacts\smoke_fire_detection\staging\figlib_probe" "/datasets/smoke_fire_detection/FIgLib/" }`
+  - Ghi:
+    - provider/storage target;
+    - bytes;
+    - file count;
+    - elapsed;
+    - throughput;
+    - estimated full hours.
+  - Nhánh full:
+    - điều kiện `estimated_full_hours ≤4`.
+    - upload full bằng provider-specific transfer; manifest/hash giữ giống nhau.
+  - Nhánh subset:
+    - điều kiện `>4 giờ` hoặc upload lỗi lặp.
+    - deterministic 64 sequence;
+    - tối đa một sequence/camera;
+    - stratified theo year;
+    - không chọn theo detector score;
+    - không chọn theo human-review outcome;
+    - kết quả gắn nhãn `exploratory subset`;
+    - không tuyên bố gate final;
+    - không suy rộng FA/day toàn FIgLib.
+
+- **13b.2 — FIgLib split**
+  - Full dataset:
+    - group theo `camera_id`;
+    - seed `20260707`;
+    - `70% dev`, `30% final test`;
+    - không camera overlap;
+    - cân bằng gần nhất theo sequence count.
+  - Final test khóa:
+    - hash manifest;
+    - không đọc metric trước khi chốt candidate.
+  - Subset 64:
+    - `44 dev`, `20 final`;
+    - camera-disjoint;
+    - chỉ exploratory;
+    - bootstrap CI vẫn chạy nhưng ghi low-power.
+  - Build index bằng cùng code trên runtime đã chọn.
+  - Modal command khi dùng Modal:
+    - `modal run tasks/smoke_fire_detection/modal_app.py::build_figlib_index`
+
+- **13b.3 — Baseline và zero-shot**
+  - Không retrain D-Fire nano.
+  - Xác minh weight hiện có bằng artifact manifest/hash.
+  - Modal command khi artifact nằm trên Modal:
+    - `modal run tasks/smoke_fire_detection/modal_app.py::artifact_status --run-name dfire_yolo26n_baseline_full_vram`
+  - D-Fire baseline:
+    - chỉ tạo lại FIgLib dev cache/report.
+  - Pyronear:
+    - pin Hugging Face revision;
+    - verify SHA-256;
+    - verify `model.names`;
+    - pilot 30 frame:
+      - nhiều camera;
+      - pre/post cân bằng;
+      - có smoke-visible, ambiguous, not-visible nếu tồn tại trong uploaded set.
+  - Protocol:
+    - `imgsz=1280`;
+    - `conf=0.05`;
+    - `iou=0.6`;
+    - same frame universe;
+    - batch size chọn bằng probe VRAM;
+    - 1 file JPG 0-byte được skip có log.
+  - Dev outputs:
+    - raw smoke AUROC;
+    - event bootstrap CI;
+    - camera bootstrap CI;
+    - diagnose;
+    - detection sizes;
+    - temporal AMOC;
+    - FIgLib-window FA proxy;
+    - latency;
+    - GPU runtime;
+    - paid cost hoặc free-quota usage.
+  - Checkpoint 2:
+    - baseline vs Pyronear;
+    - paired `ΔAUROC`;
+    - không mở final test;
+    - actual paid spend;
+    - free quota usage;
+    - remaining paid cap;
+    - available runtime targets cho 13c.
+
+- **Model-size policy**
+  - D-Fire `yolo26n` tồn tại vì:
+    - baseline rẻ;
+    - pipeline control;
+    - không phải kết luận “nano đủ tốt”.
+  - `yolo26x`:
+    - candidate YOLO26 fine-tune duy nhất;
+    - thay thế toàn bộ `yolo26m`, `yolo26l`, `yolo26s` trong plan cũ;
+    - không fallback sang scale nhỏ hơn.
+  - Khi `yolo26x` không vừa runtime:
+    - giảm per-device batch;
+    - dùng mixed precision;
+    - dùng gradient accumulation;
+    - bật checkpointing/memory optimization nếu implementation hỗ trợ;
+    - chuyển sang GPU/runtime khác;
+    - giữ `imgsz=1280` và architecture `yolo26x`.
+  - Cadence 1 frame/phút:
+    - ưu tiên accuracy và inference cost-per-camera;
+    - không ưu tiên throughput kiểu 30 FPS.
+  - Chỉ dùng FIgLib dev để đánh giá candidate sau training; không dùng để chọn epoch.
+
+- **13c — YOLO26x multi-platform training**
+  - Mục tiêu:
+    - fine-tune một model `yolo26x` trên Pyro-SDIS;
+    - training có thể tiếp tục qua nhiều runtime hợp lệ;
+    - không đổi model khi runtime/budget thay đổi.
+  - Runtime priority:
+    - free GPU/quota hợp lệ trước;
+    - paid runtime chỉ dùng khi cần;
+    - Modal, Colab, Kaggle và runtime Linux khác đều gọi cùng training entry point.
+  - Trước mỗi runtime:
+    - xác minh account/workspace được phép dùng;
+    - ghi provider, GPU, VRAM, session limit, storage limit;
+    - cài đúng dependency lock;
+    - verify code commit;
+    - verify dataset manifest/hash;
+    - verify checkpoint hash nếu resume;
+    - chạy smoke test 30 batch;
+    - đo peak VRAM và throughput.
+  - Training config cố định:
+    - init: official `yolo26x.pt` khi bắt đầu từ epoch 0;
+    - resume: checkpoint bundle gần nhất khi đã có progress;
+    - dataset: Pyro-SDIS one-class;
+    - `imgsz=1280`;
+    - `epochs=20` tổng cộng qua mọi runtime;
+    - `patience=5`;
+    - seed `20260707`;
+    - AMP khi ổn định;
+    - per-device batch lớn nhất vừa VRAM;
+    - gradient accumulation để giữ effective batch mục tiêu;
+    - model selection: Pyro official val mAP50-95;
+    - không dùng FIgLib chọn epoch.
+  - Checkpoint policy bắt buộc:
+    - `save_period=1`: lưu sau mỗi epoch;
+    - luôn giữ `last.pt`;
+    - luôn giữ `best.pt`;
+    - mỗi checkpoint chứa hoặc đi kèm:
+      - epoch đã hoàn tất;
+      - model state;
+      - optimizer state;
+      - scheduler/scaler state nếu có;
+      - training args;
+      - seed;
+      - code commit;
+      - dependency lock/hash;
+      - dataset manifest/hash;
+      - metrics đến epoch hiện tại;
+      - provider/GPU/runtime metadata.
+    - sau mỗi epoch:
+      - flush file;
+      - tính SHA-256;
+      - tạo `checkpoint_manifest.json`;
+      - sync sang persistent storage;
+      - giữ ít nhất hai bản khi runtime dễ mất session.
+    - trước timeout, quota end hoặc manual stop:
+      - graceful stop tại boundary an toàn gần nhất;
+      - sync `last.pt`, `best.pt`, manifest, logs;
+      - verify remote hash trước khi đóng runtime.
+  - Resume contract:
+    - dùng cùng code commit hoặc migration patch được ghi rõ;
+    - cùng dataset manifest/hash;
+    - cùng model/config quan trọng;
+    - load optimizer/scheduler/scaler khi checkpoint hỗ trợ;
+    - resume từ epoch kế tiếp;
+    - không reset epoch count;
+    - không gộp metric nếu config thay đổi material;
+    - chạy một validation smoke test sau restore trước khi train tiếp.
+  - Migration giữa runtime:
+    - export checkpoint bundle từ runtime A;
+    - upload/mount bundle trên runtime B;
+    - verify SHA-256;
+    - verify dependency/runtime compatibility;
+    - resume bằng `train_portable.py`;
+    - ghi migration event trong changelog/cost ledger.
+  - Paid compute gate:
+    - tổng paid spend mọi provider không vượt `20 USD`;
+    - khi projected paid total đạt `18 USD`:
+      - không bắt đầu block paid dài mới;
+      - giữ `2 USD` cho graceful checkpoint/eval/retry nhỏ;
+      - migrate sang free runtime.
+    - khi actual paid spend chạm `20 USD`:
+      - hard stop paid compute;
+      - checkpoint;
+      - chỉ tiếp tục bằng free quota/runtime.
+    - free quota/credit không thay đổi architecture hoặc training target.
+  - Platform-specific storage:
+    - Modal: Volume v2.
+    - Colab: persistent cloud drive hoặc explicit download sau mỗi epoch.
+    - Kaggle: working output + commit/export checkpoint bundle trước session end.
+    - Runtime khác: persistent object/file storage hoặc explicit artifact download.
+  - Kết thúc training:
+    - chọn `best.pt` bằng Pyro val mAP50-95;
+    - chạy FIgLib dev đúng protocol baseline/zero-shot;
+    - xuất runtime/cost/free-quota ledger;
+    - xuất checkpoint 3 hoàn chỉnh.
+
+- **13d — Chốt candidate**
+  - Dev candidate:
+    - D-Fire `yolo26n` baseline.
+    - Pyronear YOLOv8s zero-shot.
+    - YOLO26x fine-tuned.
+  - Luật thống kê:
+    - paired bootstrap theo event;
+    - paired cluster bootstrap theo camera;
+    - winner khi lower CI của `ΔAUROC >0`;
+    - camera delta cùng chiều;
+    - CI chứa 0: statistical tie.
+  - Gate raw point:
+    - `≥0.80`: pass.
+    - `<0.80`: fail.
+    - CI chỉ mô tả uncertainty.
+  - Operating point:
+    - ưu tiên recall tại FA budget;
+    - TTD chỉ so khi `|Δrecall|≤0.02`;
+    - FA/day và FA/week ghi `FIgLib-window proxy`.
+  - Tie:
+    - chọn model có inference dollars/camera-tháng thấp hơn;
+    - training platform/free quota không dùng làm tie-breaker chất lượng;
+    - ghi `operational choice`, không ghi statistical winner.
+  - Khóa winner trên dev trước.
+  - Sau đó mới chạy final camera-held-out:
+    - D-Fire baseline;
+    - Pyronear zero-shot;
+    - dev winner.
+  - Không chạy mọi losing model trên final test để giảm compute và tránh mở rộng final-test exposure.
+  - Full FIgLib:
+    - có thể kết luận gate.
+  - Subset 64:
+    - chỉ kết luận exploratory;
+    - không tuyên bố detector đạt/chưa đạt toàn FIgLib.
+
+- **13e — Nhánh fail và đóng bước 13**
+  - Kích hoạt fail branch khi full-FIgLib final winner raw AUROC `<0.80`.
+  - Không thực thi experiment mới trong lượt bước 13.
+  - Chỉ viết proposal:
+    - camera-disjoint pseudo-label;
+    - embedding linear probe;
+    - E5 tile-classifier nếu probe fail.
+  - Không quay lại detector tiling cũ.
+  - Không tải PYRONEAR-2025.
+  - Không mở learned temporal verifier.
+  - Không mở E1a.
+  - Hoàn tất:
+    - test suite;
+    - final report;
+    - cost/free-quota report;
+    - artifact retention;
+    - cleanup;
+    - changelog.
+
+- **Tests**
+  - Converter synthetic:
+    - positive nhiều bbox;
+    - empty annotation;
+    - remap đúng;
+    - invalid class;
+    - bbox ngoài range;
+    - corrupt bytes;
+    - duplicate filename;
+    - atomic failure.
+  - FIgLib:
+    - Windows path không lọt vào runtime index;
+    - camera-disjoint tuyệt đối;
+    - manifest hash ổn định;
+    - subset seed tái lập;
+    - index giống nhau trên Modal/Colab/Kaggle khi cùng manifest.
+  - Detector:
+    - D-Fire class map smoke/fire;
+    - Pyronear smoke-only map;
+    - YOLO26x smoke class map;
+    - thiếu smoke fail trước full GPU;
+    - batched output bằng single-frame output trong tolerance;
+    - resume cache không duplicate;
+    - corrupted frame ghi error.
+  - Training/checkpoint:
+    - init `yolo26x.pt` đúng;
+    - `last.pt` cập nhật mỗi epoch;
+    - `best.pt` chỉ đổi khi metric tốt hơn;
+    - checkpoint bundle có đủ state/manifest/hash;
+    - restore trên runtime thứ hai thành công;
+    - epoch tiếp tục, không reset;
+    - optimizer/scheduler/scaler restore khi có;
+    - dataset hash mismatch phải fail;
+    - code/config mismatch material phải fail hoặc tạo run mới;
+    - interrupted session mất tối đa phần epoch chưa checkpoint;
+    - SHA-256 trước/sau transfer khớp.
+  - Statistics:
+    - paired identical candidates: delta `0`;
+    - synthetic better candidate: delta CI dương;
+    - camera clustering đúng;
+    - alignment mismatch fail.
+  - Runtime/provider:
+    - 30-batch smoke test trước full train;
+    - GPU/VRAM/runtime metadata;
+    - free quota usage ledger;
+    - projected paid cost vs actual paid cost;
+    - migration Modal → Colab hoặc Kaggle bằng checkpoint test nhỏ;
+    - hard stop paid compute tại `20 USD`;
+    - paid stop không làm mất checkpoint đã hoàn tất.
+
+- **Reporting và cleanup**
+  - `CHANGELOG.md` append GMT+7 sau mỗi checkpoint và migration.
+  - Ghi mọi command.
+  - Ghi file trực tiếp/gián tiếp.
+  - Ghi provider/account alias không nhạy cảm; không ghi token/secret.
+  - Ghi từng runtime:
+    - provider;
+    - GPU;
+    - session duration;
+    - epochs hoàn tất;
+    - free quota hoặc paid cost;
+    - checkpoint vào/ra;
+    - SHA-256;
+    - stop reason.
+  - Giữ cache đến khi paired comparison xong.
+  - Artifact cuối giữ:
+    - structured human labels;
+    - Pyro audit;
+    - data manifests/hashes;
+    - YOLO26x `best.pt` và `last.pt` cuối;
+    - checkpoint manifest;
+    - dependency lock;
+    - comparison JSON/Markdown;
+    - final reports;
+    - paid cost report;
+    - free-quota/runtime ledger.
+  - Xóa:
+    - staging upload probe;
+    - reproducible detector caches;
+    - checkpoint trung gian đã được compact và verify không còn cần;
+    - temporary extracted data khi không cần.
+  - Không xóa checkpoint cuối trước khi:
+    - có ít nhất hai bản verify hash;
+    - final report hoàn tất;
+    - resume test pass.
+  - Mọi deletion ghi changelog.
+  - `agent_context.md`: state ngắn; không nhồi command log.

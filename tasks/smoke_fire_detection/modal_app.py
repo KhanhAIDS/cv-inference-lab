@@ -426,15 +426,17 @@ def compare_candidates(
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=21600)
 def train_candidate(
     data: str = "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
+    model: str = "yolo26x.pt",
     run_name: str = "yolo26x_pyro_sdis",
     smoke_only: bool = True,
     smoke_batches: int = 300,
     smoke_use_archive: bool = True,
-    batch: int = -1,
+    batch: int = 4,
     resume: str = "auto",
     max_epochs_per_invocation: int = 1,
     max_runtime_seconds: int = 20400,
     dataset_stage_max_seconds: int = 600,
+    subset_images: int = 0,
     free_quota: bool = False,
     paid_spend_usd: float = -1.0,
     code_commit: str = "unverified",
@@ -443,9 +445,10 @@ def train_candidate(
 
     if code_commit == "unverified":
         raise ValueError("code_commit is required for portable training")
+    model_value = str(workspace_path(model)) if Path(model).parent != Path(".") else model
     command = [
         "--data", str(workspace_path(data)),
-        "--model", "yolo26x.pt",
+        "--model", model_value,
         "--run-name", run_name,
         "--project", "/workspace/artifacts/smoke_fire_detection/runs",
         "--dataset-snapshot", "/workspace/artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
@@ -465,6 +468,7 @@ def train_candidate(
         "--dataset-archive", "/workspace/datasets/smoke_fire_detection/pyro-sdis-yolo.tar",
         "--dataset-archive-manifest", "/workspace/artifacts/smoke_fire_detection/pyro_sdis_yolo_archive.json",
         "--smoke-batches", str(smoke_batches),
+        "--subset-images", str(subset_images),
     ]
     if smoke_only:
         command.append("--smoke-only")
@@ -477,6 +481,222 @@ def train_candidate(
     result = run_training(parse_args(command), sync_callback=volume.commit)
     volume.commit()
     return result
+
+
+@app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=3600)
+def audit_batch4(
+    data: str = "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
+    model: str = "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt",
+    out: str = "artifacts/smoke_fire_detection/yolo26x_batch4_probe_report_v2.json",
+    warmup_batches: int = 20,
+    measured_batches: int = 100,
+    l4_gpu_usd_per_second: float = 0.000222,
+    remaining_gpu_budget_usd: float = 9.0,
+):
+    import math
+    import statistics
+    import torch
+    from tasks.smoke_fire_detection.train_portable import (
+        STAGING_COUNTS,
+        runtime_metadata,
+        prepare_resume_gate_subset,
+        stage_dataset_archive,
+        verified_dataset_identity,
+        write_json_atomic,
+    )
+    from ultralytics import YOLO
+    from ultralytics.models.yolo.detect.train import DetectionTrainer
+
+    if warmup_batches != 20 or measured_batches != 100:
+        raise ValueError("batch-4 audit requires exactly 20 warm-up and 100 measured batches")
+    if l4_gpu_usd_per_second <= 0 or remaining_gpu_budget_usd <= 0:
+        raise ValueError("batch-4 audit requires positive price and remaining budget")
+    data_path = workspace_path(data)
+    model_path = workspace_path(model)
+    output_path = workspace_path(out)
+    if not model_path.is_file():
+        raise FileNotFoundError(model_path)
+    identity_args = SimpleNamespace(
+        data=str(data_path),
+        dataset_snapshot="/workspace/artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
+        dataset_audit="/workspace/artifacts/smoke_fire_detection/pyro_sdis_audit.json",
+        dependency_lock="/root/requirements.lock",
+        runtime_lock="/root/requirements-cu130.lock",
+    )
+    identity = verified_dataset_identity(identity_args)
+    data_yaml, staging = stage_dataset_archive(
+        data_path,
+        identity,
+        "/workspace/datasets/smoke_fire_detection/pyro-sdis-yolo.tar",
+        "/workspace/artifacts/smoke_fire_detection/pyro_sdis_yolo_archive.json",
+        max_seconds=600,
+    )
+    if staging.get("counts") != {
+        **STAGING_COUNTS,
+        "archive_files": staging["counts"]["archive_files"],
+        "dataset_yaml_sha256": staging["counts"]["dataset_yaml_sha256"],
+    }:
+        raise ValueError("batch-4 audit strict staging counts invalid")
+    data_yaml, subset = prepare_resume_gate_subset(
+        data_yaml,
+        "/tmp/yolo26x_batch4_probe",
+        480,
+        20260707,
+    )
+    augmentation = {
+        "hsv_h": 0.015,
+        "hsv_s": 0.7,
+        "hsv_v": 0.4,
+        "degrees": 0.0,
+        "translate": 0.1,
+        "scale": 0.5,
+        "shear": 0.0,
+        "perspective": 0.0,
+        "flipud": 0.0,
+        "fliplr": 0.5,
+        "mosaic": 1.0,
+        "mixup": 0.0,
+        "cutmix": 0.0,
+        "copy_paste": 0.0,
+        "erasing": 0.4,
+    }
+    observed_args = {}
+    batch_started = [None]
+    batch_durations = []
+    total_batches = [0]
+    validation_started = [False]
+    model_instance = YOLO(str(model_path))
+
+    class Batch4AuditTrainer(DetectionTrainer):
+        def validate(self):
+            return {}, 0.0
+
+        def final_eval(self):
+            return
+
+    def on_train_start(trainer):
+        observed_args.update({
+            "imgsz": trainer.args.imgsz,
+            "batch": trainer.args.batch,
+            "amp": trainer.args.amp,
+            "workers": trainer.args.workers,
+            "seed": trainer.args.seed,
+            "val": trainer.args.val,
+            "save": trainer.args.save,
+            "cache": trainer.args.cache,
+            "augmentation": {name: getattr(trainer.args, name) for name in augmentation},
+        })
+
+    def on_train_batch_start(trainer):
+        batch_started[0] = time.perf_counter()
+
+    def on_train_batch_end(trainer):
+        if batch_started[0] is None:
+            raise RuntimeError("batch timing start callback missing")
+        total_batches[0] += 1
+        if total_batches[0] > warmup_batches:
+            batch_durations.append(time.perf_counter() - batch_started[0])
+
+    def on_val_start(trainer):
+        validation_started[0] = True
+
+    model_instance.add_callback("on_train_start", on_train_start)
+    model_instance.add_callback("on_train_batch_start", on_train_batch_start)
+    model_instance.add_callback("on_train_batch_end", on_train_batch_end)
+    model_instance.add_callback("on_val_start", on_val_start)
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    model_instance.train(
+        trainer=Batch4AuditTrainer,
+        data=str(data_yaml),
+        epochs=1,
+        imgsz=1280,
+        batch=4,
+        patience=0,
+        seed=20260707,
+        workers=8,
+        device="0",
+        amp=True,
+        save=False,
+        val=False,
+        cache=False,
+        plots=False,
+        project="/tmp/yolo26x_batch4_probe",
+        name="run",
+        exist_ok=True,
+        **augmentation,
+    )
+    if len(batch_durations) != measured_batches:
+        raise RuntimeError(f"batch-4 audit measured {len(batch_durations)} batches, expected {measured_batches}")
+    if validation_started[0]:
+        raise RuntimeError("batch-4 audit validation ran despite val=False")
+    if observed_args != {
+        "imgsz": 1280,
+        "batch": 4,
+        "amp": True,
+        "workers": 8,
+        "seed": 20260707,
+        "val": False,
+        "save": False,
+        "cache": False,
+        "augmentation": augmentation,
+    }:
+        raise ValueError(f"batch-4 audit runtime configuration drift: {observed_args}")
+    ordered = sorted(batch_durations)
+    median_seconds = statistics.median(batch_durations)
+    p90_seconds = ordered[math.ceil(0.9 * len(ordered)) - 1]
+    measured_seconds = sum(batch_durations)
+    images_per_second = measured_batches * 4 / measured_seconds
+    projected_epoch_seconds = STAGING_COUNTS["train_images"] / images_per_second
+    projected_epoch_gpu_cost = projected_epoch_seconds * l4_gpu_usd_per_second
+    projected_total_gpu_cost = projected_epoch_gpu_cost * 20
+    peak_vram_bytes = torch.cuda.max_memory_allocated()
+    total_vram_bytes = torch.cuda.get_device_properties(0).total_memory
+    report = {
+        "schema": "smoke-fire-yolo26x-batch4-audit-v1",
+        "created_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "gate": {
+            "technical_pass": peak_vram_bytes <= int(total_vram_bytes * 0.8),
+            "modal_budget_pass": projected_total_gpu_cost <= remaining_gpu_budget_usd,
+            "full_training_allowed": peak_vram_bytes <= int(total_vram_bytes * 0.8) and projected_total_gpu_cost <= remaining_gpu_budget_usd,
+        },
+        "real_data": {
+            "dataset_identity": identity,
+            "strict_staging": staging,
+            "train_images": STAGING_COUNTS["train_images"],
+            "audit_subset": subset,
+        },
+        "configuration": observed_args,
+        "measurement": {
+            "warmup_batches_excluded": warmup_batches,
+            "measured_batches": measured_batches,
+            "measured_images": measured_batches * 4,
+            "median_batch_seconds": median_seconds,
+            "p90_batch_seconds": p90_seconds,
+            "throughput_images_per_second": images_per_second,
+            "peak_vram_bytes": peak_vram_bytes,
+            "total_vram_bytes": total_vram_bytes,
+            "vram_utilization_fraction": peak_vram_bytes / total_vram_bytes,
+        },
+        "projection": {
+            "train_images": STAGING_COUNTS["train_images"],
+            "epoch_seconds": projected_epoch_seconds,
+            "epoch_gpu_cost_usd": projected_epoch_gpu_cost,
+            "twenty_epoch_gpu_cost_usd": projected_total_gpu_cost,
+            "l4_gpu_usd_per_second": l4_gpu_usd_per_second,
+            "remaining_gpu_budget_usd": remaining_gpu_budget_usd,
+            "cost_scope": "GPU only; excludes CPU, memory, volume, and startup",
+            "price_source": "https://modal.com/pricing",
+        },
+        "runtime": runtime_metadata(),
+        "model": {
+            "path": str(model_path),
+            "sha256": sha256_path(model_path),
+        },
+    }
+    write_json_atomic(output_path, report)
+    volume.commit()
+    return report
 
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=3600)
 def artifact_status(run_name: str = "yolo26x_pyro_sdis"):
@@ -503,6 +723,169 @@ def artifact_status(run_name: str = "yolo26x_pyro_sdis"):
             for path in paths
         },
     }
+
+
+@app.function(image=utility_image, volumes={"/workspace": volume}, timeout=1800, cpu=4, memory=16384)
+def verify_strict_staging(
+    data: str = "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
+    archive: str = "datasets/smoke_fire_detection/pyro-sdis-yolo.tar",
+    archive_manifest: str = "artifacts/smoke_fire_detection/pyro_sdis_yolo_archive.json",
+    snapshot: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
+    report_out: str = "artifacts/smoke_fire_detection/pyro_sdis_strict_staging_report.json",
+):
+    from tasks.smoke_fire_detection.train_portable import (
+        read_json,
+        sha256_file,
+        stage_dataset_archive,
+        staging_destination,
+        staging_lock_path,
+        staging_marker_path,
+        staging_temporary_prefix,
+        write_json_atomic,
+    )
+
+    started = time.perf_counter()
+    data_path = workspace_path(data)
+    archive_path = workspace_path(archive)
+    archive_manifest_path = workspace_path(archive_manifest)
+    snapshot_path = workspace_path(snapshot)
+    report_path = workspace_path(report_out)
+    identity = {"dataset_snapshot_sha256": sha256_file(snapshot_path)}
+    manifest = read_json(archive_manifest_path)
+    archive_sha256 = manifest["archive_sha256"]
+    staging_root = Path("/tmp") / "smoke-fire-strict-staging-audit"
+    cache_path = staging_destination(archive_sha256, staging_root)
+    fresh_yaml, fresh = stage_dataset_archive(
+        data_path,
+        identity,
+        archive_path,
+        archive_manifest_path,
+        max_seconds=900,
+        staging_root=staging_root,
+        force_rebuild=True,
+    )
+    fresh_marker = read_json(staging_marker_path(cache_path))
+    cached_yaml, cached = stage_dataset_archive(
+        data_path,
+        identity,
+        archive_path,
+        archive_manifest_path,
+        max_seconds=900,
+        staging_root=staging_root,
+    )
+    victim = next((cache_path / "images" / "train").rglob("*.jpg"))
+    victim_relative = victim.relative_to(cache_path).as_posix()
+    victim.unlink()
+    stale_yaml, stale = stage_dataset_archive(
+        data_path,
+        identity,
+        archive_path,
+        archive_manifest_path,
+        max_seconds=900,
+        staging_root=staging_root,
+    )
+    corrupt_archive = staging_root / "corrupt-archive.tar"
+    corrupt_archive.write_bytes(b"not a tar archive")
+    corrupt_manifest = dict(manifest)
+    corrupt_manifest["archive_sha256"] = sha256_file(corrupt_archive)
+    corrupt_manifest_path = staging_root / "corrupt-archive-manifest.json"
+    write_json_atomic(corrupt_manifest_path, corrupt_manifest)
+    corrupt_cache_path = staging_destination(corrupt_manifest["archive_sha256"], staging_root)
+    corrupt_error = None
+    try:
+        stage_dataset_archive(
+            data_path,
+            identity,
+            corrupt_archive,
+            corrupt_manifest_path,
+            max_seconds=900,
+            staging_root=staging_root,
+        )
+    except Exception as error:
+        corrupt_error = f"{type(error).__name__}: {error}"
+    interrupted = cache_path.parent / f"{staging_temporary_prefix(cache_path)}interrupted"
+    interrupted.mkdir(parents=True, exist_ok=False)
+    (interrupted / "dataset.yaml").write_text("path: interrupted\n", encoding="utf-8")
+    interrupted_yaml, interrupted_result = stage_dataset_archive(
+        data_path,
+        identity,
+        archive_path,
+        archive_manifest_path,
+        max_seconds=900,
+        staging_root=staging_root,
+    )
+    marker_before_lock_test = sha256_file(staging_marker_path(cache_path))
+    lock_path = staging_lock_path(cache_path)
+    lock_path.mkdir()
+    concurrent_error = None
+    try:
+        stage_dataset_archive(
+            data_path,
+            identity,
+            archive_path,
+            archive_manifest_path,
+            max_seconds=900,
+            staging_root=staging_root,
+        )
+    except Exception as error:
+        concurrent_error = f"{type(error).__name__}: {error}"
+    finally:
+        lock_path.rmdir()
+    marker_after_lock_test = sha256_file(staging_marker_path(cache_path))
+    tests = {
+        "fresh_extract": {
+            "pass": fresh["mode"] == "archive",
+            "mode": fresh["mode"],
+            "counts": fresh["counts"],
+            "dataset_yaml_sha256": fresh["dataset_yaml_sha256"],
+        },
+        "valid_cache_reuse": {
+            "pass": cached["mode"] == "archive_cached" and cached["counts"] == fresh["counts"] and cached_yaml.read_bytes() == fresh_yaml.read_bytes(),
+            "mode": cached["mode"],
+            "counts_equal": cached["counts"] == fresh["counts"],
+            "dataset_yaml_sha256": cached["dataset_yaml_sha256"],
+        },
+        "stale_cache": {
+            "pass": stale["mode"] == "archive" and stale_yaml.is_file() and stale["counts"] == fresh["counts"],
+            "deleted_relative_path": victim_relative,
+            "mode": stale["mode"],
+            "counts": stale["counts"],
+        },
+        "corrupt_archive": {
+            "pass": corrupt_error is not None and not corrupt_cache_path.exists() and not staging_marker_path(corrupt_cache_path).exists(),
+            "error": corrupt_error,
+            "cache_exists": corrupt_cache_path.exists(),
+        },
+        "interrupted_extract": {
+            "pass": not interrupted.exists() and interrupted_result["mode"] == "archive_cached" and interrupted_yaml.is_file(),
+            "mode": interrupted_result["mode"],
+            "temporary_exists": interrupted.exists(),
+        },
+        "concurrent_invocation": {
+            "pass": concurrent_error is not None and marker_before_lock_test == marker_after_lock_test,
+            "error": concurrent_error,
+            "marker_unchanged": marker_before_lock_test == marker_after_lock_test,
+        },
+    }
+    report = {
+        "schema": "smoke-fire-pyro-sdis-strict-staging-audit-v1",
+        "archive_sha256": archive_sha256,
+        "dataset_snapshot_sha256": identity["dataset_snapshot_sha256"],
+        "dataset_yaml_sha256": fresh_marker["dataset_yaml_sha256"],
+        "exact_counts": fresh_marker["counts"],
+        "normalized_empty_labels": fresh["normalized_empty_labels"],
+        "cache_path": str(cache_path),
+        "tests": tests,
+        "all_pass": all(entry["pass"] for entry in tests.values()),
+        "suspected_stale_cache": "unproven: Task 228 cache artifact unavailable",
+        "staging_bug_eliminated_by_strict_validation": all(entry["pass"] for entry in tests.values()),
+        "runtime_cpu_seconds": time.perf_counter() - started,
+    }
+    write_json_atomic(report_path, report)
+    volume.commit()
+    if not report["all_pass"]:
+        raise RuntimeError(json.dumps(report, sort_keys=True))
+    return report
 
 
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=1800)
@@ -680,7 +1063,9 @@ def audit_checkpoint(run_name: str = "yolo26x_pyro_sdis"):
 def verify_checkpoint_load(run_name: str = "yolo26x_pyro_sdis"):
     import torch
     from ultralytics import YOLO
+    from tasks.smoke_fire_detection.train_portable import checkpoint_resume_state
 
+    volume.reload()
     run_dir = Path("/workspace/artifacts/smoke_fire_detection/runs") / run_name
     last_path = run_dir / "weights" / "last_resume.pt"
     manifest_path = run_dir / "checkpoint_manifest.json"
@@ -693,25 +1078,35 @@ def verify_checkpoint_load(run_name: str = "yolo26x_pyro_sdis"):
         raise ValueError("last.pt checksum mismatch")
     checkpoint = torch.load(last_path, map_location="cpu", weights_only=False)
     YOLO(str(last_path))
-    optimizer = checkpoint.get("optimizer")
-    if optimizer is None:
-        raise ValueError("checkpoint has no optimizer state; resume unavailable")
-    epoch = checkpoint.get("epoch")
-    if not isinstance(epoch, int) or epoch < 0:
-        raise ValueError(f"invalid checkpoint epoch: {epoch!r}")
-    train_args = checkpoint.get("train_args")
-    if train_args is None:
-        raise ValueError("checkpoint has no train_args; resume unavailable")
+    state = checkpoint_resume_state(last_path)
+    if state["dataset_identity"] != manifest.get("identity"):
+        raise ValueError("checkpoint dataset identity mismatch")
+    snapshot_path = run_dir / "weights" / f"epoch_{state['epoch_zero_based'] + 1:03d}_resume.pt"
+    snapshot_state = checkpoint_resume_state(snapshot_path)
+    if snapshot_state["sha256"] != actual_hash:
+        raise ValueError("immutable checkpoint snapshot hash mismatch")
+    snapshots = {}
+    for name, expected in manifest.get("resumable_snapshots", {}).items():
+        state_entry = checkpoint_resume_state(run_dir / "weights" / name)
+        if state_entry["sha256"] != expected.get("sha256"):
+            raise ValueError(f"immutable checkpoint manifest mismatch: {name}")
+        snapshots[name] = state_entry
     return {
         "run_dir": str(run_dir),
         "load_ok": True,
         "resume_state_ok": True,
-        "checkpoint_epoch_zero_based": epoch,
-        "next_epoch_one_based": epoch + 2,
+        "checkpoint_epoch_zero_based": state["epoch_zero_based"],
+        "next_epoch_one_based": state["next_epoch_one_based"],
         "last_resume_pt_sha256": actual_hash,
         "completed_epoch_manifest": manifest.get("completed_epoch"),
-        "optimizer_present": True,
-        "train_args_present": True,
+        "updates": state["updates"],
+        "optimizer_present": state["optimizer_present"],
+        "ema_present": state["ema_present"],
+        "scaler_present": state["scaler_present"],
+        "scheduler_present": state["scheduler_present"],
+        "train_args_present": state["train_args_present"],
+        "immutable_snapshot": snapshot_state,
+        "resumable_snapshots": snapshots,
     }
 
 @app.function(image=utility_image, timeout=3600, cpu=1)
@@ -726,7 +1121,8 @@ def pyro_sdis_cli(
     audit_out: str = "artifacts/smoke_fire_detection/pyro_sdis_audit.json",
     expected_shards: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
     run_name: str = "yolo26x_pyro_sdis",
-    batch: int = -1,
+    model: str = "yolo26x.pt",
+    batch: int = 4,
     smoke_batches: int = 300,
     resume: str = "auto",
     max_epochs_per_invocation: int = 1,
@@ -763,6 +1159,7 @@ def pyro_sdis_cli(
     elif action == "train-smoke":
         print(train_candidate.remote(
             run_name=run_name,
+            model=model,
             smoke_only=True,
             batch=batch,
             smoke_batches=smoke_batches,
@@ -790,12 +1187,70 @@ def pyro_sdis_cli(
         ))
     elif action == "artifact-status":
         print(artifact_status.remote(run_name))
+    elif action == "verify-strict-staging":
+        print(verify_strict_staging.remote())
     elif action == "verify-checkpoint":
         print(verify_checkpoint_load.remote(run_name))
     elif action == "audit-checkpoint":
         print(audit_checkpoint.remote(run_name))
     elif action == "verify-patch":
         print(verify_resume_patch.remote())
+    elif action == "audit-batch4":
+        print(audit_batch4.remote())
+    elif action == "resume-gate":
+        if paid_spend_usd < 0:
+            raise ValueError("resume gate requires current paid spend")
+        gate_run_name = run_name if run_name != "yolo26x_pyro_sdis" else "yolo26x_pyro_sdis_resume_gate"
+        calibration_model = "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt"
+        invocation_a = train_candidate.remote(
+            model=calibration_model,
+            run_name=gate_run_name,
+            smoke_only=False,
+            batch=4,
+            resume="never",
+            max_epochs_per_invocation=1,
+            max_runtime_seconds=max_runtime_seconds,
+            dataset_stage_max_seconds=dataset_stage_max_seconds,
+            subset_images=384,
+            paid_spend_usd=paid_spend_usd,
+            code_commit=code_commit,
+        )
+        checkpoint_a = verify_checkpoint_load.remote(gate_run_name)
+        invocation_b = train_candidate.remote(
+            model=calibration_model,
+            run_name=gate_run_name,
+            smoke_only=False,
+            batch=4,
+            resume="always",
+            max_epochs_per_invocation=1,
+            max_runtime_seconds=max_runtime_seconds,
+            dataset_stage_max_seconds=dataset_stage_max_seconds,
+            subset_images=384,
+            paid_spend_usd=paid_spend_usd,
+            code_commit=code_commit,
+        )
+        checkpoint_b = verify_checkpoint_load.remote(gate_run_name)
+        snapshot_a_name = f"epoch_{checkpoint_a['checkpoint_epoch_zero_based'] + 1:03d}_resume.pt"
+        snapshot_a = checkpoint_b["resumable_snapshots"].get(snapshot_a_name)
+        passed = (
+            invocation_b["started_epoch_one_based"] == checkpoint_a["next_epoch_one_based"]
+            and checkpoint_b["checkpoint_epoch_zero_based"] == checkpoint_a["checkpoint_epoch_zero_based"] + 1
+            and checkpoint_b["updates"] > checkpoint_a["updates"]
+            and checkpoint_b["last_resume_pt_sha256"] != checkpoint_a["last_resume_pt_sha256"]
+            and snapshot_a is not None
+            and snapshot_a["sha256"] == checkpoint_a["immutable_snapshot"]["sha256"]
+        )
+        result = {
+            "schema": "smoke-fire-exact-resume-gate-v1",
+            "pass": passed,
+            "invocation_a": invocation_a,
+            "checkpoint_a": checkpoint_a,
+            "invocation_b": invocation_b,
+            "checkpoint_b": checkpoint_b,
+        }
+        if not passed:
+            raise RuntimeError(json.dumps(result, sort_keys=True))
+        print(result)
     else:
         raise ValueError(f"unsupported action: {action}")
 

@@ -3,7 +3,7 @@
 - **Style:** bullet 100%, keyword, câu cụt, không filler, không văn kể.
 - **Keep:** state hiện tại, schema, blocker, next step.
 - **Drop:** log dài, transcript, chi tiết lỗi cũ đã xử lý, dữ liệu outdated.
-- **Timestamp:** `2026-07-10 15:43:36 +0700`.
+- **Timestamp:** `2026-07-12 23:26:59 +0700`.
 - **TZ:** mọi timeline `CHANGELOG.md` dùng GMT+7.
 
 - **Repo**
@@ -216,6 +216,8 @@
   - CI: bootstrap by event, `>=1000` samples.
 
 - **Next work**
+  - **Step 13.a PARTIAL 2026-07-12:** converter `dataset.py pyro-sdis`; strict source `1`→output `0`; atomic output; shard hash gate snapshot `artifacts/smoke_fire_detection/pyro_sdis_snapshot.json`; audit bbox/dimension/disk/runtime. Modal CPU test `3` pass. Volume `smoke-fire-step13-volume` có sẵn. Upload parquet fail `WinError 10054`; converter/chkpt 1 chưa chạy; FIgLib chưa upload. Retry upload, upload snapshot, chạy `modal run tasks/smoke_fire_detection/modal_app.py --action convert`.
+  - **Step 13.0 DONE 2026-07-11:** `human_review_labels.json` đủ 40 item: `visible_smoke=23`, `fire_only=5`, `ambiguous=5`, `not_visible=7`. `fire_only` loại smoke-only, giữ any-fire. Windows local: không chạy Python theo quyết định user. Execution target: Modal/Colab/Kaggle/remote GPU. `yolo26x` duy nhất; cap paid `20 USD`; ưu tiên free quota; upload threshold `4h`; checkpoint portable. Dependency lock: `tasks/smoke_fire_detection/requirements*.lock`; runtime report phải ghi identity + versions.
   - **Artifact cleanup 2026-07-10:** xóa toàn bộ JSON/JSONL, cache, report, split, ảnh review, args/metrics train đã xong. Giữ duy nhất `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`, `human_review_pack.md`, `human_review_pack_key.json`. Mọi output cũ trong context: historical; cần thì tái tạo.
   - P0: **G0 = marginal (0.7425), G1 = DONE, Phase 0 probes = DONE** (2026-07-09, chi tiết ở block "Spatial-persistence"/"Frame-differencing" trên). Spatial-persistence giữ làm overlay tier chặt; frame-differencing đóng vĩnh viễn.
   - P0 tiếp theo (bước 13 research_plan.md, KHÔNG benchmark SOTA generic trên D-Fire): 13a converter pyro-sdis + audit bbox size; 13b zero-shot `pyronear/yolov8s` → cache FIgLib → g0/diagnose; 13c fine-tune cap 2 config; 13d bảng so sánh; 13e pivot pseudo-label/E5 nếu vẫn <0.80.
@@ -232,4 +234,39 @@
   - D-Fire val/test mAP gap (0.76 vs 0.684) unexplained — dedup audit ruled out duplicate-rate difference as cause (both ~24% near-dup with train), real cause unknown, not investigated further (not P0).
   - HPWREN archive host (`c1.hpwren.ucsd.edu`, `nextcloud.hpwren.ucsd.edu`) unreachable from server `ai2` — blocks scripted E1a download from this host if revisited later; need to test from Windows local or use manual browser tool.
   - Current hard-negative extractor frame-level only.
-  - Modal lacks FIgLib data/functions.
+  - Modal FIgLib full upload completed; remote index/cache functions verified on dev.
+
+- **Step 13.b PARTIAL 2026-07-12:** `dataset.py figlib` camera-disjoint, split `dev/test`, relative frame/video paths, subset manifest; `eval.py detector-cache` model class map, batch, resume, weight hash, split filter; Modal wrappers `build-index`, `probe`, `cache`; PowerShell staging `stage_13b.ps1`.
+  - Staging: probe `15` sequence, `1,163` files, `1,088,465,299` bytes; subset `64` sequence, `5,253` files, `4,659,172,437` bytes; subset `44 dev/20 test`; camera duplicate `0`.
+  - Manifest SHA-256: probe `6421BBCF9636092CFF01D18179912EB3E15ADC171E4F941E9F85EEA30DA1498C`; subset `C51DD15E9CBF4D1FAE198CFC4951B6EF861E211BFA893B7606A2BFA9B0171815`.
+  - Remote result: Pyro-SDIS Checkpoint 1 pass; FIgLib full upload `34.58 GB` completed in `4441s`; full index `40362` frame, `359 dev/152 test`, camera overlap `0`, index path absolute leakage `0`.
+  - Dev result: baseline G0 smoke AUROC `0.7383` marginal; Pyronear YOLOv8s G0 `0.8114` pass; paired delta `+0.0731`, event CI `[+0.0561,+0.0911]`, camera CI `[+0.0546,+0.0904]`, decision candidate better.
+  - Dev temporal: baseline recall `0.528` @ FA `0.0390/h`; Pyronear recall `0.631` @ same FA; week recall `0.196` vs `0.209`.
+  - Candidate: `pyronear/yolov8s`, HF commit `cd075ce`, SHA-256 `2898ecdf96eae513cdca995e4325d3536472016db2131588c7c4e27d5a829483`.
+  - Remaining: cost/quota dashboard ledger unknown; detection-size audit timeout; final camera-held-out test not run.
+
+- **Step 13.c PARTIAL 2026-07-12:** `train_portable.py` mới; Modal `train_candidate`/`artifact_status`; fixed `yolo26x`, Pyro-SDIS snapshot/audit/lock/code hash gate, `imgsz=1280`, `20` epoch, patience `5`, seed `20260707`, `save_period=1`.
+  - Lock: base `requirements.lock` + CUDA `requirements-cu130.lock`; image pin torch `2.12.1+cu130`, torchvision `0.27.1+cu130`; 2 hash ghi runtime manifest.
+  - Checkpoint: manifest atomic + SHA-256 `last.pt`/`best.pt`; callback `on_model_save` commit Volume mỗi epoch; resume chặn config/hash lệch; data runtime override khi resume; stop epoch/runtime boundary.
+  - Paid gate: full train block khi dashboard cost/quota unknown; cap `20`, long-block threshold `18`; không bịa cost.
+  - Smoke lock-pinned Modal L4 pass: `30` batch, batch `1`, AMP; Python `3.12.10`, torch `2.12.1+cu130`, ultralytics `8.4.90`, GPU `22.0 GiB`, peak VRAM `5.06 GB`, wall `32.04s`, end-to-end `0.9363 image/s`; stage `/tmp` 30 ảnh+label `2.95 MB`/`0.56s`, local read `~1233 MB/s`; reports local `yolo26x_smoke_locked_{report,runtime}.json`, SHA khớp Volume.
+  - Volume source từng đọc chậm (`0.6 MB/s`); copy toàn Pyro-SDIS `3.28 GB` sang `/tmp` không xong trước CLI `604s`. Full staging có file-level timeout + cleanup; test `1s` fail đúng `TimeoutError`. Full train/checkpoint 3 chưa chạy.
+  - Cleanup Modal: xóa smoke weights/log, `labels/train.cache`, smoke old lock lệch, timeout-run rỗng; giữ report/metadata lock-pinned audit.
+  - User-started Modal L4 full call `ap-ckbq2PpD93mQTuxlg7KmyF`: start `11:16:08 +0700`, stop `12:26:02 +0700`; 70m, log chỉ Ultralytics init, `0` batch/epoch/checkpoint; canceled theo user.
+  - Archive path pass: raw `7` Parquet lớn → SSD local → convert local → tar `3,409,295,360` bytes → Volume; CPU `205.94s`; archive SHA `9216a4c5a5b83cf3ae470a077bda3915f39a50d3b984d9ba4d08060db7fac2d5`; manifest local `pyro_sdis_yolo_archive.json`.
+  - Archive SSD benchmark pass: copy/hash `11.59s`, extract `30.46s`, local read `1637 MB/s`, 300 batch `107.48s`/`2.79 image/s` end-to-end, peak VRAM `5.54GB`; report `yolo26x_archive_benchmark_{report,runtime}.json`. Volume small-file bottleneck solved.
+  - **Resume Patch & Audit 2026-07-12:** Audit checkpoint `yolo26x_pyro_sdis` epoch 1 bị strip hoàn toàn (`optimizer=None`, `epoch=-1`), không thể resume, giữ làm evidence. Patch `last_resume.pt` verify 2-invocation test **pass nghiêm ngặt**: Inv1 tạo file có optimizer/epoch trước strip, Inv2 load resume thành công, epoch tăng (0→1), updates tăng (1→2), weight hash thay đổi, state giữ nguyên. Report `verify_resume_patch_report.json`.
+  - **Billing & Decision 2026-07-12:** Workspace $5.86, cap remaining $14.13. Dự kiến dừng nhưng user yêu cầu tiếp tục tận dụng Modal không vượt paid cap.
+  - **Resume Gate & Dataset Mismatch 2026-07-12:** Resume chạy thành công từ `last_resume.pt`. Cảnh báo FAIL trước đó là do YOLO `strip_optimizer` ở cuối epoch cuối. Số lượng ảnh bị lệch (29,536/29,537) được giải thích là do log của Ultralytics gộp `1 backgrounds` riêng lẻ. Đã chạy probe cấu hình batch thật.
+  - **Full Training Block 2026-07-12 — FAIL audit 21:59 +0700:** `yolo26x_pyro_sdis` dừng epoch 1 (`max_epochs_per_invocation`) nhưng `last_resume.pt` không tồn tại; `last.pt` SHA `6370ce…6551`, `best.pt` SHA `02c24b…4373`, cả hai stripped (`epoch=-1`, optimizer/scaler/EMA thiếu). Không exact-resume; chỉ `best.pt` warm-start.
+  - **Staging production — FAIL strict gate:** archive path SSD đúng; archive SHA `9216a4…ac2d`. Cache chỉ check archive SHA; count cho phép `+1`; chưa verify manifest + counts exact. Sửa/CPU-test trước GPU.
+  - **Billing audit 21:59 +0700:** July workspace `$20.967052`, smoke-fire `$15.289543`; CLI không trả cap/credit remaining. User budget `~$9` chưa đối chiếu cap.
+  - **Strict staging — PASS 2026-07-12 22:16 +0700, CPU Modal:** archive SHA `9216a4…ac2d`; snapshot `fe4a4902…bb93`; YAML SHA `5543bd…4a40`; counts train `29537`, val `4099`, total `33636`, labels `33636`. Fresh, cache reuse, stale-image rebuild, corrupt archive fail-clean, interrupted temp cleanup, concurrent lock pass. Cache marker strict schema/SHA/snapshot/counts/YAML hash; full archive SHA path. `5499` empty label chuẩn hoá newline chỉ trong `/tmp`; archive/production dataset không đổi. Report Volume: `artifacts/smoke_fire_detection/pyro_sdis_strict_staging_report.json`.
+  - **Task 228 stale cache:** suspected, chưa chứng minh; cache cũ không còn artifact.
+  - **Batch=4 PASS kỹ thuật 2026-07-12:** strict Pyro-SDIS archive; subset deterministic `480` (`240` positive, `240` empty); `imgsz=1280`; AMP; workers `8`; augmentation fixed; `20` warm-up + `100` measured; không validation. Median `0.8357s`; p90 `0.9037s`; `4.702` img/s; VRAM `17.93/23.66GB` (`75.8%`). Report Volume `yolo26x_batch4_probe_report_v2.json`.
+  - **Modal production budget FAIL:** `~104.7 phút/epoch`; `$1.3946/epoch`; `$27.8912/20 epoch` GPU-only; budget còn `~$9`; cấm full Modal.
+  - **Exact-resume PASS 2026-07-12:** run `yolo26x_pyro_sdis_resume_gate`; strict-staged subset `384` (`192` positive, `192` empty); A epoch `0`, updates `35`; B container mới epoch `1`, updates `47`; hash đổi; `epoch_001_resume.pt` immutable giữ SHA; B optimizer/EMA/scaler/scheduler/train args/dataset identity/hash/load PASS. `last_resume.pt` + snapshots `epoch_001`, `epoch_002` mỗi `~471.6MB` Volume.
+  - **Checkpoint hardening:** `fsync` + atomic rename; snapshot immutable; manifest hash; resume chặn config/dataset/hash/snapshot lệch; scheduler state explicit. Không sửa `train_args`/`epochs`/`save_dir`/`project` checkpoint.
+  - **Audit bug closed:** Ultralytics `8.4.90` final epoch luôn validate; custom audit/gate trainer skip validate/final eval. Hai audit lỗi cũ giữ report/evidence; không dùng số liệu đó.
+  - **Blocker:** free runtime chưa discover; `ssh ai2` không resolve Windows hiện tại. Cần hostname/IP SSH hoặc Colab/Kaggle runtime user đã mở. Production run mới warm-start calibration `best.pt`, target `20`; không resume checkpoint subset gate.
+  - **Artifact cleanup 2026-07-13:** xóa staging FIgLib đã upload xong (`5.35 GiB`, `6,416` file) + toàn bộ cache/probe/dev report/checkpoint audit đã chốt. Giữ local: baseline `best.pt`; `human_review_{pack,pack_key,labels}`; `pyro_sdis_{audit,snapshot,yolo_archive}` vì còn là input/gate train.

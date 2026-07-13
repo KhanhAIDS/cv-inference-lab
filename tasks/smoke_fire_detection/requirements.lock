@@ -1,0 +1,6 @@
+ultralytics==8.4.90
+numpy==2.5.1
+pyarrow==21.0.0
+Pillow==11.3.0
+PyYAML==6.0.2
+rich==14.1.0
