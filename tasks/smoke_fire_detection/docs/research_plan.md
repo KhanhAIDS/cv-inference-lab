@@ -1,15 +1,16 @@
-# Research Plan — Early Fire Detection (v2)
+# Research Plan — Early Fire Detection (v2.1)
 
 - Updated: `2026-07-14`
 - Thay thế bản v1 (dạng chat monologue: không có decision rule, không có cost, dẫn chiếu PYRONEAR-2025 như thể đã có local, citation hỏng).
-- Cách dùng: file này chốt **câu hỏi, gate, thứ tự**; là file **static**, ít thay đổi. Kỹ thuật cụ thể tra `research_toolbox.md`.
+- Cách dùng: file này chốt **câu hỏi, gate, thứ tự**; inventory kiến trúc ở mục 6.1; kỹ thuật phụ tra `research_toolbox.md`.
 - Quy tắc dẫn chiếu (từ 2026-07-14): KHÔNG dẫn chiếu file volatile (`agent_context.md`, `CHANGELOG.md`) làm nơi chứa chi tiết — số liệu chốt ghi inline tại đây; chi tiết exploratory của bước đã đóng nằm trong git history.
 
 ## 1. Research question
 
-- **RQ1 (chính):** early fire detection từ camera cố định, false alarm thấp — temporal confirmation cải thiện single-frame RGB bao nhiêu, đo event-level.
-- **RQ2 (định danh của lab):** cost frontier — tại mỗi mức chi phí inference (`$/camera-tháng` đo thực trên Modal), TTD tốt nhất đạt được ở FA-budget cố định là bao nhiêu.
+- **RQ1 (track hiện tại, không phải scope vĩnh viễn của lab):** early fire detection từ camera cố định, false alarm thấp — temporal confirmation cải thiện single-frame RGB bao nhiêu, đo event-level.
+- **RQ2 (định danh của lab):** accuracy–TTD–FA–cost frontier theo từng deployment envelope — edge/cloud, cadence thấp/real-time, một/nhiều camera. Modal là backend benchmark hiện tại; không phải target triển khai duy nhất.
 - **RQ3 (parked):** thermal/RGB-T gain; distill RGB-T teacher sang RGB student.
+- **RQ4:** một hệ thống bao phủ phổ kích thước biểu kiến gần→xa tốt nhất bằng unified detector, expert, routing, coarse-to-fine, temporal memory, hay hybrid nào.
 
 ## 2. Fact đã kiểm chứng (2026-07-08) — nền của mọi quyết định
 
@@ -20,7 +21,39 @@
 - FIgLib gốc theo paper: ~24.8k ảnh, 315 sequence, 101 camera (SmokeyNet, [arXiv 2112.08598](https://arxiv.org/abs/2112.08598)) — đây là snapshot học thuật đóng băng lúc paper publish (2021), không phải giới hạn trên của archive hiện tại.
 - HPWREN archive công khai, duyệt theo camera + ngày, có tool bulk download, chỉ yêu cầu attribution ([hpwren.ucsd.edu](https://www.hpwren.ucsd.edu/news/20210318/)) → nguồn negative-day gần như vô hạn, **đúng chính các camera trong FIgLib**.
 - PYRONEAR-2025 tồn tại thật ([arXiv 2402.05349](https://arxiv.org/abs/2402.05349)): ~50k ảnh, ~150k bbox annotation, 640 fire, có video sequence cho sequential model. **Chưa có local.**
-- Cadence use case: `1 frame/phút/camera` → latency budget mỗi frame là hàng chục giây. Bottleneck thật khi scale là `$/camera-tháng` và GPU sharing, không phải ms/frame.
+- Cadence `60s` là thuộc tính FIgLib + scenario benchmark hiện tại; KHÔNG phải constraint vĩnh viễn. Modal/L4/GB10 là hạ tầng thí nghiệm hiện có; KHÔNG suy rộng thành deployment hardware. Mọi kết luận cascade/model size phải condition theo cadence, số camera, batch, edge/cloud, latency, power, cost.
+
+## 2.1. Phạm vi gần–xa và deployment envelope
+
+- “Gần/xa” không phải hai class tự nhiên; là phổ liên tục: kích thước biểu kiến, pixel plume, tương phản, che khuất, haze, tiêu cự, zoom, line-of-sight.
+- Không có ground-truth khoảng cách trong Pyro-SDIS/FIgLib → không gọi model “gần/xa” bằng suy đoán. Dùng slice đo được: normalized bbox area/short-side pixel trên data có bbox; human visibility/offset band trên FIgLib.
+- Camera cố định không đồng nghĩa chỉ có vật xa; cùng camera chứa plume lớn/nhỏ theo vị trí cháy, zoom, thời gian sau ignition.
+- `13d` chỉ là protocol chọn candidate cho benchmark hiện tại; chưa có winner; không phải quyết định “model xa thắng”; không khóa kiến trúc triển khai cuối.
+- Envelope phải report riêng; không gộp kết luận:
+  - **S0 — archive benchmark:** FIgLib `1 frame/phút`; latency/frame lỏng; TTD lượng tử hóa 60s.
+  - **S1 — tower operational:** cadence thật chưa khóa; edge/cloud chưa khóa; ưu tiên TTD + FA + uptime + bandwidth.
+  - **S2 — continuous/near-field:** cadence cao; latency/power/thermal mới có thể làm cascade/early-exit bắt buộc.
+  - **S3 — fleet:** nhiều camera; batching, queueing, network, utilization; throughput hệ thống quan trọng hơn latency model cô lập.
+
+## 2.2. Taxonomy hệ thống gần–xa — sửa A/B/C
+
+- A/B/C không loại trừ nhau; đang trộn ba trục: **chuyên môn model**, **routing**, **granularity tính toán**.
+- **A — hai expert luôn chạy + late fusion:** control rõ; parallel/ensemble; recall tiềm năng cao; cost cộng; lỗi tương quan; cần fusion/NMS/calibration.
+- **B — một graph thống nhất:** shared backbone + multi-scale feature/head hoặc multi-task head. “Multi-head gần/xa” không bắt buộc; detector FPN đã có head theo scale. Rủi ro: negative transfer, head xa thiếu sample, model trung bình nhưng không giỏi cực trị.
+- **C — cascade theo frame/event:** filter rẻ → model đắt. Điều kiện thắng: recall gate gần 100% tại operating point, trigger rate thấp, expected cost `C_gate + p_trigger × C_heavy` thấp hơn always-on; miss ở gate không cứu lại được.
+- **D — shared backbone + scale experts/MoE:** feature chung; expert/head chuyên scale; router theo feature/uncertainty. Hybrid B+C; tiết kiệm hơn A; khó train router, nguy cơ route sai tiny smoke.
+- **E — coarse-to-fine theo không gian:** toàn ảnh low-res → chỉ ROI nghi ngờ chạy high-res/P2/tile. Khác C theo frame; không bỏ cả frame; [AutoFocus](https://openaccess.thecvf.com/content_ICCV_2019/html/Najibi_AutoFocus_Efficient_Multi-Scale_Inference_ICCV_2019_paper.html), [QueryDet](https://openaccess.thecvf.com/content/CVPR2022/html/Yang_QueryDet_Cascaded_Sparse_Query_for_Accelerating_High-Resolution_Small_Object_Detection_CVPR_2022_paper.html) là precedent.
+- **F — một model dynamic:** early exit, adaptive depth/width/resolution, sparse high-res compute; route theo độ khó input. Không phải hai model; [DynamicDet](https://openaccess.thecvf.com/content/CVPR2023/html/Lin_DynamicDet_A_Unified_Dynamic_Architecture_for_Object_Detection_CVPR_2023_paper.html) là precedent.
+- **G — temporal/stateful multi-rate:** keyframe detector + feature/track/memory propagation; tăng cadence khi uncertainty/event tăng; giảm cadence khi scene ổn định. Không nhất thiết có cheap/heavy model.
+- **H — camera/scene-conditioned:** static horizon/vegetation ROI, focal-length profile, camera calibration, per-camera threshold/adapter; global model chung. Rủi ro overfit camera; final camera-held-out bắt buộc.
+- **I — edge–cloud split:** edge gate/embedding; cloud verifier; human-in-loop sau alarm. Đây là topology; có thể ghép A–H; phải tính network outage/bandwidth/privacy.
+- **Distillation không phải phương án deployment độc lập:** kỹ thuật train; phân nhánh theo graph inference:
+  - Hai teacher gần+xa → một student unified: deployment thuộc B; teacher chỉ chạy lúc train.
+  - Teacher xa lớn → student nhỏ scale-aware: B hoặc D; [ScaleKD](https://openaccess.thecvf.com/content/CVPR2023/html/Zhu_ScaleKD_Distilling_Scale-Aware_Knowledge_in_Small_Object_Detector_CVPR_2023_paper.html) là precedent small-object.
+  - Student gate + teacher heavy còn chạy khi uncertainty cao: deployment thuộc C.
+  - Shared model tự-distill giữa head/scale: B.
+  - RGB-T teacher → RGB student: modality distillation; deployment RGB-only thuộc B-like; RQ3/E8b.
+- Distillation chỉ mở khi teacher thật sự hơn student trên slice tiny/xa + FA; không dùng mAP chung làm bằng chứng. Không phục hồi pixel signal đã mất do resize/line-of-sight; dễ truyền false positive, localization noise, bias teacher.
 
 ## 3. Ba lỗi của v1 mà v2 sửa
 
@@ -47,25 +80,64 @@
 - **G1 — temporal gain:** N-of-M + EMA vs single-frame trên AMOC. Nếu simple rule không cải thiện TTD@FA → nghi detector trước, đừng đổ lỗi verifier.
 - **G2 — learned verifier:** chỉ mở khi G1 pass VÀ có data đủ power (E1). LSTM/tiny-Transformer so trong khung factorized E2.
 - **G3 — thermal:** chỉ mở khi RGB temporal track có kết quả ổn định. Lưu ý: FLAME 3 là UAV cận cảnh — khác domain tower; kết luận không transfer trực tiếp sang RQ1, giá trị chính là học multimodal fusion.
+- **G4 — architecture:** chỉ mở sau baseline đúng domain + error slicing. `visible + tiny miss` → scale/detail branch; `visible + đủ pixel + miss` → feature/context/head branch; `cloud/haze FP` → hard-negative/calibration/temporal; `not_visible/label-noise` → sửa data/camera, KHÔNG sửa kiến trúc.
 
 ## 6. Experiments
 
-- **E0 — D-Fire YOLO baseline** (đang chạy). Vai trò: control, học pipeline, profiling target, proposal generator. Sau khi train xong bổ sung: (a) eval + latency chuẩn; (b) dedup audit train/test bằng perceptual hash — D-Fire gom từ web, nghi near-duplicate inflate mAP; (c) đọc per-class metric có ý thức về imbalance (`fire_only` ~5% train).
-- **E0.5 — Transfer check (gate G0).** Detector cache 40362 frame FIgLib (512 sequence, verified 2026-07-08) → AUROC pre/post + AMOC single-frame. Cost: 1 lượt GPU ngắn + CPU. **Experiment quyết định hướng — ưu tiên cao nhất sau E0.**
+- **E0 — D-Fire YOLO baseline** (đã xong). Vai trò: control, học pipeline, profiling target, proposal generator; eval/latency/dedup/per-class đã ghi ở mục 8.
+- **E0.5 — Transfer check (gate G0, đã xong).** Detector cache `40361/40362` frame FIgLib, `510` sequence có frame hợp lệ → AUROC pre/post + AMOC single-frame; kết quả mục 8.
 - **E1 — Data acquisition (P0, nút cổ chai thống kê của toàn bộ plan):**
   - **E1a — negative-day harvesting:** tải N ngày không cháy từ HPWREN archive cho chính các camera local (trộn trời quang / mây / sương / hoàng hôn) → hàng trăm giờ negative đúng domain làm mẫu số FA/hour. Rẻ, không cần label.
   - **E1b — PYRONEAR-2025:** tải khi mở G2 (learned verifier cần data train); FIgLib giữ vai trò test transfer.
 - **E2 — Temporal verifier, thiết kế factorized:** `{input: scalar confidence | chuỗi box+conf | ROI embedding} × {aggregator: N-of-M | EMA | logistic-window | LSTM | tiny Transformer}`. Bắt buộc chạy trước: `scalar × {N-of-M, EMA}`. Tất cả trên cùng detector cache. Câu hỏi: gain đến từ model class hay từ input giàu hơn.
 - **E3 — Hard-negative flywheel event-level:** chạy pipeline trên negative days (E1a) → lấy FP persistence cao → human review → thêm vào train → retrain → đo lại AMOC. `extract_hard_negatives.py` hiện là frame-level, cần mở rộng sequence-level.
-- **E4 — Cost frontier (RQ2):** trục x = `$/camera-tháng` đo thực trên Modal; trục y = `TTD @ FA-budget`. Các điểm: model size (n/s/m), imgsz (640 / 1280 / tile full-res), frame rate (1/min vs 1/2min), cascade bật/tắt. Hypothesis cần kiểm: ở cadence 1/min, model to hơn 10–50× vẫn rẻ → "bắt buộc nano" là dogma nhập từ real-time 30fps.
-- **E5 — Task formulation** (bbox vs tile-classifier vs segmentation): kích hoạt khi G0 fail, hoặc sau G2. Cùng split, cùng event metric.
+- **E4 — Cost frontier (RQ2):** frontier riêng cho S0–S3; trục cost gồm latency, throughput, VRAM/RAM, power edge, bandwidth, `$/camera-tháng` cloud; Modal chỉ là backend đo hiện tại. Điểm: model size, resolution, cadence, batch, always-on/cascade/dynamic. Không suy từ FLOPs; không dùng S0 `1 frame/phút` để bác cascade ở S1–S3.
+- **E5 — Architecture + task formulation:** inventory/protocol mục 6.1; kích hoạt qua G4 sau candidate đúng domain. So bbox, tile/MIL classifier, segmentation, hybrid; cùng split, event metric, scale slice, cost frontier.
 - **E6 — Synthetic smoke ramp (P2, optional):** composite khói tham số hóa (size/contrast tăng dần) lên frame negative của đúng camera → ground-truth onset chính xác tuyệt đối; đo sensitivity của TTD theo kích thước/độ tương phản khói.
-- **Parked:** E7 thermal ablation (FLAME 3), E8 RGB-T→RGB distillation, E9 VLM runtime verifier. VLM dùng được NGAY ở vai trò khác: annotation assistant / triage hard-negative (offline, không tính vào inference cost).
+- **E8a — detector distillation (conditional):** chỉ sau khi có teacher thắng rõ trên tiny/xa; multi-teacher near+far→student, scale-aware feature/localization distill, self-distill là candidate E5; không chạy teacher trong inference nếu mục tiêu B.
+- **Parked:** E7 thermal ablation (FLAME 3), E8b RGB-T→RGB distillation, E9 VLM runtime verifier. VLM dùng được NGAY ở vai trò khác: annotation assistant / triage hard-negative (offline, không tính vào inference cost).
+
+## 6.1. Architecture research + ablation
+
+- **Nhận định:** kiến trúc quan trọng; không phải đòn bẩy đầu tiên mặc định. Data/domain/label/resolution sai → block mới chỉ học sai tốt hơn. Hiện có bằng chứng scale gap ~20×; ưu tiên scale/detail + target-domain train trước attention/module lạ.
+- **Sai lầm cần tránh:** “kernel lớn/nhỏ = object lớn/nhỏ”. Kernel chỉ là một phần receptive field; tiny object thường chết vì downsample/stride, thiếu pixel, feature fusion, positive assignment. Thử P2/high-resolution feature trước đổi kernel tùy hứng.
+- **Inventory theo cơ chế:** bao phủ nhóm can thiệp; KHÔNG phải checklist chạy hết; mỗi lần chỉ một hypothesis/failure mode.
+- **A0 — input/sampling:** imgsz; image pyramid; multi-scale train/test; scale jitter; object-centric crop/upscale; oversample tiny; slicing-aided fine-tune/inference; learned/adaptive ROI; static horizon ROI; super-resolution trước/joint detector. Cảnh báo: brute tiling đã tăng FP trên lab; SR/dehaze có thể hallucinate smoke.
+- **A1 — giữ chi tiết không gian:** thêm P2/stride-4 head; giảm early stride; high-resolution branch/backbone; detail-preserving stem; anti-aliased/learned downsample; bỏ/giảm P5 nếu compute-match. Đây là nhánh ưu tiên số 1 cho tiny visible smoke.
+- **A2 — receptive field/context:** đổi `3×3↔5×5/7×7`; large-kernel depthwise; dilated/atrous conv; SPP/SPPF/ASPP; deformable conv; parallel multi-kernel; scale-specific shared-weight branch kiểu [TridentNet](https://openaccess.thecvf.com/content_ICCV_2019/html/Li_Scale-Aware_Trident_Networks_for_Object_Detection_ICCV_2019_paper.html). Smoke cần cả texture mờ cục bộ + context horizon; RF quá lớn có thể nuốt tiny signal vào background.
+- **A3 — backbone:** CNN, hierarchical transformer, hybrid; high-resolution backbone; cross-stage/partial; re-parameterized conv; edge/frequency/color branch. Chỉ mở branch frequency/color khi error audit chứng minh signal; không ghép module theo paper-title.
+- **A4 — neck/multi-scale fusion:** FPN; PAN; BiFPN weighted fusion; ASFF; NAS-FPN/AugFPN; skip/lateral connection; top-down + bottom-up; cross-scale attention; shallow–deep gated fusion. Mục tiêu: semantic mạnh tại feature map high-res; không chỉ thêm head vào feature nông nhiễu.
+- **A5 — detection head:** shared vs scale-specific head; thêm tiny head; decoupled classification/regression; anchor-based vs anchor-free; anchor/stride tuning; dynamic/attention head; auxiliary image-presence/segmentation head; uncertainty/quality head. “Multi-head” phải chỉ rõ head theo scale, class, task, hay modality.
+- **A6 — target assignment/loss:** ATSS/TaskAligned/SimOTA; tiny-positive radius; focal/quality-focal/varifocal; scale-balanced loss; objectness/centerness/IoU-quality; IoU/GIoU/DIoU/CIoU/distribution regression; auxiliary/deep supervision. Đây là training mechanism; không ghi nhầm thành architecture gain.
+- **A7 — post-process/calibration:** NMS/Soft-NMS/DIoU-NMS/weighted-box fusion; class/scale threshold; temperature scaling; per-camera calibration; box merge qua tile. Không chữa detector mù; có thể đổi FA mạnh.
+- **A8 — formulation:** bbox detection; semantic/instance segmentation; tile classifier + multiple-instance learning; full-frame classifier; coarse heatmap→ROI detector; bbox+mask+image-presence multi-task. Smoke vô định hình → segmentation/MIL có thể hợp label hơn bbox; phải đo TTD/FA, không chỉ mAP.
+- **A9 — temporal:** score N-of-M/EMA; track/tube; ConvLSTM/GRU/TCN; 3D conv/temporal shift; temporal Transformer; feature alignment/aggregation; recurrent/external memory; keyframe propagation; growth/drift auxiliary loss. Frame differencing `AUROC=0.5276` chỉ đóng simple pixel-motion probe; không bác learned temporal feature.
+- **A10 — conditional compute:** frame cascade; spatial coarse-to-fine; scale expert/MoE; early exit; adaptive depth/width/resolution; sparse high-res feature; uncertainty-triggered reprocess; adaptive cadence. Báo trigger rate + gate FN + tail latency; average FLOPs không đủ.
+- **A11 — distill/compress:** response/logit, feature, relation, localization, scale-aware, multi-teacher, self-distill, cross-modal; pruning/quantization/low-rank sau accuracy champion. Distill dùng unlabeled target frames được; teacher errors phải lọc/calibrate; student phải còn input resolution/capacity đủ.
+- **A12 — data/domain lever tách riêng:** small-object copy/paste/composite, negative mining, pseudo-label, semi-supervised, domain adaptation, contrastive pretrain, camera-balanced sampling. Luôn có control “data-only”; tránh gán gain của data cho architecture.
+- **A13 — modality/context:** RGB-T early/mid/late fusion; weather; camera metadata; horizon/terrain prior. Khác domain/hardware → track riêng; không nhập vào RQ1 RGB baseline.
+- **Ablation ladder — không architecture soup:**
+  - **L0:** khóa YOLO26x/Pyro-SDIS baseline; error slice theo bbox area/short-side, visibility, offset, camera, FP category.
+  - **L1 — P0:** data-only scale crop/oversample; P2 head; P2 thay P5 compute-match; adaptive coarse-to-fine ROI. Bốn candidate riêng.
+  - **L2 — P1:** đúng một neck fusion; đúng một RF variant; scale-specific head/assignment. Chỉ mở khi L1 chỉ ra failure còn lại.
+  - **L3 — P1:** bbox vs segmentation vs MIL/hybrid; learned temporal feature. Chỉ dùng data/split tương thích.
+  - **L4 — P2:** dynamic routing/MoE, SR joint, transformer/high-res backbone, detector KD, RGB-T. Chỉ khi lợi ích tiềm năng vượt complexity.
+- **Ablation kernel cụ thể:** baseline `3×3`; thay cùng vị trí bằng `5×5`; dilated `3×3`; parallel `3×3+5×5`; parameter/FLOP-match khi có thể; giữ seed/data/schedule/augmentation; đo tiny-slice + overall + FA + latency. Không kết luận từ một run/mAP tổng.
+- **Fairness:** hai bảng riêng: iso-config để đo causal effect; iso-cost để đo deployment frontier. Không ép kiến trúc thêm P2 cạnh tranh cùng FLOPs rồi gọi thua nếu mục tiêu là accuracy ceiling; cũng không bỏ qua cost.
+- **Screen/final:** dev 1 seed để loại candidate hỏng; finalist ≥3 seed; paired bootstrap event + cluster bootstrap camera; final camera-held-out mở đúng một lần sau khóa winner.
+- **Metric bắt buộc:** Pyro val AP50-95 + AP/recall theo normalized scale; FIgLib AUROC + TTD/recall tại FA≤1/day, 1/week; FP category; parameters/FLOPs chỉ phụ; latency p50/p95, throughput, VRAM, cost theo S0–S3.
+- **Pass rule:** lower CI của gain primary >0 trên tiny-visible slice; overall/near slice không regress ngoài margin khai báo; FA-budget không vỡ; hoặc candidate Pareto-dominate baseline. Nếu chỉ tăng mAP Pyro nhưng FIgLib/event metric không tăng → domain overfit, reject.
+- **Stop rule:** hai biến thể cùng cơ chế fail decision rule → đóng family; quay lại data/error diagnosis. Không thêm attention/kernel thứ ba để “cứu” không giả thuyết.
 
 ## 7. Anchor literature (đối chiếu — không tin số chưa tự reproduce)
 
 - SmokeyNet + FIgLib ([arXiv 2112.08598](https://arxiv.org/abs/2112.08598)): baseline mạnh nhất trên FIgLib, "rivals human performance"; điền số F1/TTD chính xác khi implement so sánh.
 - PYRONEAR-2025 ([arXiv 2402.05349](https://arxiv.org/abs/2402.05349)): sequential model tăng recall so với single-frame, precision tương đương — cùng hypothesis với RQ1.
+- Multi-scale/detail: [FPN](https://openaccess.thecvf.com/content_cvpr_2017/html/Lin_Feature_Pyramid_Networks_CVPR_2017_paper.html), [PANet](https://openaccess.thecvf.com/content_cvpr_2018/html/Liu_Path_Aggregation_Network_CVPR_2018_paper.html), [EfficientDet/BiFPN](https://openaccess.thecvf.com/content_CVPR_2020/html/Tan_EfficientDet_Scalable_and_Efficient_Object_Detection_CVPR_2020_paper.html), [TridentNet](https://openaccess.thecvf.com/content_ICCV_2019/html/Li_Scale-Aware_Trident_Networks_for_Object_Detection_ICCV_2019_paper.html).
+- High-resolution conditional: [SAHI](https://arxiv.org/abs/2202.06934), [AutoFocus](https://openaccess.thecvf.com/content_ICCV_2019/html/Najibi_AutoFocus_Efficient_Multi-Scale_Inference_ICCV_2019_paper.html), [QueryDet](https://openaccess.thecvf.com/content/CVPR2022/html/Yang_QueryDet_Cascaded_Sparse_Query_for_Accelerating_High-Resolution_Small_Object_Detection_CVPR_2022_paper.html).
+- Dynamic/KD: [DynamicDet](https://openaccess.thecvf.com/content/CVPR2023/html/Lin_DynamicDet_A_Unified_Dynamic_Architecture_for_Object_Detection_CVPR_2023_paper.html), [ScaleKD](https://openaccess.thecvf.com/content/CVPR2023/html/Zhu_ScaleKD_Distilling_Scale-Aware_Knowledge_in_Small_Object_Detector_CVPR_2023_paper.html), [Localization Distillation](https://openaccess.thecvf.com/content/CVPR2022/html/Zheng_Localization_Distillation_for_Dense_Object_Detection_CVPR_2022_paper.html).
+- Training/head: [Focal Loss](https://openaccess.thecvf.com/content_iccv_2017/html/Lin_Focal_Loss_for_ICCV_2017_paper.html), [ATSS](https://openaccess.thecvf.com/content_CVPR_2020/html/Zhang_Bridging_the_Gap_Between_Anchor-Based_and_Anchor-Free_Detection_via_Adaptive_CVPR_2020_paper.html), [Dynamic Head](https://openaccess.thecvf.com/content/CVPR2021/html/Dai_Dynamic_Head_Unifying_Object_Detection_Heads_With_Attentions_CVPR_2021_paper.html).
+- Temporal feature: [Flow-Guided Feature Aggregation](https://openaccess.thecvf.com/content_ICCV_2017/html/Zhu_Flow-Guided_Feature_Aggregation_ICCV_2017_paper.html), [MEGA](https://openaccess.thecvf.com/content_CVPR_2020/html/Chen_Memory_Enhanced_Global-Local_Aggregation_for_Video_Object_Detection_CVPR_2020_paper.html).
 
 ## 8. Thứ tự việc ngay
 
@@ -108,16 +180,15 @@
 13. **Benchmark candidate đúng domain — kế hoạch chi tiết:**
     - **Mục tiêu/gate:** raw FIgLib smoke AUROC `≥0.80`; human visibility chỉ phân tầng phụ; D-Fire `yolo26n` chỉ control; `yolo26x` là YOLO26 fine-tune duy nhất.
     - **Ràng buộc runtime:** Windows local không chạy project Python; Modal/Colab/Kaggle/remote GPU là execution target. Mọi report ghi provider, GPU, VRAM, session, Python/Ultralytics/Torch/CUDA, dependency lock/hash, command, cost/free-quota.
-    - **Chi phí:** paid cap tuyệt đối `20 USD`; ưu tiên free quota; projected paid `18 USD` thì không mở block dài; actual `20 USD` thì dừng paid, checkpoint, chỉ tiếp tục free runtime. Không dùng nhiều tài khoản để né quota/điều khoản.
     - **Dữ liệu portable:** manifest deterministic, resolve path tại runtime, tuyệt đối không ghi Windows absolute path vào index/artifact. (Bỏ yêu cầu SHA-256 shard — trim 2026-07-14, không thêm layer hash khi chưa có failure mode.) FIgLib full chỉ upload nếu probe ngoại suy `≤4 giờ`; nếu lâu hơn/lỗi lặp, dùng subset 64 sequence camera-disjoint, exploratory, không suy rộng gate/FA toàn archive.
     - **13.0 — state/hạ tầng:** structured human review labels: `visible_smoke=23`, `fire_only=5`, `ambiguous=5`, `not_visible=7`; `fire_only` loại smoke-only, giữ any-fire. Dependency lock chung; checkpoint portable giữa runtime.
     - ✅ **13a — Pyro-SDIS — DONE, gate PASS** (audit `artifacts/smoke_fire_detection/pyro_sdis_audit.json`, `invariant_differences={}`): parquet→YOLO, giữ source split, remap `1→0`, atomic output; train `29,537`, val `4,099`, total `33,636`, empty `5,499`, bbox `32,109`, source class chỉ `1`, output class chỉ `0`, invalid/duplicate `0`, ảnh `1280×720`. Không upload FIgLib trước gate pass.
     - **13b — FIgLib/split/baseline:** probe khoảng `1 GiB`; full split group theo camera, seed `20260707`, `70% dev/30% final`, manifest commit git (✅ đã tạo 2026-07-14, xem mục 2 — bỏ hash lock). Subset: `44 dev/20 final`, camera-disjoint, low-power. Baseline D-Fire và `pyronear/yolov8s` chạy cùng frame universe, `imgsz=1280`, `conf=0.05`, `iou=0.6`; verify model revision/class map; pilot 30 frame trước full cache; resume cache theo frame key, skip frame lỗi có log.
-    - **13c — YOLO26x:** fine-tune Pyro-SDIS, `imgsz=1280`, tổng 20 epoch, patience 5, seed `20260707`, AMP nếu ổn định, batch lớn nhất vừa VRAM; chọn bằng Pyro val mAP50-95, không dùng FIgLib chọn epoch. Mỗi epoch sync `last.pt`, `best.pt`, `last_resume.pt` full-state (EMA + optimizer + scaler + scheduler + train args) + log; graceful stop trước timeout/quota/cap. Resume chỉ khi code/config/dataset/checkpoint tương thích; restore optimizer/scheduler/scaler khi có; smoke test 30 batch sau restore.
-    - **13c — migration:** export checkpoint bundle runtime A, verify dependency/runtime trên B, gọi cùng entry point, giữ epoch count, ghi migration vào `CHANGELOG.md`. Không đổi architecture/config cốt lõi vì runtime/budget.
+    - **13c — YOLO26x:** fine-tune Pyro-SDIS, `imgsz=1280`, tổng 20 epoch, patience 5, seed `20260707`, AMP nếu ổn định, batch lớn nhất vừa VRAM; chọn bằng Pyro val mAP50-95, không dùng FIgLib chọn epoch. Mỗi epoch sync `last.pt`, `best.pt`, `last_resume.pt` full-state (EMA + optimizer + scaler + scheduler + train args) + log; graceful stop trước timeout/quota Modal. Resume chỉ khi code/config/dataset/checkpoint tương thích; restore optimizer/scheduler/scaler khi có; smoke test 30 batch sau restore.
+    - **13c — migration:** export checkpoint bundle runtime A, verify dependency/runtime trên B, gọi cùng entry point, giữ epoch count, ghi migration vào `CHANGELOG.md`. Không đổi architecture/config cốt lõi vì đổi runtime.
     - **13d — chọn candidate:** dev gồm D-Fire nano, Pyronear zero-shot, YOLO26x. Dùng paired bootstrap event + cluster bootstrap camera; winner khi lower CI `ΔAUROC>0`, camera delta cùng chiều; CI chứa 0 = tie. Tie theo inference cost/camera-tháng. Khóa winner dev rồi mới mở final camera-held-out cho baseline, Pyronear, winner; không chạy losing model thừa trên final.
-    - **13e — fail/đóng bước:** nếu full-FIgLib final winner `<0.80`, chỉ viết proposal camera-disjoint pseudo-label, embedding linear probe, E5 tile-classifier; không chạy experiment mới, tiling cũ, PYRONEAR-2025, learned verifier, E1a. Kết thúc bằng test, final report, artifact retention/cleanup, changelog. (Cost ledger BỎ — quyết định user 2026-07-14; chỉ giữ cap tuyệt đối ở mục "Chi phí".)
-    - **Kiểm thử bắt buộc:** converter synthetic/invalid/atomic; split camera-disjoint + manifest reproducibility; detector class-map/batch/resume/error; checkpoint state/migration; paired statistics; runtime metadata/budget cap.
+    - **13e — fail/đóng bước:** nếu full-FIgLib final winner `<0.80`, dùng G4 viết proposal xếp hạng L1 (`data-only scale`, P2, P2↔P5 compute-match, adaptive ROI) + formulation E5; không tự chạy experiment mới, tiling cũ, PYRONEAR-2025, learned verifier, E1a. Kết thúc bằng test, final report, artifact retention/cleanup, changelog. (Cost ledger và budget cap BỎ hoàn toàn — quyết định user 2026-07-14, không giữ constraint chi phí nào.)
+    - **Kiểm thử bắt buộc:** converter synthetic/invalid/atomic; split camera-disjoint + manifest reproducibility; detector class-map/batch/resume/error; checkpoint state/migration; paired statistics; runtime metadata.
 14. Chỉ khi mở G2: tải PYRONEAR-2025 (đã lọc FIgLib-source), chạy factorized E2 (đầu vào có thể thêm spatial-persistence feature từ bước 12).
 
 ## 9. Dataset khảo sát thêm (2026-07-08) — không đi thu thập toàn bộ dataset liên quan

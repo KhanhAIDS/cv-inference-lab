@@ -4,6 +4,9 @@
 - **Tracking:** mọi thay đổi append `CHANGELOG.md`, timestamp GMT+7, command, file trực tiếp/gián tiếp.
 - **Scope:** `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
 - **Mục tiêu:** early smoke/fire detection video; ưu tiên event-level TTD, false alarm/hour; phụ AUROC, mAP, latency, cost.
+- **Scope correction:** FIgLib cadence 60s + Modal/GPU hiện tại chỉ benchmark scenario/hạ tầng thí nghiệm; không phải constraint vĩnh viễn; RQ1 fixed-camera chỉ track hiện tại.
+- **Near–far:** phổ kích thước biểu kiến, không hai class; A/B/C không loại trừ; thêm scale-MoE, spatial coarse-to-fine, dynamic model, temporal multi-rate, camera-conditioned, edge-cloud.
+- **Architecture gate:** baseline đúng domain + error slice trước; tiny-visible ưu tiên data-scale control → P2/stride4 → P2↔P5 compute-match → adaptive ROI; kernel/neck/distill sau.
 - **Dataset:** Pyro-SDIS parquet, 33,636 row, 5,499 empty annotation, source class `1` remap output class `0`; FIgLib 40,362 frame hợp lệ, 511 folder / 510 event có frame, 143 camera, weak label theo ignition offset.
 - **FIgLib split (2026-07-14):** camera-disjoint, seed `20260707`, dev 359 seq/108 cam, final 152 seq/35 cam; artifacts `figlib_index.jsonl`/`figlib_audit.json`/`figlib_split_manifest.json`; không hash lock.
 - **Doc layering:** research_plan static, số chốt inline; agent_context/CHANGELOG volatile, file static không referred sang; không thêm process layer (hash/ledger/manifest phụ) khi chưa có failure mode — rule ở CLAUDE.md.
@@ -14,5 +17,4 @@
 - **Checkpoint contract:** `last.pt`/ `best.pt` dùng inference; `last_resume.pt` full model + EMA + optimizer + scaler + scheduler + train args + updates; atomic save; verify state trước resume; commit Volume mỗi epoch.
 - **Modal target:** App `smoke-fire-detection-yolo`; Volume `smoke-fire-step13-volume`; run `yolo26x_pyro_sdis_budget9`; target L4, batch 4, imgsz 1280; checkpoint `/workspace/artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/last_resume.pt`.
 - **Last verified:** 2026-07-14 07:57 +0700; container `ta-01KXERQ6TWZND3DTZS7A4W5N8R`; epoch `4/20` đang chạy; checkpoint epoch 3 đủ full-state; không poll tiếp.
-- **Budget:** cap tuyệt đối 20 USD; free quota trước; paid long block dừng từ 18 USD; không đổi architecture.
 - **Next:** sau train dùng `best.pt` chạy Pyro val; cache FIgLib; G0; temporal; chọn candidate; final camera-held-out theo research plan.

@@ -33,3 +33,18 @@
   - **Files trực tiếp:** `CLAUDE.md` (thêm rule mục 5 + mục 10); `tasks/smoke_fire_detection/docs/research_plan.md` (cập nhật số liệu, bỏ hash lock/SHA shard/cost ledger, sửa toàn bộ dẫn chiếu agent_context/artifact chết, đánh dấu 13a done, human review done); `agent_context.md`; `CHANGELOG.md`.
   - **Files gián tiếp:** `artifacts/smoke_fire_detection/figlib_index.jsonl`, `figlib_audit.json`, `figlib_split_manifest.json` (script tự sinh).
   - **Modal:** không deploy/stop/poll; không đụng Volume/checkpoint.
+
+- **2026-07-14 11:12 +0700**
+  - **Task:** bỏ hoàn toàn budget cap $20/free-quota-stop-rule theo yêu cầu user (không giữ constraint chi phí train nào); giải thích lại cascade/multi-head/Frigate bằng ngôn ngữ dễ hiểu (chỉ trả lời chat, không đổi code/plan cho phần này).
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md` (xóa dòng "Chi phí" 13, sửa 13c/13e/kiểm-thử-bắt-buộc bỏ chữ "budget"/"cap"); `agent_context.md` (xóa dòng Budget); `CHANGELOG.md`.
+  - **Files gián tiếp:** không có.
+
+- **2026-07-14 13:16:08 +0700**
+  - **Task:** phản biện hệ thống nhận diện gần–xa; sửa hiểu lầm FIgLib `60s`/Modal/GPU/RQ1; research distillation, small-object architecture, dynamic/coarse-to-fine/temporal inference; bổ sung architecture ablation plan.
+  - **Kết quả:** A/B/C đổi thành taxonomy A–I; gần–xa đổi thành scale/visibility continuum; `13d` xác nhận chưa có winner; distillation phân loại theo inference graph; thêm S0–S3 deployment envelope, G4 architecture, E8a detector KD.
+  - **Architecture:** inventory A0–A13; ưu tiên data-scale control → P2/stride-4 → P2↔P5 compute-match → adaptive ROI; kernel/neck/head/loss/formulation/temporal/routing/KD; ladder L0–L4; iso-config + iso-cost; scale/event/cost metric; pass/stop rule.
+  - **Research web:** paper gốc FPN, PANet, EfficientDet/BiFPN, TridentNet, SAHI, AutoFocus, QueryDet, DynamicDet, ScaleKD, Localization Distillation, Focal Loss, ATSS, Dynamic Head, FGFA, MEGA, SmokeyNet, PYRONEAR.
+  - **Commands:** `sed -n '1,240p' agent_context.md`; `uname -a`; `git status --short`; `sed` research plan/toolbox + `tail CHANGELOG.md`; `wc -l`; `git diff`; `nl -ba`; `rg`; `apply_patch`; `git diff --check`; `TZ=Asia/Ho_Chi_Minh date`.
+  - **Verify:** Linux ARM64 detected; `git diff --check` PASS; doc-only, không chạy Python/model/test; không poll/stop/deploy Modal.
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md`; `agent_context.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** không có.

@@ -1,0 +1,2 @@
+D-Fire nano trong 13d là control — control phải đứng yên để làm mốc so sánh; retrain control giữa experiment là tự phá mốc. Relabel D-Fire không phục vụ gate nào đang mở → khuyến nghị: không làm bây giờ, để sau 13d.
+Catastrophic forgetting là thật với sequential fine-tune không rehearsal
