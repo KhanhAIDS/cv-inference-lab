@@ -48,3 +48,38 @@
   - **Verify:** Linux ARM64 detected; `git diff --check` PASS; doc-only, không chạy Python/model/test; không poll/stop/deploy Modal.
   - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md`; `agent_context.md`; `CHANGELOG.md`.
   - **Files gián tiếp:** không có.
+
+- **2026-07-14 15:05:55 +0700**
+  - **Task:** audit lineage 3 model (`pyronear/yolov8s`, `dfire_yolo26n_baseline_full_vram`, `yolo26x.pt`/Pyro-SDIS fine-tune). Chỉ research + đọc git history, không Modal/GPU/benchmark.
+  - **Kết quả chính:** claim cũ trong research_plan.md ("Pyronear train trên pyro-sdis, không dính HPWREN/FIgLib") SAI/không có nguồn — model card HF + repo `pyro-vision` + paper PYRONEAR-2025 đều không công bố dataset train của checkpoint `pyronear/yolov8s`. Theo decision rule: lineage không sạch → loại Pyronear khỏi toàn bộ luồng so sánh (kể cả zero-shot control).
+  - **D-Fire (`dfire_yolo26n_baseline_full_vram`):** khôi phục từ git history (`args.yaml` tại commit `ceee019`, script gốc tại `02c7a59`/`faeff13^`) — model `yolo26n.pt` (base COCO), fine-tune D-Fire (`gaiasd/DFireDataset`, nguồn Belo Horizonte fire simulation + UFMG/Serra Verde surveillance + Internet, không liên quan HPWREN/FIgLib/Pyro-SDIS), imgsz `640`, seed `20260707`, val carved 10% từ train gốc (stratified theo label type), test = D-Fire test gốc giữ nguyên, augmentation Ultralytics default (mosaic 1.0, hsv/translate/scale/fliplr default, không override).
+  - **YOLO26x:** base `yolo26x.pt` pretrain COCO 640×640 (Ultralytics official, MuSGD, batch 128) — xác nhận qua `docs.ultralytics.com/models/yolo26` + arXiv 2606.03748; fine-tune Pyro-SDIS đúng theo research_plan hiện có (imgsz 1280/epochs 20/patience 5/seed 20260707/batch 4), augmentation cũng Ultralytics default (train.py không override) — cùng augmentation policy với D-Fire, khác imgsz/epoch/patience theo domain.
+  - **Fairness gap phát hiện thêm:** Pyro-SDIS chỉ có train/val (không test riêng) trong khi D-Fire có train/val/test — YOLO26x chọn epoch VÀ report Pyro val cùng một split; D-Fire baseline train imgsz 640 vs YOLO26x imgsz 1280 — so sánh tuyệt đối giữa 2 model nội bộ bị confound bởi resolution nếu không tách riêng theo domain.
+  - **Web research:** `huggingface.co/pyronear/yolov8s` (model card + raw README + file list), `huggingface.co/datasets/pyronear/pyro-sdis`, `github.com/pyronear/pyro-vision`, arXiv 2402.05349 (PYRONEAR-2025), `github.com/gaiasd/DFireDataset`, `docs.ultralytics.com/models/yolo26`, arXiv 2606.03748.
+  - **Commands:** `find`/`grep` D-Fire/yolo26x refs; `git log --all --oneline`; `git log --all --diff-filter=A --name-only`; `git show <hash>:<path>` (args.yaml, train_dfire_yolo.py, dfire_baseline_report.md); `git log -p -- dataset.py` cho split D-Fire; `TZ=Asia/Ho_Chi_Minh date`.
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md` (sửa 3 chỗ: lineage check mục 12, baseline 13b, dev candidate 13d — bỏ Pyronear); `CHANGELOG.md`.
+  - **Files gián tiếp:** không có. Không tạo file mới/artifact/hash/manifest; không chạy Modal/GPU/benchmark.
+
+- **2026-07-14 15:35:47 +0700**
+  - **Task:** user override quyết định lineage: giữ Pyronear trong so sánh (leakage-caveat thay vì loại); ghi nhận kế hoạch relabel D-Fire; verify lại seed 2 model theo chất vấn user.
+  - **Verify seed:** D-Fire — `args.yaml` của run thật (git `ceee019`) ghi `seed: 20260707`, `deterministic: true`; YOLO26x — `train.py` dòng 491 hard-gate `ValueError` nếu `seed != 20260707`, khớp poll log 07:57. Chưa đọc `train_args` trong checkpoint budget9 trên Modal Volume (ngoài scope, không đụng Modal) — bằng chứng là code gate + poll log, không phải checkpoint trực tiếp.
+  - **Sửa plan:** mục 12 lineage check — đổi decision từ "loại Pyronear" sang "giữ, mọi số FIgLib/Pyro-SDIS mang leakage-caveat, trục so ít rủi ro nhất là D-Fire test"; 13b — thêm lại Pyronear vào baseline cache; 13d — Pyronear vào dev nhưng không được khóa winner từ số FIgLib khi lineage chưa xác minh, final chạy với vai trò reference; mục 8.1 — thêm ghi nhận kế hoạch relabel D-Fire + ràng buộc so sánh (FIgLib axis so được, D-Fire mAP axis vỡ nếu đổi test label, closed results giữ làm control lịch sử, kỳ vọng gain không nằm ở scale-gap).
+  - **Commands:** `git show ceee019:...args.yaml | grep seed`; `sed -n '488,497p' train.py`; `TZ=Asia/Ho_Chi_Minh date`; `git diff --check` (PASS).
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md` (4 chỗ: mục 12, 13b, 13d, 8.1); `CHANGELOG.md`.
+  - **Files gián tiếp:** không có. Không tạo file mới; không chạy Modal/GPU/benchmark.
+
+- **2026-07-14 16:00:22 +0700**
+  - **Task:** trả lời phản biện tiếp theo của user — (1) số mAP D-Fire 0.684 đang so với cái gì, (2) relabel thực ra chỉ <1% ảnh, (3) plan đã có candidate model family ngoài YOLO (RF-DETR...) chưa, (4) giải thích rõ rủi ro imgsz zero-shot của Pyronear.
+  - **Kết quả:** xác nhận 0.684 KHÔNG bị khóa vào gate/thống kê nào khác trong plan (G0/G1 dùng AUROC từ detector cache, độc lập label D-Fire) — sửa lại framing "mất tính so sánh" trước đó, quá thận trọng cho quy mô <1%; relabel giờ ghi nhận đơn giản hơn (report song song 2 mAP, không cần đóng băng test); xác nhận **plan hiện KHÔNG có candidate model family ngoài YOLO** ở track chọn winner (13a-13e) — transformer chỉ xuất hiện như module thay thế nội bộ (A3/L4), sau G4; thêm gap note.
+  - **Không sửa thêm gì về Pyronear imgsz** (câu hỏi 4 chỉ yêu cầu giải thích thêm trong chat, không đổi plan).
+  - **Commands:** `git diff --check` (PASS); `TZ=Asia/Ho_Chi_Minh date`.
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md` (mục 8.1 sửa lại relabel framing; mục 13 thêm gap note model family); `CHANGELOG.md`.
+  - **Files gián tiếp:** không có. Không tạo file mới; không chạy Modal/GPU/benchmark.
+
+- **2026-07-14 16:41:12 +0700**
+  - **Task:** verify thật imgsz train của `pyronear/yolov8s` (câu hỏi user: "có cách nào kiểm tra rồi ghi vào không") — không cần Modal/GPU, chỉ đọc metadata file model đã export.
+  - **Commands:** tải `yolov8s.onnx` (44.5MB) từ `huggingface.co/pyronear/yolov8s` về scratchpad session (ngoài repo); `.venv/bin/pip install onnx` (tạm thời, không ghi vào `requirements.lock`); `onnx.load(...).metadata_props`; `.venv/bin/pip uninstall -y onnx` + xóa file scratchpad ngay sau khi đọc xong (dọn sạch, không để lại dependency/artifact thừa).
+  - **Kết quả:** metadata Ultralytics export xác nhận `imgsz=[1024,1024]`, `names={0:'smoke'}`, `stride=32`, `date=2024-05-30`, `description` trỏ path nội bộ `pyronear-mlops/data/03_model_input/yolov8/full/datasets/data.yaml`. Phát hiện thêm: ngày export (2024-05-30) **sớm hơn** ngày `pyro-sdis` tự nhận "full release January 2025" trên dataset card → không thể đồng nhất tuyệt đối checkpoint này với bản `pyro-sdis` HF hiện tại (nhiều khả năng cùng nguồn camera nhưng khác snapshot). Không đổi kết luận leakage risk (vẫn chưa loại trừ HPWREN/ALERTWildfire), chỉ thay giả thuyết imgsz từ "không rõ" thành "1024 xác nhận".
+  - **Sửa plan:** mục 12 (thêm bullet verify), 13b (Pyronear cache 2 lượt `imgsz=1024` số chính + `1280` số phụ, bỏ giả thuyết 640).
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/docs/research_plan.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** không có trong repo (file `.onnx` tải về nằm ở scratchpad ngoài project, đã xóa sau khi đọc; `onnx` package cài tạm vào `.venv` rồi gỡ ngay, không đổi `requirements.lock`).
