@@ -4,7 +4,9 @@
 - **Tracking:** mọi thay đổi append `CHANGELOG.md`, timestamp GMT+7, command, file trực tiếp/gián tiếp.
 - **Scope:** `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
 - **Mục tiêu:** early smoke/fire detection video; ưu tiên event-level TTD, false alarm/hour; phụ AUROC, mAP, latency, cost.
-- **Dataset:** Pyro-SDIS parquet, 33,636 row, 5,499 empty annotation, source class `1` remap output class `0`; FIgLib 40,362 frame hợp lệ, 510 event, 143 camera, weak label theo ignition offset.
+- **Dataset:** Pyro-SDIS parquet, 33,636 row, 5,499 empty annotation, source class `1` remap output class `0`; FIgLib 40,362 frame hợp lệ, 511 folder / 510 event có frame, 143 camera, weak label theo ignition offset.
+- **FIgLib split (2026-07-14):** camera-disjoint, seed `20260707`, dev 359 seq/108 cam, final 152 seq/35 cam; artifacts `figlib_index.jsonl`/`figlib_audit.json`/`figlib_split_manifest.json`; không hash lock.
+- **Doc layering:** research_plan static, số chốt inline; agent_context/CHANGELOG volatile, file static không referred sang; không thêm process layer (hash/ledger/manifest phụ) khi chưa có failure mode — rule ở CLAUDE.md.
 - **Protocol:** score max smoke/fire confidence; offset `<0` false alarm; TTD = alarm offset; FA/hour theo negative-window hours; bootstrap event tối thiểu 1,000; operating points 1/camera/day và 1/camera/week.
 - **Code:** `dataset.py` Pyro converter + FIgLib index; `train.py` YOLO26x + exact resume; `eval.py` accuracy/cache; `temporal_eval.py` G0/temporal/compare CPU; `modal_app.py` Modal wrappers.
 - **Removed:** D-Fire, hard-negative, tiling, motion/temporal probes phụ, smoke/resume-gate, CPU preflight, staging cache, checkpoint manifest/hash/snapshot.

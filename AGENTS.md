@@ -47,6 +47,7 @@
 - Xóa ngay lập tức file/folder sinh tự động, cache, scaffold rỗng, placeholder thừa.
 - Không được viết code thừa thãi, tạo file thừa thãi ví dụ như `__init__.py` khi không thực sự cần thiết.
 - Không tạo folder hoặc ignore rule preemptive (đón đầu) khi chưa có file thực tế hoặc nhu cầu thực sự.
+- Không thêm layer quy trình mới (hash lock, checkpoint manifest, cost ledger, snapshot verify, gate phụ) khi chưa có failure mode thực tế mà layer đó ngăn chặn. Mặc định dùng cơ chế sẵn có: git commit, seed cố định, artifact JSON. Muốn thêm layer → phải nêu failure mode cụ thể và được user duyệt.
 - Đặt tên file/folder tường minh theo nội dung.
 - Không thêm comment trong code.
 - Chỉ giữ hoặc thêm comment code khi user yêu cầu rõ.
@@ -88,3 +89,4 @@
 - `agent_context.md` phải viết tối giản kiểu caveman: bullet ngắn, dữ kiện sống, schema, blocker, next step.
 - `agent_context.md` không chứa log dài, transcript command, lịch sử đã lỗi thời, diễn giải câu đầy đủ nếu keyword đủ hiểu.
 - Log command, timeline, file thay đổi phải ghi ở `CHANGELOG.md`, không nhồi vào `agent_context.md`.
+- Phân tầng tài liệu: file static (vd `tasks/*/docs/*.md`) ít thay đổi; `agent_context.md` và `CHANGELOG.md` là file volatile (bị rút gọn/xóa trắng thường xuyên). File static TUYỆT ĐỐI không dẫn chiếu file volatile để chứa chi tiết — số liệu chốt phải ghi inline trong file static, chi tiết exploratory trỏ artifact JSON hoặc git history.

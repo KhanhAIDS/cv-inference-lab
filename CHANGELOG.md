@@ -19,3 +19,17 @@
   - **Commands:** `Get-Content agent_context.md -Encoding utf8`; `Select-String CHANGELOG.md`; `Get-Date`; `apply_patch`.
   - **Files trực tiếp:** `agent_context.md`; `CHANGELOG.md`.
   - **Files gián tiếp:** không có.
+
+- **2026-07-14 09:59 +0700**
+  - **Task:** trả lời câu hỏi kế hoạch (đọc research_plan/research_toolbox/agent_context, không đổi plan); dọn cache tự sinh theo quy tắc tối giản.
+  - **Commands:** `nvidia-smi -L`; `ls tasks/smoke_fire_detection/`; `rm -rf tasks/smoke_fire_detection/__pycache__`.
+  - **Files trực tiếp:** xóa `tasks/smoke_fire_detection/__pycache__/`; append `CHANGELOG.md`.
+  - **Files gián tiếp:** không có.
+
+- **2026-07-14 10:34 +0700**
+  - **Task:** đồng nhất số liệu FIgLib giữa các tài liệu; tạo split dev/final; bỏ hash lock + cost ledger theo quyết định user; thêm rule chống complexity layer + rule static/volatile doc; sửa dẫn chiếu hỏng trong research_plan.
+  - **Commands:** `.venv/bin/python tasks/smoke_fire_detection/dataset.py figlib --data-root datasets/smoke_fire_detection/FIgLib --index-out artifacts/smoke_fire_detection/figlib_index.jsonl --audit-out artifacts/smoke_fire_detection/figlib_audit.json --manifest-out artifacts/smoke_fire_detection/figlib_split_manifest.json`; grep/đọc `dataset.py`, `pyro_sdis_audit.json`.
+  - **Kết quả verify:** 511 folder, 510 sequence có frame hợp lệ, 143 camera-string, 40362 frame; camera 136→143 do parser fallback brand-token cho 71 folder dạng dash (parser change, không phải data change); split camera-disjoint seed 20260707: dev 359 seq/108 cam, final 152 seq/35 cam, overlap 0; 13a gate PASS khớp audit (`invariant_differences={}`).
+  - **Files trực tiếp:** `CLAUDE.md` (thêm rule mục 5 + mục 10); `tasks/smoke_fire_detection/docs/research_plan.md` (cập nhật số liệu, bỏ hash lock/SHA shard/cost ledger, sửa toàn bộ dẫn chiếu agent_context/artifact chết, đánh dấu 13a done, human review done); `agent_context.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** `artifacts/smoke_fire_detection/figlib_index.jsonl`, `figlib_audit.json`, `figlib_split_manifest.json` (script tự sinh).
+  - **Modal:** không deploy/stop/poll; không đụng Volume/checkpoint.
