@@ -1,48 +1,21 @@
-﻿- **2026-07-12 22:16:31 +0700**
-  - **Task:** Strict Pyro-SDIS archive staging CPU gate, không GPU.
-  - **Commands đã chạy:** `modal container list --app-id ap-TFIxfnWCUFjoFcW60YtZO0 --json`; `modal run tasks/smoke_fire_detection/modal_app.py --action verify-strict-staging` (lần 1 fail 0-byte empty label, lần 2 pass sau normalize staging-only); `Get-Date`.
-  - **Patch:** staging full archive SHA path; archive copy ngoài extract; temp unique + atomic rename; lock concurrent; cache marker strict; exact count/hash/YAML/nonzero/path validation; invalid cache rebuild; empty YOLO label chuẩn hoá newline chỉ trong `/tmp`.
-  - **Gate:** PASS. Archive `9216a4c5a5b83cf3ae470a077bda3915f39a50d3b984d9ba4d08060db7fac2d5`; snapshot `fe4a4902e751f82fb3959cd78a94444280215af85d292213de39379f2e04bb93`; YAML `5543bd5dd6bd28033c63eedc136a721441d8b7c6046e8f4413a454f0dbd84a40`; train `29537`; val `4099`; total `33636`; labels `33636`; normalized empty labels `/tmp` `5499`; CPU `165.20s`.
-  - **CPU tests:** fresh extract pass; valid cache reuse pass; stale-image rebuild pass; corrupt archive fail-clean pass; interrupted temp cleanup pass; concurrent lock pass.
-  - **Task 228 cache cause:** `suspected stale cache`; chưa có artifact cache cũ, không kết luận root cause.
-  - **Crowd-detector:** container metadata query trả `[]`; `3` app task trước đó không phân loại CPU/GPU; không sửa/dừng.
-  - **Files sửa trực tiếp:** `tasks/smoke_fire_detection/train_portable.py`; `tasks/smoke_fire_detection/modal_app.py`; `agent_context.md`; `CHANGELOG.md`.
-  - **Files thay đổi gián tiếp:** Modal Volume thêm `artifacts/smoke_fire_detection/pyro_sdis_strict_staging_report.json`; cache `/tmp/smoke-fire-strict-staging-audit/smoke-fire-pyro-sdis-9216a4c5a5b83cf3ae470a077bda3915f39a50d3b984d9ba4d08060db7fac2d5`; CPU Modal app tạm `ap-KObpErwYfUq1wKgaaRWFpH`; archive/dataset production không đổi.
+- **2026-07-14 07:57:04 +0700**
+  - **Task:** poll Modal training `yolo26x_pyro_sdis_budget9`; xác minh resume/checkpoint.
+  - **Result:** container `ta-01KXERQ6TWZND3DTZS7A4W5N8R`; epoch `4/20`, batch `4095/7385`; L4; batch `4`; imgsz `1280`.
+  - **Checkpoint:** `last_resume.pt` epoch 3; optimizer/EMA/scaler/scheduler/train args/updates đủ; ngắt giữa epoch 4 sẽ lặp epoch 4.
+  - **Files trực tiếp:** `agent_context.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** Modal log/training tiếp tục trên Volume; không stop/redeploy/sửa Volume.
 
-- **2026-07-12 23:26:59 +0700**
-  - **Task:** YOLO26x batch=4 audit; exact-resume strict gate; Modal budget gate; free runtime discovery.
-  - **Commands đã chạy:** `nvidia-smi -L`; `modal --version`; `py -c <AST parse>`; `modal run tasks/smoke_fire_detection/modal_app.py --action audit-batch4` (network fail, Windows charmap fail, 2 report fail validation, 1 pass); `modal run tasks/smoke_fire_detection/modal_app.py --action resume-gate --paid-spend-usd 15.289543` (warm-start path fail trước batch, lần sau pass); `ssh -o BatchMode=yes -o ConnectTimeout=15 ai2 "uname -a; nvidia-smi -L; pwd"` (hostname không resolve).
-  - **Batch=4 final:** PASS kỹ thuật. Strict archive; subset deterministic `480` (`240` positive, `240` empty); `imgsz=1280`; AMP; workers `8`; augmentation fixed; `20` warm-up + `100` measured; validation không chạy. Median `0.8357s`; p90 `0.9037s`; throughput `4.702` img/s; peak VRAM `17.93/23.66GB` (`75.8%`).
-  - **Budget:** L4 `$0.000222/s`; `104.7` phút/epoch; `$1.3946/epoch`; `$27.8912/20 epoch` GPU-only; budget còn `~$9`; full Modal blocked.
-  - **Exact-resume:** PASS. A epoch `0`, updates `35`; B container mới epoch `1`, updates `47`; `last_resume` SHA đổi; snapshot `epoch_001_resume.pt` SHA giữ nguyên; checkpoint B optimizer/EMA/scaler/scheduler/train args/dataset identity/hash/load PASS. A/B không validation.
-  - **Patch:** batch audit custom trainer chặn validation/final eval framework; warm-start path remote chuẩn hoá `/workspace`; checkpoint `fsync` + atomic rename; `last_resume.pt` full state; snapshot immutable `epoch_NNN_resume.pt`; manifest hash/snapshot/dataset/config verify; scheduler restore explicit.
-  - **Blocker:** free GPU runtime không discover; `ai2` không resolve Windows hiện tại. Không full production; không chỉnh metadata checkpoint.
-  - **Files thay đổi trực tiếp:** `tasks/smoke_fire_detection/train_portable.py`; `tasks/smoke_fire_detection/modal_app.py`; `agent_context.md`; `CHANGELOG.md`.
-  - **Files thay đổi gián tiếp:** Modal Volume thêm `artifacts/smoke_fire_detection/yolo26x_batch4_probe_report.json` (audit invalid validation); `artifacts/smoke_fire_detection/yolo26x_batch4_probe_report_v2.json` (audit final); `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_resume_gate/{run_metadata.json,checkpoint_manifest.json,results.csv,args.yaml,labels.jpg,weights/last.pt,weights/last_resume.pt,weights/epoch_001_resume.pt,weights/epoch_002_resume.pt}`; container `/tmp` tạo staged cache, dataset subset, Ultralytics cache/asset; archive/dataset production không đổi.
+- **2026-07-14 09:40:19 +0700**
+  - **Task:** trim code theo user duyệt; giữ training/resume/inference weight.
+  - **Code:** bỏ D-Fire, hard-negative, tiling/motion probes, smoke/resume-gate, CPU preflight, staging cache/direct-copy, checkpoint manifest/hash/snapshot; giữ `train_segment`, full-state `last_resume.pt`, `best.pt`/`last.pt`, Pyro/FIgLib eval.
+  - **Sửa:** Modal evaluate mặc định budget9/best.pt + Pyro val + imgsz 1280; evaluator hỗ trợ YAML trỏ thư mục ảnh.
+  - **Test:** syntax 6/6; converter 3/3; parser; Modal import; segment args; directory split; unused import; diff check PASS.
+  - **Files trực tiếp:** `tasks/smoke_fire_detection/dataset.py`; `eval.py`; `temporal_eval.py`; `train.py`; `modal_app.py`; `agent_context.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** xóa Python bytecode cache `tasks/smoke_fire_detection/__pycache__`; temp test dirs tự xóa.
+  - **Modal:** không deploy; không stop/poll container; không sửa Volume/checkpoint/weight.
 
-- **2026-07-13 07:26:53 +0700**
-  - **Task:** dọn `artifacts/` hoàn tất/dư thừa theo yêu cầu user.
-  - **Command đã chạy:** `Get-Content -Raw agent_context.md`; `git status --short`; `Get-ChildItem artifacts -Recurse`; `rg -n --glob '!artifacts/**' ...`; `Remove-Item -LiteralPath <28 path đã verify dưới artifacts/smoke_fire_detection> -Recurse -Force`; `Get-ChildItem artifacts/smoke_fire_detection`; `Get-Date -Format "yyyy-MM-dd HH:mm:ss K"`.
-  - **Kết quả:** xóa `28` path; thu hồi `5.44 GiB`; xóa staging FIgLib đã upload xong `5.35 GiB`, `6,416` file. Không chạy model/dataset; không sinh file gián tiếp.
-  - **Giữ:** `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`; `human_review_labels.json`; `human_review_pack.md`; `human_review_pack_key.json`; `pyro_sdis_audit.json`; `pyro_sdis_snapshot.json`; `pyro_sdis_yolo_archive.json`.
-  - **Files/folder xóa trực tiếp:** `artifacts/smoke_fire_detection/staging/`; `checkpoint2_candidate_comparison.json`; `checkpoint2_dev.json`; `diagnose_baseline_dev.json`; `diagnose_pyronear_dev.json`; `figlib_audit.json`; `figlib_baseline_dev_cache.jsonl`; `figlib_baseline_dev_cache.jsonl.errors.json`; `figlib_detector_probe.jsonl`; `figlib_index.jsonl`; `figlib_pyronear_dev_cache.jsonl`; `figlib_pyronear_dev_cache.jsonl.errors.json`; `figlib_split_manifest.json`; `figlib_subset64_manifest.json`; `figlib_upload_probe_manifest.json`; `g0_baseline_dev.json`; `g0_pyronear_dev.json`; `pyro_sdis_checkpoint1.json`; `pyronear_detector_probe.jsonl`; `temporal_baseline_dev.json`; `temporal_baseline_dev_events.json`; `temporal_pyronear_dev.json`; `temporal_pyronear_dev_events.json`; `verify_resume_patch_report.json`; `yolo26x_archive_benchmark_report.json`; `yolo26x_archive_benchmark_runtime.json`; `yolo26x_smoke_locked_report.json`; `yolo26x_smoke_locked_runtime.json`.
-  - **Files sửa trực tiếp:** `agent_context.md`; `CHANGELOG.md`.
-  - **Files thay đổi gián tiếp:** không có.
-
-- **2026-07-13 07:44:21 +0700**
-  - **Task:** Modal L4 train Pyro-SDIS dùng phần ngân sách còn lại; checkpoint exact-resume.
-  - **Commands đã chạy:** `Get-Content -Raw agent_context.md`; `nvidia-smi -L`; `cmd /c ver`; `rg -n ... tasks/smoke_fire_detection/{modal_app.py,train_portable.py}`; `modal --version`; `modal run --help`; `modal run -q tasks/smoke_fire_detection/modal_app.py --action artifact-status --run-name yolo26x_pyro_sdis`; `modal run -q -d tasks/smoke_fire_detection/modal_app.py --action train --run-name yolo26x_pyro_sdis_budget9 --model artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt --resume never --max-epochs-per-invocation 3 --max-runtime-seconds 20000 --dataset-stage-max-seconds 600 --paid-spend-usd 20.967052 --paid-cap-usd 29.50 --paid-stop-threshold-usd 29.50`; `modal run -q tasks/smoke_fire_detection/modal_app.py --action artifact-status --run-name yolo26x_pyro_sdis_budget9`; `git diff --check`.
-  - **Remote preflight:** run cũ `yolo26x_pyro_sdis` không có `last_resume.pt`; không dùng resume. `best.pt` tồn tại; dùng warm-start.
-  - **Launch:** run mới `yolo26x_pyro_sdis_budget9`; batch `4`; `imgsz=1280`; fresh `resume=never`; invocation 1 tối đa `3` epoch/`20000s`; cap chi phí khai báo `$29.50`, spend hiện tại `$20.967052`; dự kiến khoảng `$4.2` GPU. `--detach` giữ run khi local CLI timeout.
-  - **Checkpoint state:** Volume đã có `run_metadata.json`, `args.yaml`; chưa có `checkpoint_manifest.json`, `last.pt`, `last_resume.pt`, `best.pt` — epoch 1 chưa hoàn tất. Không launch invocation tiếp theo trước verify checkpoint full-state.
-  - **Patch:** `train` truyền đúng `--model`; expose `paid_cap_usd`, `paid_stop_threshold_usd` xuống portable trainer để metadata/cost gate nhận budget phiên.
-  - **Files thay đổi trực tiếp:** `tasks/smoke_fire_detection/modal_app.py`; `agent_context.md`; `CHANGELOG.md`.
-  - **Files thay đổi gián tiếp:** Modal Volume thêm `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/{run_metadata.json,args.yaml}`; GPU training đang chạy, checkpoint chưa sinh tại thời điểm ghi log.
-
-- **2026-07-13 08:45:27 +0700**
-  - **Task:** Dọn code `tasks/smoke_fire_detection`; gom nhóm Modal/dataset/train-resume/test-eval/eval logic.
-  - **Commands đã chạy:** `Get-Content -Raw agent_context.md`; `Get-ComputerInfo`; `git status --short`; `rg --files tasks/smoke_fire_detection`; `rg -n ...`; `git diff`; `Get-ChildItem`; `Move-Item train.py -> train_legacy.py`; `Move-Item train_portable.py -> train.py`; `py -B -c <AST parse>`; `py -B -m unittest tasks.smoke_fire_detection.test_pyro_sdis_converter`; `git diff --check`.
-  - **Kết quả:** `train.py` thay trainer cũ; resume strict từ `last_resume.pt`, checkpoint full-state/atomic/hash/manifest. Modal import đổi sang `train.py`. Xóa script thử nghiệm/trùng lặp; audit/probe/resume/staging cần thiết đã có trong `modal_app.py`, `dataset.py`, `train.py`.
-  - **Validation:** Python `py.exe` fail `A specified logon session does not exist`; AST/unit test chưa chạy; không dùng interpreter khác.
-  - **Files thay đổi trực tiếp:** `tasks/smoke_fire_detection/train.py`; `tasks/smoke_fire_detection/modal_app.py`; `tasks/smoke_fire_detection/audit_dataset_remote.py` (xóa); `tasks/smoke_fire_detection/audit_loader.py` (xóa); `tasks/smoke_fire_detection/gate_resume.py` (xóa); `tasks/smoke_fire_detection/launch_train.py` (xóa); `tasks/smoke_fire_detection/probe_batch.py` (xóa); `tasks/smoke_fire_detection/probe_batch_real.py` (xóa); `tasks/smoke_fire_detection/probe_batch_v2.py` (xóa); `tasks/smoke_fire_detection/recover_dataset.py` (xóa); `tasks/smoke_fire_detection/stage_13b.ps1` (xóa); `tasks/smoke_fire_detection/train_portable.py` (đổi tên thành `train.py`); `agent_context.md`; `CHANGELOG.md`.
-  - **Files thay đổi gián tiếp:** không có.
+- **2026-07-14 09:45:00 +0700**
+  - **Task:** rút gọn tài liệu; xóa timeline và trạng thái outdated; giữ snapshot run cuối, checkpoint contract, code trim, next step.
+  - **Commands:** `Get-Content agent_context.md -Encoding utf8`; `Select-String CHANGELOG.md`; `Get-Date`; `apply_patch`.
+  - **Files trực tiếp:** `agent_context.md`; `CHANGELOG.md`.
+  - **Files gián tiếp:** không có.
