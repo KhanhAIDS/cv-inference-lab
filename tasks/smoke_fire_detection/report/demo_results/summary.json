@@ -1,0 +1,156 @@
+{
+  "models": {
+    "dfire_yolo26n_baseline": {
+      "weights": "artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
+      "training_status": "hoan tat (E0 baseline) - D-Fire test mAP50-95=0.404, mAP50=0.684",
+      "device": "cuda"
+    },
+    "yolo26x_pyro_sdis": {
+      "weights": "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/best.pt",
+      "training_status": "DANG TRAIN - checkpoint epoch 18/20, Pyro-SDIS val mAP50-95=0.492 (chua phai so cuoi)",
+      "device": "cuda"
+    },
+    "rfdetr_large_pyro_sdis": {
+      "weights": "artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/checkpoint_best_ema.pth",
+      "training_status": "DANG TRAIN - checkpoint epoch 5/20 (best EMA), Pyro-SDIS val mAP50-95(EMA)=0.4648 (chua phai so cuoi)",
+      "device": "cuda"
+    }
+  },
+  "datasets": {
+    "pyro_sdis_val": {
+      "dfire_yolo26n_baseline": {
+        "force-06_cabanelle-125_2024-02-24T09-07-25.jpg": [],
+        "force-06_cabanelle-125_2024-02-24T09-07-27.jpg": [],
+        "force-06_cabanelle-125_2024-02-24T09-07-28.jpg": []
+      },
+      "yolo26x_pyro_sdis": {
+        "force-06_cabanelle-125_2024-02-24T09-07-25.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.5490961670875549
+          }
+        ],
+        "force-06_cabanelle-125_2024-02-24T09-07-27.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.7030710577964783
+          }
+        ],
+        "force-06_cabanelle-125_2024-02-24T09-07-28.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.6579099893569946
+          }
+        ]
+      },
+      "rfdetr_large_pyro_sdis": {
+        "force-06_cabanelle-125_2024-02-24T09-07-25.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.5195426344871521
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.18743401765823364
+          }
+        ],
+        "force-06_cabanelle-125_2024-02-24T09-07-27.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.5810459852218628
+          }
+        ],
+        "force-06_cabanelle-125_2024-02-24T09-07-28.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.6714525818824768
+          }
+        ]
+      }
+    },
+    "dfire_test": {
+      "dfire_yolo26n_baseline": {
+        "AoF06723.jpg": [],
+        "AoF06724.jpg": [],
+        "AoF06725.jpg": []
+      },
+      "yolo26x_pyro_sdis": {
+        "AoF06723.jpg": [],
+        "AoF06724.jpg": [],
+        "AoF06725.jpg": []
+      },
+      "rfdetr_large_pyro_sdis": {
+        "AoF06723.jpg": [],
+        "AoF06724.jpg": [],
+        "AoF06725.jpg": []
+      }
+    },
+    "figlib_sample": {
+      "dfire_yolo26n_baseline": {
+        "1465066200_+00600.jpg": [],
+        "1465066268_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.663058340549469
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.41887956857681274
+          }
+        ],
+        "1466360053_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.34185266494750977
+          }
+        ]
+      },
+      "yolo26x_pyro_sdis": {
+        "1465066200_+00600.jpg": [],
+        "1465066268_+00600.jpg": [],
+        "1466360053_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.4179588556289673
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.20946241915225983
+          }
+        ]
+      },
+      "rfdetr_large_pyro_sdis": {
+        "1465066200_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.6199195384979248
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.15164518356323242
+          }
+        ],
+        "1465066268_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.3928152024745941
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.29735884070396423
+          }
+        ],
+        "1466360053_+00600.jpg": [
+          {
+            "class_name": "smoke",
+            "confidence": 0.6310274600982666
+          },
+          {
+            "class_name": "smoke",
+            "confidence": 0.19142648577690125
+          }
+        ]
+      }
+    }
+  }
+}

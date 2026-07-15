@@ -4,4 +4,4 @@ __pycache__/
 datasets/
 .vscode/
 .agents/
-artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/checkpoint_best_ema.pth
+artifacts/smoke_fire_detection/runs
