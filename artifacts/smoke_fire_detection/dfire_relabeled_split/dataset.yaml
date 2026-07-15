@@ -1,7 +1,0 @@
-path: /home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/dfire_relabeled_split
-train: train.txt
-val: val.txt
-test: test.txt
-names:
-  0: smoke
-  1: fire
