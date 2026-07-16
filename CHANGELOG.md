@@ -1,289 +1,81 @@
-- 2026-07-15 23:18:45 +07:00
-  - Mục tiêu: đổi YOLO26x/D-Fire Kaggle notebook sang Colab; khóa fairness YOLO26x↔RF-DETR theo từng dataset.
-  - Xác minh trước sửa:
-    - D-Fire notebooks: cùng split 15,500/1,721/4,306; 640; flip ngang 0.5; 20ep; seed 20260707.
-    - Pyro scripts cũ: cùng split/1280/20ep/seed; augmentation mặc định khác framework; chưa fair.
-    - D-Fire local scripts cũ: YOLO 100ep + augmentation mặc định; chưa fair.
-  - Thay đổi:
-    - Colab: mount Drive; dataset root/output configurable; single GPU; checkpoint Drive; resume; final test eval.
-    - Dataset audit: đủ folder train/valid/test images+labels; exact image counts; unique stem; orphan label; YOLO label syntax/range/class; cross-split overlap; file-list SHA-256; split role train/valid/test.
-    - Fair augmentation: chỉ horizontal flip 0.5; tắt augmentation còn lại/multi-scale.
-    - Epoch: đủ 20; tắt early stop; seed giữ 20260707.
-    - Context: ghi protocol mới; đánh dấu run Pyro cũ không đủ fairness, cần fresh retrain.
-  - File thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `tasks/smoke_fire_detection/train.py`.
-    - Sửa `tasks/smoke_fire_detection/train_rfdetr.py`.
-    - Sửa `tasks/smoke_fire_detection/train_dfire_yolo26x.py`.
-    - Sửa `tasks/smoke_fire_detection/train_dfire_rfdetr.py`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - File thay đổi gián tiếp: không có.
-  - Command:
-    - `Get-Content -Raw -LiteralPath agent_context.md`
-    - `Get-ChildItem ... *ipynb/*dfire*/*pyro*`
-    - `[System.Environment]::OSVersion.Platform; rg --files -g "*pyro*" -g "*dfire*" -g "*.ipynb" -g "!docs/**"`
-    - `ConvertFrom-Json` hai D-Fire notebook; `rg` config bốn training script.
-    - `Get-Content` vùng config/training của bốn training script.
-    - `git status --short`; `rg` augmentation/config/context.
-    - `git diff --` bốn training script.
-    - `rg` context; `py -c` parse notebook — FAIL môi trường: py launcher logon session terminated.
-    - `py --version` — FAIL cùng lỗi py launcher.
-    - PowerShell `ConvertFrom-Json` + assert Colab/Drive/audit/test-eval — PASS, 10 cells.
-    - `rg` đối chiếu protocol bốn training script + hai D-Fire notebook — PASS.
-    - `git diff --check`; `git status --short`; `git diff --stat`.
-    - `Get-Content -LiteralPath CHANGELOG.md -Tail 80`
-    - PowerShell đổi `UtcNow` sang `SE Asia Standard Time`.
-- 2026-07-15 23:24:13 +07:00
-  - User correction: framework-native augmentation = phần model ecosystem; không ép YOLO/RF-DETR dùng cùng transform nội bộ.
-  - Revert toàn bộ custom augmentation override vừa thêm.
-  - Fairness khóa phía user: cùng split/resolution/20 epoch/seed; không custom augmentation override; mỗi framework dùng trainer recipe mặc định.
-  - Giữ thay đổi no early stop: bảo đảm đủ đúng 20 epoch.
-  - File thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `kaggle_train_dfire_rfdetr.ipynb`.
-    - Sửa `tasks/smoke_fire_detection/train.py`.
-    - Sửa `tasks/smoke_fire_detection/train_rfdetr.py`.
-    - Sửa `tasks/smoke_fire_detection/train_dfire_yolo26x.py`.
-    - Sửa `tasks/smoke_fire_detection/train_dfire_rfdetr.py`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - File thay đổi gián tiếp: không có.
-  - Command:
-    - Web search official Ultralytics/RF-DETR augmentation docs — xác nhận trainer có native augmentation defaults; sau user correction không dùng để ép đồng nhất.
-    - `rg -n "Augmentation|augmentation|multi_scale|aug_config|PROTOCOL" kaggle_train_dfire_rfdetr.ipynb`
-    - PowerShell parse hai notebook JSON + assert không custom augmentation override + đối chiếu D-Fire resolution/epochs/seed — PASS.
-    - `git diff --check` — PASS; chỉ warning LF→CRLF.
-    - PowerShell timestamp GMT+7.
-- 2026-07-16 12:13:49 +07:00
-  - Mục tiêu: xác nhận GUI ghi thẳng dataset; audit hậu chỉnh sửa; thay archive train D-Fire; đồng bộ 2 notebook.
-  - Xác nhận GUI → dataset:
-    - Report có `522` record `reviewed:true`; cả `522` path label tồn tại dưới `datasets/smoke_fire_detection/D-Fire`.
-    - `150` label có mtime `11:00–11:50` hôm nay, khớp phiên GUI; còn lại chỉ đánh dấu review, không rewrite khi bbox không đổi.
-  - Audit source read-only PASS:
-    - Train: 15,500 ảnh/label, 19,225 box, 7,052 empty label.
-    - Valid: 1,721 ảnh/label, 2,099 box, 783 empty label.
-    - Test: 4,306 ảnh/label, 5,197 box, 2,006 empty label.
-    - Tổng: 26,521 box; 0 missing/orphan, 0 clip, 0 drop, 0 syntax/class/non-finite/out-of-frame/zero-area.
-  - Archive:
-    - Xác minh không có folder `D-Fire-clean`; chỉ có file `D-Fire-clean.zip` cũ.
-    - Xóa `datasets/smoke_fire_detection/D-Fire-clean.zip` theo yêu cầu user.
-    - Tạo `datasets/smoke_fire_detection/D-Fire-train-ready.zip`, root `D-Fire/`, ZIP store-only.
-    - Audit trực tiếp archive PASS: 43,055 file thật, 10 folder entry, `data.yaml`, split/image-label/box count khớp source, toàn label hợp lệ.
-  - Notebook:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`: archive Drive `D-Fire-train-ready.zip`.
-    - Sửa `kaggle_train_dfire_rfdetr.ipynb`: hướng dẫn upload `D-Fire-train-ready.zip`.
-    - JSON parse 2 notebook: PASS.
-  - Thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `kaggle_train_dfire_rfdetr.ipynb`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp:
-    - Xóa `datasets/smoke_fire_detection/D-Fire-clean.zip`.
-    - Thêm `datasets/smoke_fire_detection/D-Fire-train-ready.zip`.
-  - Command:
-    - `Get-Content -Raw agent_context.md`; `Get-ChildItem`; `rg` 2 notebook; PowerShell parse report + label path/mtime.
-    - `py -3 review_dfire_label_fixes.py --audit --no-gui` — PASS, read-only, 261.5 giây.
-    - `apply_patch` đổi archive name 2 notebook.
-    - PowerShell resolve target/delete preflight; `Get-ChildItem -Attributes ReparsePoint` — 0; disk check.
-    - `Remove-Item D-Fire-clean.zip; tar.exe -a -c --options zip:compression=store ... D-Fire` — tar PASS; xóa bị sandbox deny.
-    - `Remove-Item D-Fire-clean.zip` quyền ngoài sandbox — PASS.
-    - `py -3 -c ... zipfile` audit lần 1 — dừng do count gồm 10 folder entry; audit lần 2 file-only — PASS.
-    - PowerShell JSON parse 2 notebook; `rg` archive references; timestamp GMT+7.
-- 2026-07-16 10:05:01 +07:00
-  - Correction user: bỏ hoàn toàn move bbox; cho phép vẽ bbox lồng; không audit lại dataset.
-  - Viewer sửa label:
-    - Chế độ thêm luôn tạo bbox mới, kể cả kéo bên trong bbox hiện hữu.
-    - Chế độ chọn/sửa: bấm trong bbox chỉ chọn; chỉ 4 góc được resize; không có move.
-    - `Lưu`: nếu có sửa, ghi label YOLO thẳng vào `datasets/smoke_fire_detection/D-Fire/<split>/labels/` bằng file tạm + replace nguyên tử.
-    - Entry không bị xóa; thêm `✓ ĐÃ LƯU`.
-    - Trạng thái lưu bền qua lần mở GUI sau bằng field `reviewed: true` trong report sẵn có; bấm Lưu không sửa bbox vẫn đánh dấu review.
-  - Viewer pattern riêng:
-    - Thêm `tasks/smoke_fire_detection/review_dfire_valid_labels.py`.
-    - Read-only; lọc ảnh và label đều có mtime trước 2026; ít nhất 1 bbox; mọi dòng đúng cú pháp, class 0/1, finite, diện tích dương, không vượt ảnh.
-    - Hiển thị ảnh + bbox đúng raster; cyan=smoke, cam=fire; cửa sổ khóa 1100×720; phím mũi tên duyệt.
-  - Xác minh:
-    - Không audit/quét dataset thật theo yêu cầu user.
-    - Compile hai script + fixture dataset tạm: PASS.
-    - Không move khi kéo trong bbox lớn; thêm bbox con; resize góc; label direct-save; dấu ✓; report reviewed bền; viewer read-only: PASS.
-  - Thay đổi trực tiếp:
-    - Sửa `tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - Thêm `tasks/smoke_fire_detection/review_dfire_valid_labels.py`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp: không có; fixture trong thư mục tạm đã tự xóa.
-  - Command:
-    - `apply_patch` sửa viewer chính; thêm viewer read-only; sửa context/changelog.
-    - `py -3 -c ...` fixture tạm compile/GUI/save/read-only — PASS.
-    - `rg` kiểm tra move/save/reviewed/cutoff/viewer; `Get-Content` đoạn source/context; `git status --short`.
-    - `py -3 -c ...` compile cuối hai script + `rg` xác nhận không còn hướng dẫn move bbox — PASS.
-    - PowerShell timestamp GMT+7.
-- 2026-07-16 00:11:44 +07:00
-  - Lỗi: tự thêm SHA-256 file-list vào audit notebook; không giúp trực tiếp đo/so sánh/tối ưu inference; trái rule tối giản.
-  - Xóa hoàn toàn code hash vừa thêm: `hashlib`, fingerprint, SHA-256 output field.
-  - Giữ audit cần thiết: folder, count, image-label mapping, label syntax/range/class, split overlap.
-  - Rules mới: agent tuyệt đối không tự thêm hash/checksum/fingerprint cho dataset/split/checkpoint/artifact/file-list; chỉ khi user yêu cầu rõ trong lượt hiện tại; integrity/reproducibility/audit chung chung không đủ.
-  - Thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `AGENTS.md`.
-    - Sửa `CLAUDE.md`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
+- 2026-07-16 19:04 +07:00
+  - Mục tiêu: xử lý 4 quyết định user duyệt sau khi chất vấn đợt trim trước — xóa `requirements*.lock` chết, untrack `best.pt` ngoại lệ cho nhất quán, xóa notebook/script D-Fire Kaggle/Colab (user xác nhận training đã xong), viết doc external assets.
+  - Xóa `tasks/smoke_fire_detection/requirements.lock` + `requirements-cu130.lock` (đã gỡ chỗ dùng `add_lock()` lượt trước).
+  - `git rm --cached artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt` — untrack, file vẫn còn trên đĩa (5.2M), demo vẫn chạy được local. Không còn ngoại lệ track/untrack giữa các weight.
+  - Xóa `colab_train_dfire_yolo26x.ipynb`, `kaggle_train_dfire_rfdetr.ipynb` (từ `tasks/smoke_fire_detection/`), `train_dfire_yolo26x.py`, `train_dfire_rfdetr.py` — user xác nhận D-Fire YOLO26x/RF-DETR-L trên Kaggle/Colab đã train xong, không cần script nữa. **Không đụng** `train_rfdetr.py` (Pyro-SDIS, đang cần resume từ `checkpoint_7.ckpt`, khác tên dễ nhầm với `train_dfire_rfdetr.py`).
+  - Thêm `tasks/smoke_fire_detection/docs/external_assets.md` — liệt kê dataset (`D-Fire/`, `pyro-sdis/`, `pyro-sdis-yolo/`, `FIgLib/`) + checkpoint (`dfire_yolo26n_baseline_full_vram`, `yolo26x_pyro_sdis_budget9`, `rfdetr_large_pyro_sdis_gb10`) không track git, kèm nguồn/cách lấy lại. Lưu ý: `D-Fire-train-ready.zip` đã xóa nên `datasets/smoke_fire_detection/D-Fire/` giờ là bản sao DUY NHẤT — không còn nơi tải lại, phải tự backup thủ công.
+  - Verify: `py_compile` PASS toàn bộ `.py` còn lại trong `tasks/smoke_fire_detection/`.
+  - Thay đổi trực tiếp: xóa `requirements.lock`, `requirements-cu130.lock`, `colab_train_dfire_yolo26x.ipynb`, `kaggle_train_dfire_rfdetr.ipynb`, `train_dfire_yolo26x.py`, `train_dfire_rfdetr.py`; untrack (không xóa file) `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`; thêm `tasks/smoke_fire_detection/docs/external_assets.md`; sửa `agent_context.md`, `CHANGELOG.md`.
   - Thay đổi gián tiếp: không có.
-  - Command:
-    - `Get-Content -Raw -LiteralPath agent_context.md`
-    - `Get-Content -Raw -LiteralPath AGENTS.md`
-    - `rg -n -i "sha-?256|hashlib|file[-_ ]list.*hash|fingerprint|hash lock|checksum" -g "!docs/**" -g "!.git/**" .`
-    - PowerShell `ConvertFrom-Json`; `rg` hash terms trong notebook/rules/context; `git diff --check` — PASS.
-    - PowerShell timestamp GMT+7.
-- 2026-07-16 01:06:31 +07:00
-  - Mục tiêu: fix `AssertionError` label YOLO D-Fire; YOLO26x Colab 1×T4; RF-DETR-L Kaggle 2×T4; review trực quan toàn bộ label bị sửa ngay local.
-  - Nguyên nhân: 18 box zero-area trong `D-Fire.zip`; validator cũ fail đúng nhưng không sửa được dữ liệu.
-  - Audit bổ sung: 383 box có mép vượt ảnh dù field YOLO riêng lẻ nằm trong `[0,1]`; 344 file/401 box bị tác động.
-  - Preprocess chung hai notebook:
-    - Source `D-Fire` giữ nguyên; runtime stage `D-Fire-clean`.
-    - Symlink ảnh; tạo label sạch.
-    - `xywh` normalized → `x1,y1,x2,y2`; clamp từng mép độc lập vào `[0,1]`; X/Y độc lập; không scale resolution; không co đồng tỷ lệ.
-    - Tính lại `xywh`; drop box không còn diện tích; framework đọc cùng label sạch.
-    - Train clip307/drop14; valid clip18/drop0; test clip58/drop4.
-  - Notebook tối giản sau user correction:
-    - Xóa toàn bộ viewer/ipywidgets/per-file `issues` khỏi cả hai notebook.
-    - Chỉ giữ sanitize, summary audit, protocol/resume, train/eval.
-    - Protocol schema 2 chặn resume run preprocessing cũ.
-  - Training:
-    - YOLO26x: assert đúng Colab 1×T4; 640/20ep/seed20260707/b4/nbs32; native augmentation; Drive resume; final test.
-    - RF-DETR-L 1.8.3: assert đúng Kaggle 2×T4; 640/20ep/seed20260707/b4×2×acc4=32; `dataset_file=yolo`; `strategy=ddp_notebook` → spawn DDP; `amp_dtype=fp16`; full-state resume.
-  - Review local duy nhất:
-    - Thêm `tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - Đọc thẳng `D-Fire.zip`; không extract/sửa ZIP; in đủ 344 file.
-    - GUI Tk 1100×720; list file + phím trái/phải; đỏ=gốc/lỗi; xanh=sau sửa; ×=drop.
-    - Ảnh giữ aspect; ảnh/bbox dùng cùng scale pixel; vùng nhìn gồm cả phần box vượt biên.
-  - Xác minh:
-    - PowerShell/.NET audit ZIP: 383 clip + 18 drop; split count khớp.
-    - Tool local chạy audit thật: 344 file/401 box; action/split khớp audit độc lập.
-    - Python compile tool + toàn bộ code cell notebook: PASS.
-    - JSON parse: YOLO 10 cell; RF-DETR 8 cell; không viewer/per-file metadata.
-    - GUI process launch thành công; môi trường command không expose `MainWindowHandle`, chưa xác nhận cửa sổ hiện trên desktop user.
-    - RF-DETR API đối chiếu docs/PyPI/GitHub tag `3bd6bff` chính thức.
-  - Thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `kaggle_train_dfire_rfdetr.ipynb`.
-    - Thêm `tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp: không có.
-  - Command:
-    - `Get-Content -Raw agent_context.md`; PowerShell `ConvertFrom-Json` đọc cell notebook.
-    - `[System.Environment]::OSVersion.Platform`; `git status --short`; `git ls-files --stage`; `git diff --stat`; `git diff --check`; `git diff` notebook.
-    - .NET `System.IO.Compression.ZipFile` liệt kê/read/audit toàn ZIP; count ảnh/label/box; format/class/range/zero-area/out-of-frame/max overflow.
-    - Web search/open/find nguồn chính thức RF-DETR docs, PyPI 1.8.3, GitHub tag `3bd6bff`.
-    - `py -3 -c ... compile(...)` ngoài sandbox — PASS.
-    - `py -3 -c ... load_records('D-Fire.zip')` ngoài sandbox — PASS 344 file/401 box.
-    - `Start-Process py -ArgumentList @('-3','tasks/smoke_fire_detection/review_dfire_label_fixes.py','D-Fire.zip')` — launch GUI.
-    - `Get-Process` kiểm tra process GUI; PowerShell timestamp GMT+7.
-- 2026-07-16 07:52:05 +07:00
-  - Correction path: dataset duy nhất dùng/sửa `datasets/smoke_fire_detection/D-Fire`; bỏ toàn bộ giả định root `D-Fire`/runtime sanitizer.
-  - Dataset raw kiểm tra:
-    - Official layout local: train 17,221 + test 4,306 = 21,527 ảnh; 21,527 label; 0 missing/orphan stem; 0 ảnh 0-byte.
-    - Raw label: 26,602 box; 344 file lỗi; 383 box clip cạnh độc lập; 18 box zero-area; 192 sample có image/label mtime năm 2026 trước sửa.
-  - Dataset local sửa:
-    - Tách stratified theo nhóm none/smoke/fire/both; seed 20260707; train 15,500; valid 1,721; test giữ 4,306.
-    - `xywh` → cạnh; clip từng cạnh/trục vào `[0,1]`; tính lại `xywh`; không scale theo resolution; không co chiều còn lại; drop 18 zero-area.
-    - Hậu audit: 26,584 box; 0 syntax/class/non-finite; 0 cạnh ngoài khung; 0 zero-area; 0 missing/orphan.
-    - Thêm `data.yaml`; xóa `test/labels.cache` stale.
-    - Tạo `datasets/smoke_fire_detection/D-Fire-clean.zip`: 3,129,851,993 byte; 43,055 file; base `D-Fire/`; audit trực tiếp archive PASS.
-  - Viewer local:
-    - Report 522 sample = 344 sample lỗi ∪ 192 sample mtime 2026 trước sửa; giao 14 sample.
-    - 98 resolution thật trong report; 300×225 đến 1920×1080; không upscale; chỉ downscale khi không vừa; aspect sai số làm tròn ≤1 pixel; bbox dùng đúng scale bitmap hiển thị.
-    - Đỏ nét đứt: bbox gốc; xanh: bbox hiện tại; dấu ×: box drop; sample mtime 2026 không lỗi chỉ có xanh.
-  - Notebook:
-    - Không sanitizer/audit/viewer runtime.
-    - YOLO26x Colab 1×T4: `batch=4`, `nbs=32`; effective batch 32.
-    - RF-DETR-L Kaggle 2×T4: `batch_size=4/GPU`, `grad_accum_steps=4`; effective batch 32.
-    - Code cell compile PASS; RF-DETR shell magic kiểm riêng theo cú pháp IPython.
-  - Thay đổi trực tiếp:
-    - Sửa `kaggle_train_dfire_yolo26x.ipynb`.
-    - Sửa `kaggle_train_dfire_rfdetr.ipynb`.
-    - Sửa `tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - Thêm `datasets/smoke_fire_detection/D-Fire/data.yaml`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp:
-    - Di chuyển đúng 1,721 cặp từ `datasets/smoke_fire_detection/D-Fire/train/{images,labels}` sang `datasets/smoke_fire_detection/D-Fire/valid/{images,labels}`; selection seed 20260707.
-    - Sửa 344 label trong `datasets/smoke_fire_detection/D-Fire/{train,valid,test}/labels`; danh sách path + line + before/after đầy đủ trong `artifacts/smoke_fire_detection/dfire_label_fixes.json`.
-    - Thêm `artifacts/smoke_fire_detection/dfire_label_fixes.json`.
-    - Thêm `datasets/smoke_fire_detection/D-Fire-clean.zip`.
-    - Xóa stale `datasets/smoke_fire_detection/D-Fire/test/labels.cache`.
-    - Tạo rồi xóa `tasks/smoke_fire_detection/__pycache__` khi compile.
-    - Xóa artifact path sai do agent sinh: root `D-Fire-clean.building.zip`; report path sai cũ được tái tạo từ dataset đúng.
-    - Tạo rồi xóa ZIP rỗng 22-byte và hai ZIP partial `.building.zip` khi packer cũ lỗi/timeout.
-  - Command:
-    - PowerShell `Get-ChildItem` + `HashSet`: count ảnh/label/stem/extension/split; mtime-year; zero-byte; dung lượng ổ.
-    - `rg --files`; `git status --short`; `git ls-files -s`; `git cat-file -s/-t`; `Get-Content` tool/context/changelog.
-    - Web search nguồn D-Fire chính thức: xác nhận 17,221 train + 4,306 test.
-    - PowerShell label audit lần đầu — FAIL parse `[ref]` mảng; kết quả clip/drop bị loại bỏ.
-    - `py -3 review_dfire_label_fixes.py ... --audit --no-gui` — raw PASS.
-    - `py -3 review_dfire_label_fixes.py ... --split-valid --apply --no-gui` — moved 1,721; review 522; clip 383; drop 18.
-    - `py -3 review_dfire_label_fixes.py ... --audit --no-gui` — hậu sửa PASS.
-    - Python/Pillow headless test toàn bộ 522 viewer sample + `py_compile` — PASS; cache đã xóa.
-    - PowerShell/.NET ZIP pack lần 1 — FAIL API `GetRelativePath`; ZIP 22-byte đã xóa.
-    - PowerShell/.NET ZIP pack lần 2 — timeout 15 phút tại 30,000/43,055; partial đã xóa.
-    - `tar.exe -a -c --options zip:compression=store ...` — PASS; ZIP final.
-    - Python `zipfile` parse trực tiếp 43,055 file + toàn bộ label — PASS; không extract.
-    - Python JSON/compile hai notebook; bỏ shell magic khỏi Python compile — PASS.
-    - `rg` xác nhận epoch/resolution/batch/GPU/dataset path; PowerShell timestamp GMT+7.
-    - `Start-Process pyw.exe -ArgumentList ...review_dfire_label_fixes.py` — launch viewer.
-    - `Get-CimInstance Win32_Process` + `Get-Process` — xác nhận `pythonw.exe`, title `D-Fire label review`, window handle khác 0.
-- 2026-07-16 09:57:46 +07:00
-  - Mục tiêu: nâng viewer D-Fire thành editor bbox; giải nghĩa scale/lỗi label; giữ ánh xạ ảnh-bbox.
-  - Thay đổi GUI:
-    - Khóa cửa sổ `1100×720`; bỏ resize.
-    - Hiện một `scale fit`; raster hiển thị vẫn dùng kích thước pixel nguyên.
-    - Ánh xạ thuận/nghịch bbox theo đúng `display_width`/`display_height`; tọa độ vẽ và đọc chuột cùng hệ.
-    - Màu class: cyan=`smoke`, cam=`fire`; đỏ nét đứt=bbox lỗi gốc.
-    - Bỏ chữ `label_issue` chung chung khỏi UI; ghi rõ `vượt biên → cắt mép` hoặc `không còn diện tích → xóa`; mẫu mtime ghi rõ không lỗi bbox.
-    - Thêm bbox bằng kéo chuột; chọn/di chuyển; resize 4 góc; xóa; đổi class; undo; lưu nguyên tử; tự lưu khi đổi sample/đóng.
-  - Xác minh:
-    - Compile + toán ánh xạ bbox + đọc report 522 mẫu: PASS.
-    - GUI tích hợp trên dataset tạm: cửa sổ 1100×720; thêm/di chuyển/xóa/đổi class/undo/lưu: PASS.
-    - Audit toàn dataset: timeout 124 giây; không ghi dataset; không dùng kết quả.
-  - Thay đổi trực tiếp:
-    - Sửa `tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - Sửa `agent_context.md`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp: không có; kiểm thử GUI chỉ dùng thư mục tạm đã tự xóa.
-  - Command:
-    - `Get-Content -Raw agent_context.md`; `git status --short`; `Get-Content -Raw tasks/smoke_fire_detection/review_dfire_label_fixes.py`.
-    - `$PSVersionTable.Platform`; `py --version`; đọc `D-Fire/data.yaml`, report mẫu, tail changelog; `py` lần đầu fail do logon session.
-    - PowerShell in source có số dòng; đọc report, top file nhiều issue; `git diff`; `git status`.
-    - `apply_patch` sửa viewer/context/changelog.
-    - `py -3 -c ... compile(...)`; `py -3 ... --audit --no-gui` — timeout 124 giây.
-    - `py -3 -c ...` compile/mapping/report — PASS.
-    - `py -3 -c ...` GUI CRUD dataset tạm — PASS.
-    - PowerShell timestamp GMT+7.
-- 2026-07-16 12:36:19 +07:00
-  - Mục tiêu thực tế: user hỏi khả năng tăng resolution/batch trước train; không yêu cầu đổi config.
-  - Thao tác nhầm đã hoàn tác ngay:
-    - Tạm đổi `colab_train_dfire_yolo26x.ipynb` sang `800/batch8`, run name riêng.
-    - Không train, không tạo checkpoint/output.
-    - Khôi phục final đúng `RUN_NAME=dfire_yolo26x`, `RESOLUTION=640`, `BATCH=4`, `NOMINAL_BATCH=32`.
-    - RF-DETR notebook không sửa.
-  - Thay đổi trực tiếp: sửa rồi khôi phục `colab_train_dfire_yolo26x.ipynb`; sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp: không có.
-  - Command:
-    - `Get-Content agent_context.md`; `rg --files`; `rg` config notebook; PowerShell parse cell Colab/RF-DETR.
-    - `apply_patch` tạm đổi Colab; `apply_patch` khôi phục.
-    - PowerShell JSON parse + assert final config; timestamp GMT+7.
+  - Command: `git rm --cached ...`; `git rm -f ...` (2 notebook, do vướng staged rename từ lượt trước); `git rm ...` (2 script); `du -sh datasets/smoke_fire_detection/*/`; `du -sh artifacts/.../weights/* .../*.ckpt .../*.pth`; `.venv/bin/python -m py_compile` toàn bộ `.py` còn lại.
 
-- 2026-07-16 16:25:30 +07:00
-  - Mục tiêu: user duyệt prune Git object unreachable.
-  - Kết quả: `.git` giảm `2.947 GiB` xuống `53.67 MiB`; xóa loose blob unreachable `2.907 GiB`; garbage `8` file/`6.52 MiB` xuống `0`.
-  - Verify: `git fsck --connectivity-only --no-reflogs` PASS; `git count-objects -vH`: loose `297` object/`28.46 MiB`, pack `25.17 MiB`.
+- 2026-07-16 18:56 +07:00
+  - Mục tiêu: user chất vấn lại đợt trim trước — phát hiện `pyro_sdis_snapshot.json` vẫn là cơ chế hash-lock (vi phạm rule "không hash" đã có từ trước) và yêu cầu gỡ hẳn khỏi code thay vì chỉ giữ file. Trả lời thêm về 2 best checkpoint RF-DETR, ý nghĩa "add metadata 3 run dir", tính nhất quán track/untrack `.pt`, và rà soát thêm `requirements*.lock` + notebook/script D-Fire.
+  - **Gỡ hash-lock Pyro-SDIS (đã làm xong):**
+    - `dataset.py`: xóa `import hashlib`, xóa `--expected-shards` CLI arg, xóa hàm `sha256_file`, xóa toàn bộ block validate SHA-256 shard + block "invariant_differences" trong `cmd_pyro_sdis` (cả hai chỉ được nuôi bởi `--expected-shards`, cùng gỡ). `cmd_pyro_sdis` giờ chỉ làm đúng 1 việc: convert parquet → YOLO layout + audit thống kê (không hash, không so khớp expected).
+    - `modal_app.py`: xóa hẳn 2 Modal function `convert_pyro_sdis`/`package_pyro_sdis` (one-time dataset packaging đã xong, archive đã có sẵn trên Modal volume, không còn lý do rerun); xóa nhánh `action == "convert"|"package"` + 4 param liên quan (`data_root`,`out`,`audit_out`,`expected_shards`) khỏi `pyro_sdis_cli`; xóa import `SimpleNamespace` (hết chỗ dùng). Đã kiểm tra `sha256_path`/`PYRONEAR_SHA256` KHÔNG đụng — dùng cho checkpoint kill-resume audit + verify checksum third-party model, phạm vi khác, ngoài scope câu hỏi này.
+    - Xóa `artifacts/smoke_fire_detection/pyro_sdis_snapshot.json` (orphan hoàn toàn sau khi gỡ code trên).
+    - Sửa `test_pyro_sdis_converter.py` cho khớp signature mới (bỏ `expected_shards=None, workers=None` khỏi lệnh gọi test).
+    - Verify: `py_compile` PASS cả 3 file; `python -m unittest tasks.smoke_fire_detection.test_pyro_sdis_converter` chạy thật PASS 3/3; smoke-import `modal_app.py` PASS; `dataset.py pyro-sdis --help` xác nhận hết `--expected-shards`.
+  - **Điều tra `requirements.lock`/`requirements-cu130.lock` (đã gỡ chỗ dùng, CHƯA xóa file — chờ user xác nhận):** xác nhận 2 file này bị `add_lock()` copy vào Modal image nhưng KHÔNG có chỗ nào chạy `pip install -r` từ chúng — version cài thật trong `yolo_image` là hardcode trực tiếp trong lời gọi `pip_install(...)`, và version đó cũng lệch với `requirements.lock` (vd `numpy` lock ghi `2.5.1`, `.venv` cài `2.4.6`; `pyarrow` lock `21.0.0` vs `.venv` `24.0.0`). Đã xóa hàm `add_lock` + 2 lời gọi trong `modal_app.py` (dead code thật, đã verify compile/import PASS). CHƯA xóa 2 file `.lock` — hỏi lại user trước.
+  - Thay đổi trực tiếp: sửa `tasks/smoke_fire_detection/dataset.py`, `tasks/smoke_fire_detection/modal_app.py`, `tasks/smoke_fire_detection/test_pyro_sdis_converter.py`, `agent_context.md`, `CHANGELOG.md`; xóa `artifacts/smoke_fire_detection/pyro_sdis_snapshot.json`.
+  - Thay đổi gián tiếp: `py_compile`/`unittest` sinh `tasks/smoke_fire_detection/__pycache__/` (đã xóa lại sau mỗi lần verify).
+  - Command: `.venv/bin/python -m py_compile ...`; `.venv/bin/python -m unittest tasks.smoke_fire_detection.test_pyro_sdis_converter -v`; `python -c "import ..."`; `python -m tasks.smoke_fire_detection.dataset pyro-sdis --help`; `.venv/bin/pip freeze | grep -iE ...` (so version lock vs venv thật).
+
+- 2026-07-16 18:20 +07:00
+  - Mục tiêu: trim/refactor lần 1 (server ai2, Linux) — thay dataset D-Fire, dọn tooling/artifact đã xong việc, dọn checkpoint dở dang, gitignore weight, trim dead code, purge `.git` rác, merge kết quả train YOLO26x/Pyro-SDIS, dọn report folder, viết lại `agent_context.md`.
+  - Kết quả tổng: dung lượng repo `64G → 51G` (`du -sh .`); `.git` `2.7G → 132M`.
+
+  - **1. Thay dataset D-Fire:**
+    - `unzip -t D-Fire-train-ready.zip` PASS (12.6s) → giải nén tạm `datasets/smoke_fire_detection/_dfire_extract_tmp/` → audit: `43,055` file; train `15,500`/valid `1,721`/test `4,306` — khớp kỳ vọng.
+    - Rename `D-Fire/` → `D-Fire_old/`; move bản mới vào `D-Fire/`; audit lại PASS (giống hệt số trên).
+    - Xóa `D-Fire_old/` (3.0G), `datasets/smoke_fire_detection/D-Fire.zip` (3.0G, xác nhận cũ hơn qua mtime 2026-07-15 07:08 so với zip mới 2026-07-16 10:03, cùng layout `D-Fire/{train,valid,test}`), `D-Fire-train-ready.zip` ở root (3.0G, sau khi audit PASS).
+
+  - **2. Dọn tooling + artifact D-Fire đã xong việc:**
+    - Xóa `tasks/smoke_fire_detection/review_dfire_label_fixes.py`, `review_dfire_valid_labels.py` (chỉ còn tham chiếu lịch sử trong `CHANGELOG.md` cũ — chấp nhận được).
+    - Move `colab_train_dfire_yolo26x.ipynb`, `kaggle_train_dfire_rfdetr.ipynb` từ root vào `tasks/smoke_fire_detection/` (`git mv`).
+    - Grep toàn repo từng file trong `artifacts/smoke_fire_detection/*.json|md` trước khi xóa. Xóa: `dfire_label_fixes.json` (chỉ ref lịch sử), `human_review_pack_key.json` (0 tham chiếu), `human_review_labels.json`/`human_review_pack.md` (chỉ ref lịch sử trong `research_plan.md`, số liệu đã inline sẵn), `pyro_sdis_audit.json` (chỉ được ghi bởi `dataset.py`, không nơi nào đọc lại — `package_pyro_sdis` trong `modal_app.py` đọc một file audit ephemeral khác, không phải file này), `pyro_sdis_yolo_archive.json` (chỉ dùng làm idempotency short-circuit, tar archive tương ứng hiện không tồn tại local nên nhánh đó không kích hoạt). **Giữ** `pyro_sdis_snapshot.json` — vẫn được `dataset.py:cmd_pyro_sdis` và `modal_app.py:package_pyro_sdis` đọc thật để validate SHA-256 shard trước convert (live read-path, không phải log lịch sử). Giữ nguyên `figlib_index.jsonl`, `figlib_split_manifest.json`, `figlib_audit.json` theo yêu cầu.
+
+  - **3. Checkpoint RF-DETR/Pyro-SDIS:** xóa `checkpoint_0.ckpt` → `checkpoint_6.ckpt` (mỗi file 566,181,923 byte, tổng ~3.7G) trong `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/`. Giữ `checkpoint_7.ckpt`, `checkpoint_best_ema.pth`, `checkpoint_best_regular.pth`, `metrics.csv`.
+
+  - **4. `.gitignore` + git add metadata:**
+    - Thêm `*.pt`, `*.ckpt`, `*.pth`, `*.onnx`, `*.engine` vào `.gitignore` (giữ nguyên rule cũ).
+    - `git add` metadata: `runs/rfdetr_large_pyro_sdis_gb10/metrics.csv`; `runs/yolo26x_pyro_sdis_budget9/{args.yaml,results.csv,run_metadata.json,train_segment_state.json}`.
+    - Verify: `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt` (đã track từ trước) không bị ảnh hưởng bởi gitignore mới; weight 3 run dir đều bị ignore đúng (`git check-ignore -v`).
+
+  - **5. Trim dead code:** dùng 1 agent research (đọc `dataset.py`, `train.py`, `train_rfdetr.py`, `eval.py`, `temporal_eval.py`, `modal_app.py`, `report/demo_inference.py`, `test_pyro_sdis_converter.py`) tìm code chết. Kết quả: hầu hết vẫn sống (Modal entrypoint, CLI subcommand, hoặc entrypoint chạy tay hợp lệ như `train.py:main()`). Chỉ xóa `--workers` CLI arg trong `dataset.py` (declare nhưng không đâu đọc `args.workers`) + dòng `workers=None` tương ứng truyền vào `cmd_pyro_sdis(...)` trong `modal_app.py`. Xóa `tasks/smoke_fire_detection/__pycache__/` (sinh ra từ bước verify, không phải pre-existing). Verify: `py_compile` PASS cả 10 file; smoke-import `dataset.py` + `modal_app.py` PASS; `dataset.py pyro-sdis --help` xác nhận hết `--workers`.
+
+  - **6. Merge kết quả train YOLO26x/Pyro-SDIS (user duyệt):**
+    - Thư mục root `yolo26x pyro sdis/` (tải từ Kaggle) là 2 epoch cuối (19-20) resume từ checkpoint budget9, hoàn tất **20/20 epoch**. Xác nhận qua `args.yaml` (`resume: .../last_resume.pt`, `epochs: 20`) + `results.csv` (epoch 19 mAP50-95=`0.4949`, epoch 20=`0.49303`).
+    - Merge vào `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/`: copy `best.pt` + `args.yaml` đè bản cũ (epoch 17); nối `results.csv` (epoch 3-18 cũ + 19-20 mới = full history epoch 3-20, epoch 1-2 thiếu từ trước không phục hồi được); xóa `weights/last.pt` (113M) + `weights/last_resume.pt` (450M) — lỗi thời, training đã xong, không còn resume.
+    - Xóa thư mục root `yolo26x pyro sdis/` sau merge.
+    - **Epoch improvement summary (mAP50-95, val Pyro-SDIS):** tăng đơn điệu từ `0.352` (epoch 3) lên đỉnh `0.4949` (epoch 19), dao động nhẹ quanh epoch 10-18 (`0.462-0.492`) trước khi đạt đỉnh cuối; epoch 20 giảm nhẹ về `0.493`. Best = epoch 19.
+
+  - **7. Report folder** (`tasks/smoke_fire_detection/report/`, chuẩn bị làm lại toàn bộ theo yêu cầu user): xóa `README.md`, `slide_script.md`, `demo_results/` (13M, ảnh + `summary.json` — gắn với checkpoint dở dang lúc viết báo cáo #1, nay đã lỗi thời vì YOLO26x đã xong 20/20). Giữ `demo_inference.py` (script tái dùng được, path checkpoint 3 model vẫn khớp hiện trạng). Xóa `report/__pycache__/`.
+
+  - **8. `.git` gc/prune (user duyệt):** phát hiện `.git` pack chứa 5 blob checkpoint RF-DETR cũ (mỗi blob 566,181,923 byte, tổng `~2.64GB`) **unreachable** — không thuộc lịch sử branch hiện tại (`git fsck --unreachable --no-reflogs`), khả năng từ 1 commit từng bị amend/reset trước khi push. Chạy `git reflog expire --expire=now --expire-unreachable=now --all` + `git gc --prune=now`. Kết quả: `.git` `2.7G → 132M`; `git fsck --full` sạch; `git log`/`git status` vẫn nguyên vẹn. Lưu ý: đây là repo clone riêng trên server ai2, độc lập với `.git` máy Windows local (máy đó đã prune riêng lúc `2026-07-16 16:25 +07:00`, `2.9GiB → 53.7MiB`).
+
+  - **9. `agent_context.md`:** viết lại — bỏ toàn bộ log Kaggle debug/GUI CRUD/notebook fix đã lỗi thời (đã xong việc, không còn actionable); cập nhật trạng thái mới: D-Fire final, YOLO26x DONE 20/20, RF-DETR còn dừng ở checkpoint_7, report folder đã dọn, trim 2026-07-16.
+
   - Thay đổi trực tiếp:
-    - Xóa Git object unreachable trong `.git/objects/`, gồm blob `e6f477dc1207208f9c68850508d624e6e4da84a1`.
-    - Sửa `CHANGELOG.md`.
-  - Thay đổi gián tiếp: không có.
-  - Command:
-    - `git prune --expire=now -v`.
-    - PowerShell đo dung lượng `.git`; `git count-objects -vH`; `git fsck --connectivity-only --no-reflogs`.
+    - Sửa: `.gitignore`, `tasks/smoke_fire_detection/dataset.py`, `tasks/smoke_fire_detection/modal_app.py`, `agent_context.md`, `CHANGELOG.md`.
+    - Move (`git mv`): `colab_train_dfire_yolo26x.ipynb`, `kaggle_train_dfire_rfdetr.ipynb` (root → `tasks/smoke_fire_detection/`).
+    - Xóa: `tasks/smoke_fire_detection/review_dfire_label_fixes.py`, `review_dfire_valid_labels.py`; `artifacts/smoke_fire_detection/{dfire_label_fixes.json,human_review_labels.json,human_review_pack.md,human_review_pack_key.json,pyro_sdis_audit.json,pyro_sdis_yolo_archive.json}`; `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/checkpoint_{0,1,2,3,4,5,6}.ckpt`; `tasks/smoke_fire_detection/report/{README.md,slide_script.md,demo_results/}`; `datasets/smoke_fire_detection/{D-Fire_old/,D-Fire.zip}`; `D-Fire-train-ready.zip` (root); `yolo26x pyro sdis/` (root); `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/{last.pt,last_resume.pt}`.
+    - Ghi đè: `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/{weights/best.pt,args.yaml,results.csv}` (merge từ thư mục root).
+    - `git add`: `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/metrics.csv`; `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/{args.yaml,results.csv,run_metadata.json,train_segment_state.json}`.
+    - `git gc --prune=now` sau `git reflog expire --expire=now --expire-unreachable=now --all`.
+
+  - Thay đổi gián tiếp:
+    - `unzip` sinh thư mục tạm `datasets/smoke_fire_detection/_dfire_extract_tmp/` (tự xóa sau khi move xong).
+    - `py_compile` sinh `tasks/smoke_fire_detection/__pycache__/` + `report/__pycache__/` (đã xóa lại).
+    - `git gc` viết lại toàn bộ `.git/objects/pack/*` (pack mới, pack cũ 2.6G bị loại bỏ).
+
+  - Command chính đã chạy:
+    - `unzip -t D-Fire-train-ready.zip`; `unzip -q ... -d _dfire_extract_tmp`; `mv`/`rm -rf` swap D-Fire.
+    - `git mv` 2 notebook; `git rm --cached` (không tác dụng, file chưa track) + `rm -f` cho review script/artifact json.
+    - `rm -fv` checkpoint_0-6; `git add` metadata 3 run dir; `git check-ignore -v`.
+    - `.venv/bin/python -m py_compile <file>` × 10; `.venv/bin/python -c "import ..."`; `python -m tasks.smoke_fire_detection.dataset pyro-sdis --help`.
+    - `git rev-list --objects --all | git cat-file --batch-check`; `git verify-pack -v`; `git fsck --unreachable --no-reflogs`; `git reflog expire --expire=now --expire-unreachable=now --all`; `git gc --prune=now`; `git fsck --full`.
+    - `cp`/`rm` merge `yolo26x pyro sdis/` vào `runs/yolo26x_pyro_sdis_budget9/`; `tail -n +2 results.csv >> results.csv`.
+    - `git rm -r` report README/slide_script/demo_results.
+    - `du -sh`/`git status --short`/`git log --oneline` để verify trước/sau ở từng bước.

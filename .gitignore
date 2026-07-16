@@ -10,6 +10,7 @@ datasets/
 *.mov
 *.mkv
 *.webm
+
 *.zip
 *.tar
 *.gz
@@ -17,3 +18,9 @@ datasets/
 *.xz
 *.7z
 *.rar
+
+*.pt
+*.ckpt
+*.pth
+*.onnx
+*.engine

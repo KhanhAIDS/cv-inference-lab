@@ -7,7 +7,6 @@ import tarfile
 import time
 import urllib.request
 from pathlib import Path
-from types import SimpleNamespace
 
 import modal
 
@@ -42,16 +41,8 @@ def add_tasks(image):
         return image.add_local_dir("tasks", remote_path="/root/tasks")
     return image
 
-def add_lock(image, filename):
-    if hasattr(image, "add_local_file"):
-        return image.add_local_file(
-            f"tasks/smoke_fire_detection/{filename}",
-            remote_path=f"/root/{filename}",
-        )
-    return image
-
 utility_image = add_tasks(utility_image)
-yolo_image = add_lock(add_lock(add_tasks(yolo_image), "requirements.lock"), "requirements-cu130.lock")
+yolo_image = add_tasks(yolo_image)
 volume = modal.Volume.from_name("smoke-fire-step13-volume", create_if_missing=True)
 PYRONEAR_REVISION = "cd075ce"
 PYRONEAR_SHA256 = "2898ecdf96eae513cdca995e4325d3536472016db2131588c7c4e27d5a829483"
@@ -93,123 +84,6 @@ def run_module(args):
         "stdout": completed.stdout,
         "stderr": completed.stderr,
     }
-
-@app.function(image=utility_image, volumes={"/workspace": volume}, timeout=14400, cpu=4, memory=16384)
-def convert_pyro_sdis(
-    data_root: str = "datasets/smoke_fire_detection/pyro-sdis",
-    out: str = "datasets/smoke_fire_detection/pyro-sdis-yolo",
-    audit_out: str = "artifacts/smoke_fire_detection/pyro_sdis_audit.json",
-    expected_shards: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
-):
-    result = run_module([
-        "tasks.smoke_fire_detection.dataset",
-        "pyro-sdis",
-        "--data-root",
-        str(workspace_path(data_root)),
-        "--out",
-        str(workspace_path(out)),
-        "--audit-out",
-        str(workspace_path(audit_out)),
-        "--expected-shards",
-        str(workspace_path(expected_shards)),
-    ])
-    volume.commit()
-    return result
-
-@app.function(image=utility_image, volumes={"/workspace": volume}, timeout=14400, cpu=4, memory=16384)
-def package_pyro_sdis(
-    data_root: str = "datasets/smoke_fire_detection/pyro-sdis",
-    archive_out: str = "datasets/smoke_fire_detection/pyro-sdis-yolo.tar",
-    manifest_out: str = "artifacts/smoke_fire_detection/pyro_sdis_yolo_archive.json",
-    snapshot: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
-):
-    from tasks.smoke_fire_detection.dataset import cmd_pyro_sdis, pyro_shard_paths
-
-    source = workspace_path(data_root)
-    archive_path = workspace_path(archive_out)
-    manifest_path = workspace_path(manifest_out)
-    snapshot_path = workspace_path(snapshot)
-    if not source.is_dir():
-        raise FileNotFoundError(source)
-    snapshot_hash = sha256_path(snapshot_path)
-    if archive_path.exists() and manifest_path.exists():
-        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if existing.get("dataset_snapshot_sha256") == snapshot_hash and existing.get("archive_sha256") == sha256_path(archive_path):
-            return existing
-    snapshot_data = json.loads(snapshot_path.read_text(encoding="utf-8"))
-    expected_shards = snapshot_data.get("shards", {})
-    shards = pyro_shard_paths(source)
-    if {path.name for path in shards} != set(expected_shards):
-        raise ValueError("raw Pyro-SDIS shard set mismatch")
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = archive_path.with_name(f".{archive_path.name}.tmp")
-    temporary.unlink(missing_ok=True)
-    local_root = Path("/tmp") / f"smoke-fire-package-{snapshot_hash[:16]}"
-    shutil.rmtree(local_root, ignore_errors=True)
-    local_raw = local_root / "raw" / "data"
-    local_yolo = local_root / "yolo"
-    local_audit = local_root / "audit.json"
-    local_archive = local_root / "pyro-sdis-yolo.tar"
-    started = time.perf_counter()
-    raw_bytes = 0
-    files = 0
-    try:
-        local_raw.mkdir(parents=True)
-        for index, shard in enumerate(shards, start=1):
-            target = local_raw / shard.name
-            print({"copy_raw_shard": index, "name": shard.name, "bytes": shard.stat().st_size}, flush=True)
-            shutil.copy2(shard, target)
-            digest = sha256_path(target)
-            if digest != expected_shards[shard.name]:
-                raise ValueError(f"raw shard hash mismatch: {shard.name}")
-            raw_bytes += target.stat().st_size
-        cmd_pyro_sdis(SimpleNamespace(
-            data_root=str(local_root / "raw"),
-            out=str(local_yolo),
-            audit_out=str(local_audit),
-            expected_shards=str(snapshot_path),
-            workers=None,
-        ))
-        audit = json.loads(local_audit.read_text(encoding="utf-8"))
-        if audit.get("invariant_differences"):
-            raise ValueError("local Pyro-SDIS conversion invariant mismatch")
-        with tarfile.open(local_archive, "w") as archive:
-            for path in sorted(local_yolo.rglob("*")):
-                if not path.is_file() or path.suffix == ".cache":
-                    continue
-                archive.add(path, arcname=path.relative_to(local_yolo).as_posix(), recursive=False)
-                files += 1
-                if files % 1000 == 0:
-                    print({"archive_files": files}, flush=True)
-        archive_sha256 = sha256_path(local_archive)
-        shutil.copy2(local_archive, temporary)
-        if sha256_path(temporary) != archive_sha256:
-            raise ValueError("persistent archive hash mismatch")
-        temporary.replace(archive_path)
-        manifest = {
-            "schema": "smoke-fire-pyro-sdis-archive-v1",
-            "created_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "source": str(source),
-            "dataset_snapshot_sha256": snapshot_hash,
-            "raw_shards": {path.name: expected_shards[path.name] for path in shards},
-            "raw_bytes": raw_bytes,
-            "files": files,
-            "archive_bytes": archive_path.stat().st_size,
-            "archive_sha256": archive_sha256,
-            "runtime_seconds": time.perf_counter() - started,
-            "provider": "Modal",
-            "gpu": None,
-            "cost": {"paid_cost_usd": None, "free_quota_usage": "dashboard required"},
-        }
-        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        volume.commit()
-        return manifest
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
-    finally:
-        shutil.rmtree(local_root, ignore_errors=True)
 
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=7200, cpu=4, memory=16384)
 def build_figlib_index(
@@ -699,10 +573,6 @@ def test_pyro_sdis_converter():
 @app.local_entrypoint()
 def pyro_sdis_cli(
     action: str = "test",
-    data_root: str = "datasets/smoke_fire_detection/pyro-sdis",
-    out: str = "datasets/smoke_fire_detection/pyro-sdis-yolo",
-    audit_out: str = "artifacts/smoke_fire_detection/pyro_sdis_audit.json",
-    expected_shards: str = "artifacts/smoke_fire_detection/pyro_sdis_snapshot.json",
     run_name: str = "yolo26x_pyro_sdis",
     model: str = "yolo26x.pt",
     batch: int = 4,
@@ -719,10 +589,6 @@ def pyro_sdis_cli(
 ):
     if action == "test":
         print(test_pyro_sdis_converter.remote())
-    elif action == "convert":
-        print(convert_pyro_sdis.remote(data_root, out, audit_out, expected_shards))
-    elif action == "package":
-        print(package_pyro_sdis.remote())
     elif action == "build-index":
         print(build_figlib_index.remote())
     elif action == "probe":

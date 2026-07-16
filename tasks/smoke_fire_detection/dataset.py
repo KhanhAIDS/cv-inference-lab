@@ -1,5 +1,4 @@
 import argparse
-import hashlib
 import io
 import json
 import random
@@ -36,8 +35,6 @@ def parse_args():
     pyro_sdis.add_argument("--data-root", required=True, help="Folder containing parquet shards or its data/ child")
     pyro_sdis.add_argument("--out", required=True, help="Output YOLO dataset folder")
     pyro_sdis.add_argument("--audit-out", required=True)
-    pyro_sdis.add_argument("--expected-shards", help="Snapshot JSON containing expected SHA-256 by shard filename")
-    pyro_sdis.add_argument("--workers", type=int)
 
     return parser.parse_args()
 
@@ -53,13 +50,6 @@ def value_percentiles(areas):
         return None
     points = [0, 5, 10, 25, 50, 75, 90, 95, 100]
     return {f"p{point}": percentile(areas, point) for point in points}
-
-def sha256_file(path: Path):
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 def pyro_annotation_lines(value):
     if value is None or not str(value).strip():
@@ -112,23 +102,6 @@ def cmd_pyro_sdis(args):
     out_dir = Path(args.out).resolve()
     audit_path = Path(args.audit_out).resolve()
     shard_paths = pyro_shard_paths(data_root)
-    expected_hashes = None
-    expected_counts = None
-    if args.expected_shards:
-        expected_data = json.loads(Path(args.expected_shards).read_text(encoding="utf-8"))
-        expected_hashes = expected_data.get("shards", expected_data)
-        expected_counts = expected_data.get("expected")
-        if not isinstance(expected_hashes, dict):
-            raise ValueError("expected shard JSON must be an object or contain a shards object")
-        shard_hashes = {path.name: sha256_file(path) for path in shard_paths}
-    else:
-        shard_hashes = {}
-    hashes_match = expected_hashes is not None and shard_hashes == expected_hashes
-    if expected_hashes is not None and not hashes_match:
-        missing = sorted(set(expected_hashes) - set(shard_hashes))
-        unexpected = sorted(set(shard_hashes) - set(expected_hashes))
-        changed = sorted(name for name in set(shard_hashes) & set(expected_hashes) if shard_hashes[name] != expected_hashes[name])
-        raise ValueError(json.dumps({"shard_hash_mismatch": {"missing": missing, "unexpected": unexpected, "changed": changed}}))
     if out_dir.exists():
         raise ValueError(f"output already exists: {out_dir}")
     temp_dir = Path(tempfile.mkdtemp(prefix=f".{out_dir.name}.tmp-", dir=out_dir.parent))
@@ -185,9 +158,6 @@ def cmd_pyro_sdis(args):
         (temp_dir / "dataset.yaml").write_text(yaml.safe_dump(yaml_data, sort_keys=False), encoding="utf-8")
         audit = {
             "dataset": "Pyro-SDIS",
-            "shards": shard_hashes,
-            "expected_shard_hashes_provided": expected_hashes is not None,
-            "shard_hashes_match_snapshot": hashes_match if expected_hashes is not None else None,
             "images": stats["images"],
             "total_images": sum(stats["images"].values()),
             "empty_annotations": stats["empty_annotations"],
@@ -201,22 +171,6 @@ def cmd_pyro_sdis(args):
             "output_bytes": sum(path.stat().st_size for path in temp_dir.rglob("*") if path.is_file()),
             "runtime_seconds": time.perf_counter() - started,
         }
-        if expected_counts is not None:
-            actual_counts = {
-                "train_images": audit["images"]["train"],
-                "val_images": audit["images"]["val"],
-                "total_images": audit["total_images"],
-                "empty_annotations": audit["empty_annotations"],
-                "bbox_count": audit["bbox_count"],
-                "source_class": 1 if audit["source_class_counts"] == {"1": audit["bbox_count"]} else None,
-                "output_class": 0 if audit["output_class_counts"] == {"0": audit["bbox_count"]} else None,
-                "image_dimensions": next(iter(audit["image_dimensions"])) if len(audit["image_dimensions"]) == 1 else None,
-            }
-            differences = {key: {"expected": expected_counts.get(key), "actual": actual_counts[key]} for key in expected_counts if actual_counts.get(key) != expected_counts.get(key)}
-            audit["expected_invariants"] = expected_counts
-            audit["invariant_differences"] = differences
-            if differences:
-                raise ValueError(json.dumps({"snapshot_invariant_mismatch": differences}))
         audit_path.parent.mkdir(parents=True, exist_ok=True)
         audit_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
         temp_dir.rename(out_dir)

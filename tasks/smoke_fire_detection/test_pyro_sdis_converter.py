@@ -33,8 +33,6 @@ class PyroSdisConverterTest(unittest.TestCase):
             data_root=str(root),
             out=str(root / "out"),
             audit_out=str(root / "audit.json"),
-            expected_shards=None,
-            workers=None,
         ))
 
     def test_valid_multiple_boxes_and_empty_annotation(self):
