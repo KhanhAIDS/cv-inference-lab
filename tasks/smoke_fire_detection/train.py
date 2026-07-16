@@ -33,7 +33,7 @@ def parse_args(argv=None):
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--imgsz", type=int, default=1280)
     parser.add_argument("--batch", type=int, default=4)
-    parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--seed", type=int, default=20260707)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--device", default="0")
@@ -488,7 +488,7 @@ def run_training(args, sync_callback=None):
     enforce_cost_gate(args)
     if not (args.model == "yolo26x.pt" or args.model.endswith(".pt")):
         raise ValueError("only official yolo26x.pt or .pt checkpoints are allowed for step 13.c")
-    if args.imgsz != 1280 or args.epochs != 20 or args.patience != 5 or args.seed != 20260707:
+    if args.imgsz != 1280 or args.epochs != 20 or args.patience != 0 or args.seed != 20260707:
         raise ValueError("step 13.c fixed training config mismatch")
     if args.save_period != 1:
         raise ValueError("step 13.c requires save_period=1")

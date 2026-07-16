@@ -26,8 +26,8 @@ def parse_args():
     parser.add_argument("--run-name", default="dfire_yolo26x_relabeled")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--project", default=str(DEFAULT_PROJECT))
-    parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--patience", type=int, default=20)
+    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--seed", type=int, default=20260707)
@@ -41,6 +41,13 @@ def worker_count(value):
     if value and value > 0:
         return value
     return min(32, os.cpu_count() or 1)
+
+
+def validate_protocol(args):
+    if args.imgsz != 640 or args.epochs != 20 or args.patience != 0 or args.seed != 20260707:
+        raise ValueError("D-Fire YOLO protocol is locked: imgsz=640, epochs=20, patience=0, seed=20260707")
+    if args.val_ratio != 0.1:
+        raise ValueError("D-Fire YOLO protocol is locked: val_ratio=0.1")
 
 
 def parse_label_line(line):
@@ -196,6 +203,7 @@ def write_resumable_checkpoint(source_path, resume_path, trainer):
 
 def main():
     args = parse_args()
+    validate_protocol(args)
     data_yaml, fit_count, val_count, test_count = build_split(args.seed, args.val_ratio)
     print(f"split: train={fit_count} val={val_count} test={test_count}")
 

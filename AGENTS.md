@@ -48,6 +48,7 @@
 - Không được viết code thừa thãi, tạo file thừa thãi ví dụ như `__init__.py` khi không thực sự cần thiết.
 - Không tạo folder hoặc ignore rule preemptive (đón đầu) khi chưa có file thực tế hoặc nhu cầu thực sự.
 - Không thêm layer quy trình mới (hash lock, checkpoint manifest, cost ledger, snapshot verify, gate phụ) khi chưa có failure mode thực tế mà layer đó ngăn chặn. Mặc định dùng cơ chế sẵn có: git commit, seed cố định, artifact JSON. Muốn thêm layer → phải nêu failure mode cụ thể và được user duyệt.
+- Agent tuyệt đối không tự thêm hash, checksum, fingerprint cho dataset, split, checkpoint, artifact hoặc file list. Chỉ được thêm khi user yêu cầu rõ trong lượt hiện tại. Lý do chung chung như integrity, reproducibility, audit không phải phê duyệt.
 - Đặt tên file/folder tường minh theo nội dung.
 - Không thêm comment trong code.
 - Chỉ giữ hoặc thêm comment code khi user yêu cầu rõ.

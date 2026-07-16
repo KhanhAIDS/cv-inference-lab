@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--grad-accum", type=int, default=4)
-    parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--seed", type=int, default=20260707)
     parser.add_argument("--val-ratio", type=float, default=0.1)
     parser.add_argument("--num-workers", type=int, default=4)
@@ -26,10 +26,12 @@ def parse_args():
 
 
 def validate_protocol(args):
-    if args.resolution != 640 or args.epochs != 20 or args.patience != 5 or args.seed != 20260707:
-        raise ValueError("D-Fire RF-DETR protocol is locked: resolution=640, epochs=20, patience=5, seed=20260707")
+    if args.resolution != 640 or args.epochs != 20 or args.patience != 0 or args.seed != 20260707:
+        raise ValueError("D-Fire RF-DETR protocol is locked: resolution=640, epochs=20, patience=0, seed=20260707")
     if args.batch != 4 or args.grad_accum != 4:
         raise ValueError("D-Fire RF-DETR protocol is locked: batch=4, grad_accum=4 (effective 16)")
+    if args.val_ratio != 0.1:
+        raise ValueError("D-Fire RF-DETR protocol is locked: val_ratio=0.1")
 
 
 def link_split(name, images):
@@ -94,8 +96,7 @@ def main():
         num_workers=args.num_workers,
         checkpoint_interval=1,
         seed=args.seed,
-        early_stopping=True,
-        early_stopping_patience=args.patience,
+        early_stopping=False,
         tensorboard=False,
         output_dir=args.output_dir,
         resume=args.resume,
