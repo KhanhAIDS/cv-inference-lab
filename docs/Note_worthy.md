@@ -21,6 +21,9 @@ Retrain trên Relabel D-Fire: Có ảnh hưởng ngầm: G0 (0.7017/0.7425), G1 
 Resolution lúc train quan trọng: Model detection (YOLO-family, kể cả YOLOv8s) resize ảnh input về đúng imgsz lúc train => Có thể là một lợi thế chưa từng thấy lúc train (object to hơn quen thuộc) hay đang bị đẩy ra khỏi vùng hoạt động ổn định (feature map size lạ).
 
 
+GPU đang bị share 93% — chỉ lấy số accuracy, số latency sẽ bỏ
+
+
 
 
 

@@ -63,6 +63,29 @@ v1 có trích một loạt paper theo dạng citation gãy (`[1]`, `[6]`...) kh�
 
 **Cách dùng đúng:** trước khi bắt đầu E3/E5/E7/E8/E9 hoặc P2, dành 30 phút tìm và đọc paper thật đứng sau các claim trên (search theo tên hướng/kỹ thuật + "smoke fire detection"), verify số liệu, rồi mới quyết định áp dụng — đừng copy số liệu ở trên vào báo cáo vì chưa có nguồn xác nhận.
 
+## Menu near-field (PROPOSAL 2026-07-17, chờ duyệt track RQ5 — xem `research_plan.md` mục 10)
+
+- Trigger: chỉ dùng khi RQ5/NG0-NG4 được user duyệt mở. Chưa áp dụng cho RQ1/FIgLib.
+
+### Detector không thấy khói/lửa near-field (NG0/NG3)
+- **Không mặc định copy P2/stride-4/tiny-object của RQ1** — near-field object size do kỹ sư thiết kế theo khoảng cách lắp (vendor: flame/smoke min ~1.1-1.6% bề rộng ảnh), khác cơ chế tiny-xa tự nhiên của tower camera. Error-slice D-Fire (bbox area/short-side) trước (NE4).
+- Nếu error-slice xác nhận đúng là tiny-object trên D-Fire (ví dụ smoke sớm/mỏng trong khung hình rộng) → mới mở lại toolkit A1 hiện có.
+- Motion/turbulence-based classical feature (background subtraction, optical flow, turbulence energy/wavelet) — precedent near-field cổ điển, đáng thử vì cadence liên tục (15-25fps) làm motion rẻ; **khác kết luận đã đóng của RQ1** (frame-differencing AUROC=0.5276 chỉ đúng ở cadence 60s FIgLib, không suy rộng sang đây).
+
+### False alarm cao từ nuisance near-field (NG2, khác hẳn category cloud/fog/glare của RQ1)
+- Category test theo chuẩn FM 3232/ISO 7240-29: hàn hồ quang, sunlight trực tiếp/phản xạ, vật nóng, đèn incandescent/fluorescent/halogen/LED beacon/sodium.
+- Category field thực tế (vendor doc): steam/hơi nước, bụi, khí xả forklift, conveyor belt chuyển động ngang, quạt quay, phản xạ kim loại, backlight/cửa sổ.
+- Đo FP rate riêng từng category — không gộp chung một số "FA/hour" như RQ1.
+- Vendor thực tế xử lý bằng verification window (delay cấu hình 4-30s) trước khi báo alarm — khác N-of-M/EMA phút của RQ1, cùng ý tưởng temporal persistence nhưng thang giây.
+
+### Response-time budget khác biệt cấu trúc (NG1)
+- Mục tiêu ≤30s (FM 3232) thay vì phút — không nội suy trực tiếp từ curve TTD-phút hiện có của RQ1; cần AMOC riêng trục giây.
+- FA budget ~1/50-100 detector/năm (BS 5839-1) thay vì 1/camera-ngày — chênh ~3-4 bậc độ lớn; không dùng chung operating point với RQ1.
+
+### Deployment/privacy khác biệt cấu trúc (NG4)
+- Edge/on-device là ràng buộc CỨNG (privacy GDPR + bandwidth), không phải trade-off cost mở như E4 của RQ1.
+- Không thiết kế lưu trữ footage mặc định; ưu tiên kiến trúc chạy được ngay trên camera/edge-box.
+
 ## Kỹ thuật bị hạ cấp so với v1 (kèm lý do)
 
 - **Thermal / RGB-T fusion / RGB-T→RGB distillation:** parked theo G3 — FLAME 3 là UAV cận cảnh, khác domain tower, kết luận không transfer trực tiếp sang RQ1.

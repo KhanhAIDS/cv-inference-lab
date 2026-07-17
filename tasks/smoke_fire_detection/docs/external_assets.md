@@ -1,27 +1,39 @@
-# External Assets — smoke_fire_detection
+# External assets — smoke_fire_detection
 
-- Vai trò: liệt kê file/thư mục nặng, KHÔNG track trong git (`datasets/` bị ignore toàn bộ; `*.pt`/`*.ckpt`/`*.pth`/`*.onnx`/`*.engine` bị ignore), nhưng cần có mặt để chạy lại pipeline trên máy/nền tảng mới. Không hash, không checksum, không cơ chế verify tự động — thuần liệt kê + cách lấy lại.
-- Cập nhật: `2026-07-17`. Kiểm tra `du -sh` lại nếu nghi ngờ số liệu cũ.
+- Mục tiêu: `git clone` sang máy mới không mất dữ liệu/model cần thiết.
+- Git clone: chỉ mang file đã commit.
+- `datasets/`, checkpoint/weight: bị `.gitignore`; copy riêng.
+- `.venv/`: giữ nguyên máy hiện tại; không copy/commit; tạo venv mới trên máy đích.
+- Không hash/checksum.
 
-## Dataset (`datasets/smoke_fire_detection/`, toàn bộ bị `.gitignore`)
+## Bắt buộc copy riêng
 
-| Path | Size | Nguồn / cách lấy lại |
-|---|---|---|
-| `D-Fire/` | 3.0G | **Không còn zip nguồn trong repo** (`D-Fire-train-ready.zip` đã xóa sau khi audit PASS 2026-07-16). Đây là bản train-ready cuối (GUI relabel đã chốt) — copy trực tiếp thư mục này khi chuyển máy, không có nơi khác để tải lại. Cấu trúc: `{train,valid,test}/{images,labels}` + `data.yaml`. |
-| `pyro-sdis-yolo/` | 3.3G | Bản YOLO đã convert (29,537 train / 4,099 val). Lấy lại: (1) tar trên Modal volume `smoke-fire-step13-volume` path `datasets/smoke_fire_detection/pyro-sdis-yolo.tar`; (2) tải parquet gốc từ HF `pyronear/pyro-sdis` + converter `dataset.py pyro-sdis` trong git history (đã xóa 2026-07-17 cùng parquet local sau khi conversion xong việc). |
-| `FIgLib/` | 35G | HPWREN public archive (attribution required, có bulk-download tool: hpwren.ucsd.edu). Archive sống, tiếp tục thêm sequence mới — tải lại nghĩa là crawl lại theo trạng thái archive hiện tại, không phải fetch 1 file cố định. |
+- `datasets/smoke_fire_detection/D-Fire/` — 3.0G; bản train-ready cuối; không còn zip nguồn; giữ nguyên.
+- `datasets/smoke_fire_detection/pyro-sdis-yolo/` — 3.3G; train/val đã convert.
+- `datasets/smoke_fire_detection/FIgLib/` — 35G; archive HPWREN local.
+- `artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt` — 5.2M; baseline E0.
+- `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/best.pt` — 113M; YOLO26x/Pyro-SDIS best.
+- `to_be_resolved/rf-detr_pyro-sdis/checkpoint_9.zip` — 540M; full-state mới nhất; resume RF-DETR/Pyro-SDIS.
+- `to_be_resolved/rf-detr_pyro-sdis/checkpoint_best_ema.zip` — 135M; best EMA hiện tại.
+- `to_be_resolved/rf-detr_pyro-sdis/checkpoint_best_regular.zip` — 136M; best regular hiện tại.
+- `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_kaggle/checkpoint_best_ema.pth` — 130M; RF-DETR/D-Fire legacy best; chỉ đối chiếu same-family với rerun chuẩn.
+- `to_be_resolved/yolo26x_d-fire/weights/best.pt` — 113M; YOLO26x/D-Fire legacy best.
+- `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl` + `.errors.json` — 28M; cache FIgLib dev đã chạy 28,360 frame; không regenerate rẻ.
 
-## Checkpoint / weight (`artifacts/smoke_fire_detection/runs/`, `*.pt|*.ckpt|*.pth` bị `.gitignore`)
+## File nhỏ cần commit trước clone
 
-| Path | Size | Ghi chú |
-|---|---|---|
-| `dfire_yolo26n_baseline_full_vram/weights/best.pt` | 5.2M | E0 baseline YOLO26n/D-Fire. Không thể regenerate rẻ (cần train lại) — copy thủ công khi chuyển máy. Trước đây có track git làm ngoại lệ, đã untrack 2026-07-16 cho nhất quán — giờ nằm trong danh sách này như mọi weight khác. |
-| `yolo26x_pyro_sdis_budget9/weights/best.pt` | 113M | YOLO26x/Pyro-SDIS, train xong 20/20 epoch (mAP50-95 best=0.4949 epoch 19). Không regenerate rẻ. |
-| `rfdetr_large_pyro_sdis_gb10/checkpoint_7.ckpt` | 540M | RF-DETR-L/Pyro-SDIS, dừng ở epoch 8/20 — resume bằng `kaggle_resume_pyro_sdis_rfdetr.ipynb` (upload ckpt này + `pyro-sdis-yolo` lên Kaggle Input). |
-| `rfdetr_large_pyro_sdis_gb10/checkpoint_best_ema.pth` | 135M | Best EMA weight (epoch 4, mAP50-95=0.4648). |
-| `rfdetr_large_pyro_sdis_gb10/checkpoint_best_regular.pth` | 136M | Best regular weight (epoch 4, mAP50-95=0.4489). |
-| `rfdetr_large_dfire_kaggle/checkpoint_19.ckpt` | 542M | RF-DETR-L/D-Fire xong 20/20 epoch (Kaggle 2×T4, 800px). Full-state epoch cuối. |
-| `rfdetr_large_dfire_kaggle/checkpoint_best_regular.pth` | 136M | Best regular = epoch 18, val mAP50-95=0.49324 (best regular toàn 20 epoch). `checkpoint_best_total.pth` gốc = duplicate byte-identical của file này (verify 510/510 tensor) — đã xóa. |
-| `rfdetr_large_dfire_kaggle/checkpoint_best_ema.pth` | 135M | Epoch 11 (đợt train đầu), EMA val mAP50-95=0.49614. Đã verify `torch.load` OK, 510/510 tensor, không NaN. |
+- `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb` — fresh RF-DETR/D-Fire; 800px; native recipe.
+- `to_be_resolved/yolo26x_d-fire/colab_train_dfire_yolo26x.ipynb` — fresh YOLO26x/D-Fire; 800px; native recipe.
+- `to_be_resolved/yolo26x_d-fire/{args.yaml,results.csv,training_protocol.json,eval_report_test.json}` — bằng chứng legacy.
+- `to_be_resolved/rf-detr_pyro-sdis/{rf-detr-pyro-sdis.ipynb,metrics.csv,resume_protocol.json}` — resume active.
+- `agent_context.md`, `CHANGELOG.md`, research docs, RF-DETR legacy config/protocol — commit cùng thay đổi hiện tại.
 
-Toàn bộ checkpoint trên: KHÔNG có cách "tải lại" rẻ — mất là phải train lại (giờ/ngày GPU). Backup thủ công (rsync/scp/cloud storage) khi chuyển máy hoặc trước khi dọn ổ đĩa.
+## Đã xóa 2026-07-17; không copy sang máy mới
+
+- `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/checkpoint_7.ckpt` + 2 best weight epoch cũ — bị checkpoint 9/best mới thay thế.
+- `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_kaggle/checkpoint_19.ckpt` — full-state run legacy đã hoàn tất; không resume.
+- `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_kaggle/checkpoint_best_regular.pth` — kém best EMA legacy; không cần inference.
+- `to_be_resolved/yolo26x_d-fire/weights/{last.pt,epoch19.pt}` — run legacy hoàn tất; `best.pt` đủ inference.
+- `to_be_resolved/rf-detr_pyro-sdis/state.db` — notebook serialize trùng nội dung; không phải checkpoint resume.
+- `to_be_resolved/rf-detr_pyro-sdis/data.yaml` — notebook tự tạo.
+- Plot/preview/prediction cache YOLO D-Fire — đã xóa 2026-07-17.

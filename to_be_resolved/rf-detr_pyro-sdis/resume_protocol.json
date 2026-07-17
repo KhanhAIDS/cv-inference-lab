@@ -1,0 +1,16 @@
+{
+  "amp_dtype": "fp16",
+  "augmentation_policy": "framework-default-no-user-overrides",
+  "dataset": "pyro-sdis-yolo",
+  "devices": 2,
+  "epochs": 20,
+  "framework": "rfdetr-1.8.3",
+  "grad_accum": 4,
+  "micro_batch": 2,
+  "model": "RFDETRLarge",
+  "resolution": 1280,
+  "schema": 1,
+  "seed": 20260707,
+  "source_run": "rfdetr_large_pyro_sdis_gb10-epoch0-7-devices1-batch4-accum4-amp-auto",
+  "strategy": "ddp_notebook"
+}

@@ -1,5 +1,4 @@
 import argparse
-import hashlib
 import json
 import platform
 import sys
@@ -139,13 +138,6 @@ def read_index(index_path: Path):
         if line.strip():
             records.append(json.loads(line))
     return records
-
-def sha256_file(path: Path):
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 def model_class_map(model):
     names = model.names
@@ -307,7 +299,6 @@ def cmd_detector_cache(args):
 
     model = YOLO(weights_path)
     class_map = model_class_map(model)
-    weights_hash = sha256_file(weights_path)
     smoke_class_id = class_map["smoke_class_id"]
     fire_class_id = class_map["fire_class_id"]
     data_root = Path(args.data_root).resolve()
@@ -383,7 +374,6 @@ def cmd_detector_cache(args):
                         "imgsz": args.imgsz,
                         "split": record.get("split"),
                         "candidate_revision": args.candidate_revision,
-                        "weights_sha256": weights_hash,
                         "class_map": class_map,
                         "detections": detections,
                         "max_smoke_confidence": max(smoke_confidences) if smoke_confidences else 0.0,

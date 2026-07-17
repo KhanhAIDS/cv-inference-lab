@@ -36,7 +36,7 @@ MODELS = [
     {
         "name": "rfdetr_large_pyro_sdis",
         "family": "rfdetr",
-        "weights": REPO_ROOT / "artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/checkpoint_best_ema.pth",
+        "weights": REPO_ROOT / "to_be_resolved/rf-detr_pyro-sdis/checkpoint_best_ema.zip",
         "imgsz": 1280,
         "training_status": "DANG TRAIN - checkpoint epoch 5/20 (best EMA), Pyro-SDIS val mAP50-95(EMA)=0.4648 (chua phai so cuoi)",
     },
