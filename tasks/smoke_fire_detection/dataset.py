@@ -1,17 +1,10 @@
 import argparse
-import io
 import json
 import random
 import re
-import shutil
-import tempfile
-import time
 from collections import defaultdict
 from pathlib import Path
 
-import pyarrow.parquet as pq
-import yaml
-from PIL import Image
 from rich.console import Console
 
 console = Console()
@@ -31,154 +24,7 @@ def parse_args():
     figlib.add_argument("--subset-manifest")
     figlib.add_argument("--manifest-out")
 
-    pyro_sdis = subparsers.add_parser("pyro-sdis", help="Convert Pyro-SDIS parquet shards to one-class YOLO")
-    pyro_sdis.add_argument("--data-root", required=True, help="Folder containing parquet shards or its data/ child")
-    pyro_sdis.add_argument("--out", required=True, help="Output YOLO dataset folder")
-    pyro_sdis.add_argument("--audit-out", required=True)
-
     return parser.parse_args()
-
-def percentile(values, pct):
-    if not values:
-        return None
-    ordered = sorted(values)
-    index = min(len(ordered) - 1, max(0, int(round((pct / 100) * (len(ordered) - 1)))))
-    return ordered[index]
-
-def value_percentiles(areas):
-    if not areas:
-        return None
-    points = [0, 5, 10, 25, 50, 75, 90, 95, 100]
-    return {f"p{point}": percentile(areas, point) for point in points}
-
-def pyro_annotation_lines(value):
-    if value is None or not str(value).strip():
-        return [], []
-    lines = []
-    areas = []
-    for raw_line in str(value).splitlines():
-        parts = raw_line.split()
-        if len(parts) != 5:
-            raise ValueError(f"invalid annotation fields: {raw_line!r}")
-        try:
-            class_id = int(parts[0])
-            coords = [float(item) for item in parts[1:]]
-        except ValueError as error:
-            raise ValueError(f"invalid annotation values: {raw_line!r}") from error
-        if class_id != 1:
-            raise ValueError(f"invalid source class: {class_id}")
-        x_center, y_center, width, height = coords
-        if not (0 <= x_center <= 1 and 0 <= y_center <= 1 and 0 < width <= 1 and 0 < height <= 1):
-            raise ValueError(f"bbox outside normalized range: {raw_line!r}")
-        lines.append("0 " + " ".join(parts[1:]))
-        areas.append(width * height)
-    return lines, areas
-
-def pyro_image_bytes(value):
-    if isinstance(value, dict):
-        value = value.get("bytes")
-    if value is None:
-        raise ValueError("image bytes missing")
-    if not isinstance(value, (bytes, bytearray, memoryview)):
-        raise ValueError(f"unsupported image value: {type(value).__name__}")
-    return bytes(value)
-
-def pyro_shard_paths(data_root: Path):
-    candidates = data_root / "data" if (data_root / "data").is_dir() else data_root
-    paths = sorted(candidates.glob("*.parquet"))
-    if not paths:
-        raise ValueError(f"no parquet shards under {candidates}")
-    return paths
-
-def pyro_split_from_shard(path: Path):
-    match = re.match(r"^(train|val)-\d{5}-of-\d{5}\.parquet$", path.name)
-    if not match:
-        raise ValueError(f"invalid shard filename: {path.name}")
-    return match.group(1)
-
-def cmd_pyro_sdis(args):
-    started = time.perf_counter()
-    data_root = Path(args.data_root).resolve()
-    out_dir = Path(args.out).resolve()
-    audit_path = Path(args.audit_out).resolve()
-    shard_paths = pyro_shard_paths(data_root)
-    if out_dir.exists():
-        raise ValueError(f"output already exists: {out_dir}")
-    temp_dir = Path(tempfile.mkdtemp(prefix=f".{out_dir.name}.tmp-", dir=out_dir.parent))
-    stats = {
-        "images": {"train": 0, "val": 0},
-        "empty_annotations": 0,
-        "bbox_count": 0,
-        "source_class_counts": {},
-        "output_class_counts": {},
-        "image_dimensions": {},
-        "duplicate_filenames": 0,
-        "invalid_records": 0,
-        "bbox_areas": [],
-    }
-    names = set()
-    try:
-        for split in ("train", "val"):
-            (temp_dir / "images" / split).mkdir(parents=True)
-            (temp_dir / "labels" / split).mkdir(parents=True)
-        for shard_path in shard_paths:
-            split = pyro_split_from_shard(shard_path)
-            table = pq.read_table(shard_path, columns=["image", "annotations", "image_name"])
-            for record in table.to_pylist():
-                image_name = Path(str(record["image_name"])).name
-                if not image_name or image_name in {".", ".."}:
-                    raise ValueError("missing image_name")
-                if image_name in names:
-                    stats["duplicate_filenames"] += 1
-                    raise ValueError(f"duplicate filename: {image_name}")
-                names.add(image_name)
-                image_bytes = pyro_image_bytes(record["image"])
-                try:
-                    with Image.open(io.BytesIO(image_bytes)) as image:
-                        image.load()
-                        dimensions = f"{image.width}x{image.height}"
-                        if dimensions != "1280x720":
-                            raise ValueError(f"unexpected image dimensions: {dimensions}")
-                except Exception as error:
-                    raise ValueError(f"invalid image {image_name}: {error}") from error
-                lines, areas = pyro_annotation_lines(record["annotations"])
-                image_out = temp_dir / "images" / split / image_name
-                label_out = temp_dir / "labels" / split / f"{Path(image_name).stem}.txt"
-                image_out.write_bytes(image_bytes)
-                label_out.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-                stats["images"][split] += 1
-                stats["image_dimensions"][dimensions] = stats["image_dimensions"].get(dimensions, 0) + 1
-                if not lines:
-                    stats["empty_annotations"] += 1
-                stats["bbox_count"] += len(lines)
-                stats["bbox_areas"].extend(areas)
-                stats["source_class_counts"]["1"] = stats["source_class_counts"].get("1", 0) + len(lines)
-                stats["output_class_counts"]["0"] = stats["output_class_counts"].get("0", 0) + len(lines)
-        yaml_data = {"path": str(out_dir), "train": "images/train", "val": "images/val", "names": {0: "smoke"}}
-        (temp_dir / "dataset.yaml").write_text(yaml.safe_dump(yaml_data, sort_keys=False), encoding="utf-8")
-        audit = {
-            "dataset": "Pyro-SDIS",
-            "images": stats["images"],
-            "total_images": sum(stats["images"].values()),
-            "empty_annotations": stats["empty_annotations"],
-            "bbox_count": stats["bbox_count"],
-            "source_class_counts": stats["source_class_counts"],
-            "output_class_counts": stats["output_class_counts"],
-            "invalid_records": stats["invalid_records"],
-            "duplicate_filenames": stats["duplicate_filenames"],
-            "image_dimensions": stats["image_dimensions"],
-            "bbox_area_normalized_percentiles": value_percentiles(stats["bbox_areas"]),
-            "output_bytes": sum(path.stat().st_size for path in temp_dir.rglob("*") if path.is_file()),
-            "runtime_seconds": time.perf_counter() - started,
-        }
-        audit_path.parent.mkdir(parents=True, exist_ok=True)
-        audit_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
-        temp_dir.rename(out_dir)
-    except Exception:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        raise
-    console.print(f"Pyro-SDIS YOLO dataset saved: {out_dir}")
-    console.print(f"Audit saved: {audit_path}")
 
 FIGLIB_CAMERA_BRANDS = ("mobo", "iqeye")
 
@@ -376,8 +222,6 @@ def main():
     args = parse_args()
     if args.command == "figlib":
         cmd_figlib(args)
-    elif args.command == "pyro-sdis":
-        cmd_pyro_sdis(args)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,15 @@
+{
+  "amp_dtype": "fp16",
+  "augmentation_policy": "framework-default-no-user-overrides",
+  "dataset": "D-Fire-fixed-split-clip-edges-drop-degenerate",
+  "devices": 2,
+  "epochs": 20,
+  "framework": "rfdetr-1.8.3",
+  "grad_accum": 2,
+  "micro_batch": 8,
+  "model": "RFDETRLarge",
+  "resolution": 800,
+  "schema": 2,
+  "seed": 20260707,
+  "strategy": "ddp_notebook"
+}
