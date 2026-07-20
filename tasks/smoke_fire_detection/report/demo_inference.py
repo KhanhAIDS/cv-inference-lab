@@ -29,16 +29,17 @@ MODELS = [
     {
         "name": "yolo26x_pyro_sdis",
         "family": "yolo",
-        "weights": REPO_ROOT / "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/best.pt",
+        "weights": REPO_ROOT / "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt",
         "imgsz": 1280,
-        "training_status": "DANG TRAIN - checkpoint epoch 18/20, Pyro-SDIS val mAP50-95=0.492 (chua phai so cuoi)",
+        "training_status": "hoan tat 20/20 - Pyro-SDIS val best mAP50-95=0.4949",
     },
     {
         "name": "rfdetr_large_pyro_sdis",
         "family": "rfdetr",
-        "weights": REPO_ROOT / "to_be_resolved/rf-detr_pyro-sdis/checkpoint_best_ema.zip",
+        "weights": REPO_ROOT
+        / "artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth",
         "imgsz": 1280,
-        "training_status": "DANG TRAIN - checkpoint epoch 5/20 (best EMA), Pyro-SDIS val mAP50-95(EMA)=0.4648 (chua phai so cuoi)",
+        "training_status": "hoan tat 20/20 - RF-DETR final best-total",
     },
 ]
 

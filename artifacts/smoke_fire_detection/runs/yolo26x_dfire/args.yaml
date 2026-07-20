@@ -1,6 +1,6 @@
 task: detect
 mode: train
-model: /content/drive/MyDrive/cv-inference-lab/runs/dfire_yolo26x_res800_b8/weights/last.pt
+model: /content/dfire_yolo26x_res800_b8_resume.pt
 data: /content/D-Fire-clean/data.yaml
 epochs: 20
 time: null
@@ -12,7 +12,7 @@ save_period: 1
 cache: false
 device: '0'
 workers: 2
-project: /content/drive/MyDrive/cv-inference-lab/runs
+project: /content/drive/MyDrive/CV_Lab/runs
 name: dfire_yolo26x_res800_b8
 exist_ok: true
 pretrained: true
@@ -22,9 +22,9 @@ seed: 20260707
 deterministic: true
 single_cls: false
 rect: false
-cos_lr: true
+cos_lr: false
 close_mosaic: 10
-resume: /content/drive/MyDrive/cv-inference-lab/runs/dfire_yolo26x_res800_b8/weights/last.pt
+resume: /content/dfire_yolo26x_res800_b8_resume.pt
 amp: true
 fraction: 1.0
 profile: false
@@ -74,7 +74,7 @@ lr0: 0.01
 lrf: 0.01
 momentum: 0.937
 weight_decay: 0.0005
-warmup_epochs: 0.0
+warmup_epochs: 3.0
 warmup_momentum: 0.8
 warmup_bias_lr: 0.0
 distill_model: null
@@ -108,4 +108,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: tracktrack.yaml
-save_dir: /content/drive/.shortcut-targets-by-id/1Qgl3H-Rh6lHxT-RChCAKqv9RhBiqU5Cx/cv-inference-lab/runs/dfire_yolo26x_res800_b8
+save_dir: /content/drive/.shortcut-targets-by-id/1wiiDi54xhpXeM7QBvEGlDvoIaau0RLCk/CV_Lab/runs/dfire_yolo26x_res800_b8

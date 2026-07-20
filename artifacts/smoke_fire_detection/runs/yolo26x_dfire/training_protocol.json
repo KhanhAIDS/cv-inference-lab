@@ -5,11 +5,9 @@
   "early_stopping": false,
   "epochs": 20,
   "framework": "ultralytics-8.4.90",
-  "legacy_reason": "forced warmup_epochs=0 and cosine scheduler instead of native Ultralytics recipe",
   "model": "yolo26x",
   "nominal_batch": 32,
   "resolution": 800,
   "schema": 2,
-  "seed": 20260707,
-  "status": "legacy"
+  "seed": 20260707
 }

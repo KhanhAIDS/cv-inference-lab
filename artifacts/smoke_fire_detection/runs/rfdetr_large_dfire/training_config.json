@@ -31,7 +31,7 @@
     "keypoint_oks_sigmas": null,
     "dataset_file": "yolo",
     "square_resize_div_64": true,
-    "dataset_dir": "/kaggle/input/datasets/registerusername/d-fire/D-Fire",
+    "dataset_dir": "/kaggle/input/datasets/cvsmkhanh/d-fire-clean/D-Fire",
     "output_dir": "/kaggle/working/runs/dfire_rfdetr_large",
     "multi_scale": true,
     "expanded_scales": true,
@@ -70,17 +70,17 @@
     "devices": 2,
     "num_nodes": 1,
     "fp16_eval": false,
-    "lr_scheduler": "cosine",
-    "lr_min_factor": 0.01,
+    "lr_scheduler": "step",
+    "lr_min_factor": 0.0,
     "dont_save_weights": false,
     "train_log_sync_dist": false,
     "train_log_on_step": false,
     "compute_train_metrics": false,
     "compute_val_loss": true,
     "compute_test_loss": true,
-    "pin_memory": null,
-    "persistent_workers": null,
-    "prefetch_factor": null
+    "pin_memory": true,
+    "persistent_workers": true,
+    "prefetch_factor": 4
   },
   "model_config": {
     "encoder": "dinov2_windowed_small",
@@ -137,7 +137,5 @@
   },
   "model_config_type": "RFDETRLargeConfig",
   "class_names": null,
-  "num_classes": 0,
-  "status": "legacy",
-  "legacy_reason": "forced cosine scheduler and lr_min_factor for cross-framework alignment; standard rerun uses native RF-DETR recipe"
+  "num_classes": 0
 }

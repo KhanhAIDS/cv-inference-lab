@@ -205,3 +205,254 @@
   - Thay đổi trực tiếp — sửa: `tasks/smoke_fire_detection/report/demo_inference.py` — RF-DETR/Pyro best path cũ bị xóa → `to_be_resolved/rf-detr_pyro-sdis/checkpoint_best_ema.zip`; `tasks/smoke_fire_detection/docs/external_assets.md` — mục dư → đã xóa; `CHANGELOG.md`.
   - Thay đổi gián tiếp: không có.
   - Command: `rm -f <9 file dư>` sau user authorization; `du -sh` xác nhận dung lượng; `find ... -maxdepth 2 -type f`; `rg` tìm path checkpoint gãy; `.venv/bin/python` thay path demo + heading external assets; `TZ=Asia/Ho_Chi_Minh date`.
+
+- 2026-07-18 19:13 +07:00
+  - Mục tiêu: điều tra RF-DETR-L/D-Fire fresh run OOM sau một thời gian dù giảm batch `8×acc2` thành `4×acc4`; sửa notebook; giữ khả năng so sánh công bằng với YOLO26x.
+  - Đối chiếu:
+    - Dataset/split/resolution/epoch/seed giữ nguyên: D-Fire train/valid/test, `800`, `20`, `20260707`.
+    - Batch effective không đổi: cũ `8×2×2GPU=32`; mới `4×4×2GPU=32`. `GRAD_ACCUM` không tự giữ activation graph giữa micro-batch trong Lightning; không phải nguyên nhân trực tiếp.
+    - Run legacy thành công: RF-DETR 1.8.3-style config, batch `8`, accum `2`, fp16, native multi-scale/EMA; khác scheduler cosine và TensorBoard off. Scheduler không giải thích tăng VRAM.
+    - RF-DETR 1.8.3 `COCOEvalCallback`: giữ prediction/target tensor của toàn validation trong `MeanAveragePrecision`; chạy thêm forward + accumulator EMA; tensor chỉ chuyển CPU lúc merge cuối epoch. Triệu chứng phù hợp: VRAM tăng dần trong validation; giảm training micro-batch không loại bỏ state tích lũy.
+    - Native `800px` + Large patch16/windows2 + expanded multi-scale tạo dải `640..960`; config mặc định `do_random_resize_via_padding=False` chọn scale lớn nhất `960`. Peak activation thực tế cao hơn tên `RESOLUTION=800`.
+    - Giới hạn chẩn đoán: không có traceback OOM hoặc log `memory_allocated/memory_reserved` của run lỗi; vị trí OOM validation là chẩn đoán xác suất cao từ source + triệu chứng, không tuyên bố chứng minh tuyệt đối.
+  - Sửa notebook:
+    - Batch `MICRO_BATCH=4`, `GRAD_ACCUM=4`; effective global `32`.
+    - Patch đúng source callback RF-DETR 1.8.3 trong Kaggle environment trước spawn DDP: `_convert_preds`/`_convert_targets` detach + CPU; EMA `MeanAveragePrecision` giữ CPU. DDP spawn child đọc cùng source đã patch.
+    - Bật `gradient_checkpointing=True`: giảm peak activation; recompute backward; không đổi weight, head, loss, augmentation, EMA, scheduler, metric.
+    - Pin lại `amp_dtype='fp16'`; `tensorboard=False`; giữ native step scheduler, multi-scale, expanded scales, augmentation, EMA.
+    - Giữ schema resume hiện tại; checkpoint run lỗi batch4/acc4 resume được nếu `resume_protocol.json` khớp.
+  - Fairness:
+    - RF-DETR và YOLO26x vẫn so sánh được sau khi RF run hoàn tất.
+    - CPU metric offload + activation checkpointing: thay đổi hạ tầng bộ nhớ/tốc độ train; không phá kiến trúc hoặc đặc tính học riêng RF-DETR.
+    - Không dùng legacy cosine RF-DETR để kết luận cross-family.
+  - Verify:
+    - PowerShell `ConvertFrom-Json`: notebook parse PASS; 7 cell.
+    - `ruff check --select E9,F63,F7,F82 tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`: PASS.
+    - `git diff --check`: PASS; chỉ cảnh báo line-ending trên file dirty có sẵn.
+    - Không chạy train thật: máy local không có môi trường Kaggle 2×T4.
+  - Thay đổi trực tiếp:
+    - Sửa: `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+    - Sửa: `agent_context.md`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+  - Không đụng thay đổi user có sẵn: artifact/config RF-DETR; toàn bộ `to_be_resolved/rf-detr_pyro-sdis/`; toàn bộ `to_be_resolved/yolo26x_d-fire/`; artifact YOLO26x/Pyro-SDIS.
+  - Command chính:
+    - `Get-Content agent_context.md/CHANGELOG.md/notebook/config`; `git status --short`; `git diff`; `git log --follow`; `git show <commit>:<notebook> | Select-String`.
+    - Web đọc source chính thức tag RF-DETR `1.8.3`: `config.py`, `datasets/coco.py`, `training/trainer.py`, `training/callbacks/coco_eval.py`, `detr.py`; rà GitHub issue OOM/validation.
+    - `apply_patch` notebook/context/changelog.
+    - PowerShell `ConvertFrom-Json`; `ruff check`; `git diff --check`; `Get-Date` đổi `SE Asia Standard Time`.
+
+- 2026-07-18 19:22 +07:00
+  - Mục tiêu: tái chẩn đoán sau khi user cung cấp traceback OOM thật của notebook commit trước; user xác nhận traceback không phải output của code vừa sửa trong phiên hiện tại.
+  - Traceback chốt:
+    - OOM tại rank 1, `training_step → lwdetr → transformer decoder → self_attn → scaled_dot_product_attention`.
+    - Không nằm trong validation/COCO metric; chẩn đoán metric accumulator ở entry `19:13` sai điểm nổ chính.
+    - GPU T4 `14.56GiB`; PyTorch live allocated `14.16GiB`; reserved-unallocated chỉ `160.52MiB`; yêu cầu thêm `32MiB` thất bại. Thiếu bộ nhớ live; không phải fragmentation chính; không thêm `expandable_segments`.
+    - Cell lỗi của notebook cũ khởi tạo `RFDETRLarge(..., num_classes=2)` không có gradient checkpointing.
+    - Native RF-DETR 1.8.3 tại nominal `800px`: expanded multi-scale + default skip random resize dùng scale lớn nhất `960`; activation decoder cao. Optimizer state/gradient/EMA persistent cộng activation micro-batch làm vượt T4.
+  - Sửa lại theo đúng training path:
+    - Xóa toàn bộ runtime patch third-party `COCOEvalCallback` vừa thêm; không đổi metric/device.
+    - `MICRO_BATCH 4→2`, `GRAD_ACCUM 4→8`; effective global giữ `32`.
+    - Giữ `gradient_checkpointing=True`, fp16, TensorBoard off.
+    - Giữ native multi-scale, expanded scales, EMA, augmentation, scheduler step; không phá kiến trúc/recipe.
+    - Resume compatibility: chấp nhận protocol OOM cũ `4×acc4`, sau đó ghi protocol hiện tại `2×acc8`; optimizer-step effective batch không đổi.
+    - Sửa thêm lỗi resume có sẵn: khi lấy checkpoint từ Kaggle Input, luôn tạo/cập nhật `RUN_DIR/resume_protocol.json`; trước đây chỉ ghi protocol cho fresh run không có checkpoint.
+  - Verify:
+    - PowerShell `ConvertFrom-Json`: PASS.
+    - `ruff check --select E9,F63,F7,F82`: PASS.
+    - `git diff --check`: PASS; chỉ cảnh báo line-ending.
+    - Không chạy GPU end-to-end; cần Kaggle 2×T4.
+  - Thay đổi trực tiếp:
+    - Sửa: `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+    - Sửa: `agent_context.md`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+  - Command chính: web đọc source RF-DETR 1.8.3 gradient checkpointing/trainer/model config; `apply_patch`; PowerShell `ConvertFrom-Json`; `ruff check`; `git diff --check`; `Get-Date` GMT+7.
+
+- 2026-07-18 19:38 +07:00
+  - Mục tiêu: giải thích nghịch lý RF-DETR legacy hoàn thành với `8×acc2`, fresh commit gần nhất OOM dù `4×acc4`; sửa theo khác biệt cấu hình thật; kiểm tra precision YOLO26x fresh.
+  - Bằng chứng legacy hoàn thành:
+    - `training_config.json`: resolution `800`, batch `8`, accum `2`, `amp_dtype=fp16`, native multi-scale/expanded-scales/EMA, TensorBoard off, gradient checkpointing off.
+    - `resume_protocol.json`: khóa `8×acc2`, fp16; `metrics.csv` kết thúc epoch `19`, global step `9699` — đủ 20 epoch, effective global batch `32`.
+  - Bằng chứng fresh/OOM:
+    - Commit `c2fdb9a`: resolution `800`, `8×acc2`; bỏ `amp_dtype='fp16'` và `tensorboard=False`, để RF-DETR 1.8.3 dùng precision `auto`.
+    - Traceback user: training decoder self-attention/SDPA; live allocated `14.16/14.56GiB`; fragmentation thấp.
+    - RF-DETR 1.8.3 auto precision gọi `torch.cuda.is_bf16_supported()`; PyTorch API mới mặc định `including_emulation=True`. T4/Turing không có BF16 phần cứng native nhưng API có thể trả true qua emulation.
+    - SDPA tự chọn backend theo dtype/GPU/input. Khi rơi về math backend, PyTorch giữ intermediate FP32 cho FP16/BF16; attention decoder có chi phí bậc hai. Native RF-DETR multi-scale ở resolution 800 có thể lên 960. Kết hợp này giải thích peak OOM dù micro-batch nhỏ hơn.
+    - Mức chắc chắn: nguyên nhân precision/backend là giả thuyết mạnh nhất, khớp duy nhất với khác biệt cấu hình và điểm nổ; chưa thể chứng minh tuyệt đối vì run lỗi không lưu `torch.__version__`, Lightning precision và SDPA backend đã chọn.
+    - Loại trừ: grad accumulation không giữ toàn bộ graph giữa micro-batch; scheduler/TensorBoard không giải thích `14.16GiB` live PyTorch; `expandable_segments` không chữa peak live; không phải validation metric leak.
+  - Sửa RF-DETR notebook:
+    - Giữ setting user `MICRO_BATCH=4`, `GRAD_ACCUM=4`, 2 GPU; effective global batch `32`.
+    - Ép `amp_dtype='fp16'`: loại bỏ nhánh auto BF16/emulation; khớp precision run legacy đã hoàn thành.
+    - Bật `gradient_checkpointing=True`: thêm biên VRAM; đổi compute/memory, không đổi weight graph, head, query, loss hoặc kiến trúc.
+    - `tensorboard=False`: khớp run legacy, giảm phụ phí không cần; không phải root cause.
+    - Giữ native multi-scale/expanded scales, EMA, step scheduler, augmentation; không ép recipe YOLO sang RF-DETR.
+    - Protocol thêm `amp_dtype=fp16`; cho phép resume đúng checkpoint OOM cũ có protocol y hệt nhưng thiếu trường này; sau chọn checkpoint luôn ghi protocol fp16 hiện tại vào run dir.
+    - Sắp import đầu cell cài đặt để notebook qua full `ruff`.
+  - YOLO26x fresh:
+    - Notebook chưa truyền `amp=True` tường minh; Ultralytics mặc định AMP true.
+    - Artifact thật `to_be_resolved/yolo26x_d-fire/args.yaml` xác nhận `amp: true`; trên T4 là FP16/FP32 mixed precision.
+    - Chưa sửa notebook YOLO trong mốc này; user mới hỏi trạng thái, chưa yêu cầu thay đổi.
+  - Verify:
+    - PowerShell `ConvertFrom-Json`: PASS.
+    - `ruff check` ban đầu báo E402 do import sau `subprocess.run`; đã sắp lại import; full check cuối PASS.
+    - `git diff --check`: PASS; chỉ cảnh báo line-ending trên file dirty có sẵn.
+  - Thay đổi trực tiếp:
+    - Sửa: `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+    - Sửa: `agent_context.md`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+  - Không đụng thay đổi user có sẵn: toàn bộ artifact RF-DETR/YOLO; notebook/config/report trong `to_be_resolved/`.
+  - Command chính:
+    - `rg` notebook/context/YOLO artifact; `git log`; `git show c2fdb9a`; `git show 8f911e6`; `git diff`; `Get-Content` config/protocol/metrics/CHANGELOG.
+    - Web: PyTorch official docs `is_bf16_supported`, SDPA, numerical accuracy; PyTorch issue Turing BF16 compatibility; RF-DETR official migration/source; Ultralytics official train docs.
+    - `apply_patch` notebook/context/changelog; PowerShell `ConvertFrom-Json`; `ruff check`; `Get-Date` GMT+7.
+
+- 2026-07-18 21:07 +07:00
+  - Mục tiêu: sửa lỗi resume RF-DETR-L/D-Fire khi `/kaggle/working/runs/dfire_rfdetr_large` đã tồn tại nhưng chưa có checkpoint.
+  - Nguyên nhân:
+    - Code dùng `RUN_DIR.exists()` làm bằng chứng run phải có checkpoint.
+    - Thư mục tồn tại không chứng minh checkpoint tồn tại; fresh run bị chặn sai bằng `RuntimeError`.
+  - Sửa:
+    - Bỏ cờ `existed`.
+    - Materialize `working_paths = list(RUN_DIR.glob('checkpoint_*.ckpt'))`.
+    - Không có checkpoint working: tiếp tục quét Kaggle Input; không có checkpoint hợp lệ ở cả hai nguồn: `resume_path=None`, train mới.
+    - Chỉ yêu cầu protocol và chỉ báo checkpoint working không hợp lệ khi có file checkpoint working thật.
+    - Giữ fail-fast cho checkpoint working có thật nhưng thiếu protocol/hỏng/không tương thích; không âm thầm train đè.
+    - Cập nhật mô tả resume trong notebook.
+  - Ngoài scope:
+    - Markdown notebook ghi `4×acc4`; code hiện `8×acc2`. Không tự đổi cấu hình train trong yêu cầu sửa resume.
+  - Verify:
+    - PowerShell `ConvertFrom-Json`: PASS.
+    - `ruff check --select E9,F63,F7,F82`: PASS.
+    - `git diff --check` cho notebook: PASS; chỉ cảnh báo Git LF→CRLF.
+  - Thay đổi trực tiếp:
+    - Sửa: `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+    - Sửa: `agent_context.md`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+  - Không đụng file dirty có sẵn khác: artifact/config RF-DETR; toàn bộ `to_be_resolved/rf-detr_pyro-sdis/`; toàn bộ `to_be_resolved/yolo26x_d-fire/`.
+  - Command:
+    - `Get-Content -LiteralPath agent_context.md`; `Get-Content -LiteralPath CHANGELOG.md -Tail 100`; `Get-Content -Encoding utf8 ... -Tail 8`.
+    - `rg -n -C ... tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`; `rg -n "MICRO_BATCH|GRAD_ACCUM|Batch API" ...`.
+    - `git status --short`; `git diff -- ...`; `git diff --numstat -- ...`; `git diff --check -- ...`.
+    - `Get-Item ...`; `Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"`.
+    - `apply_patch` notebook/context/changelog.
+    - `Get-Content -Raw ... | ConvertFrom-Json`; `ruff check --select E9,F63,F7,F82 ...`.
+
+- 2026-07-18 21:46 +07:00
+  - Mục tiêu: xác nhận archive D-Fire train-ready và đường dẫn output notebook YOLO26x root.
+  - Xác minh dataset local: `D-Fire/{train,valid,test}/{images,labels}`; ảnh/label lần lượt `15500/15500`, `1721/1721`, `4306/4306`.
+  - Sửa notebook root:
+    - Giữ archive `/content/drive/MyDrive/CV_Lab/D-Fire-train-ready.zip` giải nén vào `/content`, dataset root `/content/D-Fire`.
+    - Thêm fail-fast: đủ sáu thư mục split `images`/`labels` sau giải nén.
+    - Xác nhận output đã là `/content/drive/MyDrive/CV_Lab/runs`; không còn dùng `D-Fire/runs`.
+  - Verify: PowerShell `ConvertFrom-Json` PASS; kiểm tra source cell setup PASS; số lượng file split local PASS.
+  - Thay đổi trực tiếp:
+    - Sửa: `colab_train_dfire_yolo26x.ipynb`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+  - Command:
+    - `Get-Content agent_context.md`; `Get-Content/ConvertFrom-Json colab_train_dfire_yolo26x.ipynb`; `Get-ChildItem datasets/smoke_fire_detection/D-Fire`; `rg`; `apply_patch`; `Get-Date`.
+
+- 2026-07-18 22:01 +07:00
+  - Mục tiêu: sửa output YOLO26x/D-Fire resume vẫn ghi `/content/drive/MyDrive/D-Fire/runs`.
+  - Nguyên nhân: Ultralytics resume khôi phục `project` và `save_dir` trong `last.pt`; nhánh resume cũ không ép lại output notebook.
+  - Sửa `colab_train_dfire_yolo26x.ipynb`:
+    - Load full-state checkpoint vào CPU; kiểm tra protocol/config cũ giữ nguyên.
+    - Chỉ đổi metadata `project` thành `/content/drive/MyDrive/CV_Lab/runs`, `name` run hiện tại; bỏ `save_dir` cũ.
+    - Lưu checkpoint resume tạm tại `/content/dfire_yolo26x_res800_b8_resume.pt`; checkpoint gốc trên Drive không bị sửa.
+    - Resume từ bản tạm; optimizer, scheduler, scaler, EMA, epoch giữ nguyên; checkpoint epoch tiếp theo ghi vào `CV_Lab/runs`.
+  - Verify: PowerShell `ConvertFrom-Json` PASS; kiểm tra static nhánh resume dùng `resume_train_path`, override `project`, bỏ `save_dir` PASS.
+  - Thay đổi trực tiếp:
+    - Sửa: `colab_train_dfire_yolo26x.ipynb`.
+    - Sửa: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: khi chạy Colab, tạo checkpoint resume tạm trong `/content`; checkpoint mới dưới `CV_Lab/runs`.
+  - Command: `Get-Content agent_context.md`; `ConvertFrom-Json`; `rg`; `apply_patch`; web source Ultralytics 8.4.90; `Get-Date`.
+
+- 2026-07-19 02:56 +07:00
+  - Mục tiêu: Tạo script keep google colab alive theo yêu cầu của user.
+  - Thay đổi trực tiếp: Tạo mới keep_colab_alive.py tại root.
+  - Thay đổi gián tiếp: Không có.
+  - Command: Không có.
+
+- 2026-07-20 08:16:44 +07:00
+  - Mục tiêu: kiểm kê toàn bộ model weight; xác minh notebook/protocol; chọn artifact final; gộp các đợt train; xóa `to_be_resolved/`, cache, checkpoint/plot/legacy thừa; trim context.
+  - Kết luận audit:
+    - File `.zip` RF-DETR không phải archive Kaggle bao ngoài; magic `PK`, entry `data.pkl`/tensor storage: checkpoint PyTorch; đổi đúng đuôi `.pth`.
+    - Notebook giữ kiến trúc gốc: `YOLO('yolo26x.pt')`; `RFDETRLarge`; không sửa backbone/decoder/head.
+    - Fairness: Pyro-SDIS cùng split/1280/20 epoch/seed; D-Fire cùng split/800/20 epoch/seed; hyperparameter còn lại native từng framework.
+    - YOLO26x/D-Fire `best.pt` 471,739,522 byte là full-state cũ; `last.pt` 118,307,173 byte là final epoch 20 đã strip; epoch 20 có val mAP50-95 cao nhất `0.41535`; giữ `last.pt` dưới tên chuẩn `best.pt`.
+    - RF-DETR/D-Fire: gộp đợt 1 epoch 0-15 + đợt 2 epoch 16-19; best EMA epoch 17 mAP50-95 `0.4958774447`; giữ framework-selected `checkpoint_best_total.pth`.
+    - RF-DETR/Pyro-SDIS: full checkpoint epoch 19/global step 36,940; giữ `checkpoint_best_total.pth`.
+    - `checkpoint_best_total.pth`: artifact RF-DETR chính thức cho inference/benchmark; loại regular/EMA thành phần và full-state resume sau khi train xong.
+    - Giữ E0 YOLO26n/D-Fire: code Modal/report còn dùng; test metric đã chốt; không phải artifact mồ côi.
+  - Dung lượng:
+    - Xóa trực tiếp: `69` file; `4,978,988,560` byte, khoảng `4.64 GiB`.
+    - Notebook YOLO26x/D-Fire: khoảng `330 KB` → `20.6 KB`; xóa output thực thi + widget-state; source giữ nguyên.
+  - Di chuyển/đổi tên:
+    - `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/{args.yaml,results.csv,weights/best.pt}` → `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/`.
+    - `to_be_resolved/latest models/YOLO26x_D-Fire/{args.yaml,results.csv,training_protocol.json}` → `artifacts/smoke_fire_detection/runs/yolo26x_dfire/`.
+    - `to_be_resolved/latest models/YOLO26x_D-Fire/weights/last.pt` → `artifacts/smoke_fire_detection/runs/yolo26x_dfire/weights/best.pt`.
+    - `to_be_resolved/latest models/YOLO26x_D-Fire/colab_train_dfire_yolo26x.ipynb` → `tasks/smoke_fire_detection/colab_train_dfire_yolo26x.ipynb`.
+    - `to_be_resolved/latest models/RF-DETR_D-Fire/checkpoint_best_total_2.zip` → `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`.
+    - `to_be_resolved/latest models/RF-DETR_D-Fire/training_config.json` → `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/training_config.json`.
+    - `to_be_resolved/latest models/RF-DETR_D-Fire/d-fire-rf-detr-l.ipynb` → `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+    - `to_be_resolved/latest models/RF-DETR_pyro-sdis/{checkpoint_best_total.pth,training_config.json}` → `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/`.
+    - `to_be_resolved/latest models/RF-DETR_pyro-sdis/rf-detr-pyro-sdis.ipynb` → `tasks/smoke_fire_detection/kaggle_train_pyro_sdis_rfdetr.ipynb`.
+  - Thêm:
+    - `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/metrics.csv`: gộp raw metrics hai đợt; bỏ epoch 16 dang dở của đợt 1; đủ validation epoch 0-19.
+    - `artifacts/smoke_fire_detection/runs/yolo26x_dfire/test_metrics.json`: số test quan trọng trích từ notebook output trước khi clear.
+  - Sửa:
+    - `tasks/smoke_fire_detection/modal_app.py`: path YOLO26x/Pyro-SDIS mới.
+    - `tasks/smoke_fire_detection/report/demo_inference.py`: path/status final YOLO26x và RF-DETR/Pyro-SDIS.
+    - `tasks/smoke_fire_detection/docs/research_plan.md`: path fresh, trạng thái final, metric fair D-Fire, trạng thái test RF-DETR.
+    - `tasks/smoke_fire_detection/docs/external_assets.md`: chỉ còn dataset, 5 final weight, cache đắt, 3 notebook cần mang sang máy khác.
+    - `agent_context.md`: bỏ lịch sử OOM/resume/legacy dài; giữ protocol, artifact final, blocker/next.
+    - `CLAUDE.md`: bỏ bản sao 7.9 KB của `AGENTS.md`; giữ một bullet trỏ quy tắc nguồn.
+    - `tasks/smoke_fire_detection/{colab_train_dfire_yolo26x.ipynb,kaggle_train_dfire_rfdetr.ipynb,kaggle_train_pyro_sdis_rfdetr.ipynb}`: clear output/execution count; YOLO bỏ widget-state chết.
+    - `CHANGELOG.md`: append mốc này; không xóa lịch sử cũ.
+  - Xóa cache:
+    - `.ruff_cache/{.gitignore,CACHEDIR.TAG,0.15.20/2507400914020121728,0.15.20/4503818498910293907}`.
+    - Folder `.ruff_cache/`.
+  - Xóa RF-DETR legacy:
+    - `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_kaggle/{checkpoint_best_ema.pth,metrics.csv,resume_protocol.json,training_config.json}`.
+    - `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis_gb10/{checkpoint_7.ckpt,checkpoint_best_ema.pth,checkpoint_best_regular.pth,metrics.csv}`.
+  - Xóa `to_be_resolved/rf-detr_pyro-sdis/`:
+    - `checkpoint_9.ckpt`, `checkpoint_best_ema.zip`, `checkpoint_best_regular.zip`, `metrics.csv`, `resume_protocol.json`, `rf-detr-pyro-sdis.ipynb`.
+  - Xóa `to_be_resolved/yolo26x_d-fire/`:
+    - `args.yaml`, `colab_train_dfire_yolo26x.ipynb`, `eval_report_test.json`, `results.csv`, `training_protocol.json`, `weights/best.pt`.
+  - Xóa weight RF-DETR final-run thừa:
+    - `to_be_resolved/latest models/RF-DETR_D-Fire/{checkpoint_19.zip,checkpoint_best_ema_1.zip,checkpoint_best_ema_2.zip,checkpoint_best_regular_1.zip,checkpoint_best_regular_2.zip,metrics_1.csv,metrics_2.csv}`.
+    - `to_be_resolved/latest models/RF-DETR_pyro-sdis/{checkpoint_19.ckpt,checkpoint_best_ema.pth,checkpoint_best_regular_1.pth,checkpoint_best_regular_2.pth}`.
+  - Xóa YOLO26x/D-Fire final-run thừa:
+    - Weight: `to_be_resolved/latest models/YOLO26x_D-Fire/weights/{best.pt,epoch19.pt}`.
+    - Plot: `BoxF1_curve.png`, `BoxP_curve.png`, `BoxPR_curve.png`, `BoxR_curve.png`, `confusion_matrix.png`, `confusion_matrix_normalized.png`, `labels.jpg`, `results.png`.
+    - Train preview: `train_batch0.jpg`, `train_batch1.jpg`, `train_batch2.jpg`, `train_batch19380.jpg`, `train_batch19381.jpg`, `train_batch19382.jpg`.
+    - Val preview: `val_batch0_labels.jpg`, `val_batch0_pred.jpg`, `val_batch1_labels.jpg`, `val_batch1_pred.jpg`, `val_batch2_labels.jpg`, `val_batch2_pred.jpg`.
+    - Test plot/preview: `test_evaluation/{BoxF1_curve.png,BoxP_curve.png,BoxPR_curve.png,BoxR_curve.png,confusion_matrix.png,confusion_matrix_normalized.png,val_batch0_labels.jpg,val_batch0_pred.jpg,val_batch1_labels.jpg,val_batch1_pred.jpg,val_batch2_labels.jpg,val_batch2_pred.jpg}`.
+    - Folder `to_be_resolved/` sau khi chuyển artifact giữ lại.
+  - Verify:
+    - Load thật 5/5 weight: PASS.
+    - YOLO: E0 `2` class/2,504,580 params; Pyro `1` class/58,810,878 params; D-Fire `2` class/58,813,188 params.
+    - RF-DETR: cả hai `RFDETRLarge`, version `1.8.3`, `510` tensor; Pyro global step `36,940`; D-Fire `8,730`.
+    - `ConvertFrom-Json`: 3 notebook + 4 JSON config/report PASS.
+    - RF-DETR/D-Fire merged metrics: 20 validation row; epoch 0-19; best EMA đúng epoch 17.
+    - `ruff check --no-cache --select E9,F63,F7,F82 tasks/smoke_fire_detection`: PASS; không tái tạo `.ruff_cache`.
+    - `git diff --check`: PASS; chỉ warning LF→CRLF.
+    - `to_be_resolved/`: không tồn tại.
+    - `.ruff_cache/`: không tồn tại.
+  - Thay đổi gián tiếp trong repo: không có.
+  - Command/tool:
+    - `Get-Content agent_context.md`; `[System.Environment]::OSVersion.Platform`; `RuntimeInformation.OSDescription`.
+    - `git status --short`; `rg --files -g '!docs/**'`; `Get-ChildItem` full repo: timeout do dataset lớn; thay bằng inventory riêng `to_be_resolved/` + `artifacts/.../runs/`.
+    - `Get-ChildItem` size/extension; .NET stream đọc magic; `System.IO.Compression.ZipArchive`; Python `zipfile`.
+    - `Get-Content`/`ConvertFrom-Json` notebook code/output/metadata; `Import-Csv` config/metrics; tính best regular/EMA/YOLO.
+    - `py -c` kiểm tra Python/PyTorch/Ultralytics; `torch.serialization.get_unsafe_globals_in_checkpoint`; `torch.load(..., weights_only=True)` metadata RF-DETR; `YOLO(...)` load YOLO weight.
+    - `py -m jupyter nbconvert ...`: thất bại do thiếu `jupyter-nbconvert`; không cài thêm dependency.
+    - `py -c` chuẩn hóa notebook JSON, clear output/execution count, xóa widget-state.
+    - Web official RF-DETR docs/GitHub: ý nghĩa `checkpoint_best_total.pth`, regular, EMA, full-state.
+    - `rg` path artifact cũ; `git diff --no-index AGENTS.md CLAUDE.md`; `Get-Content` docs/code/CHANGELOG.
+    - PowerShell xác minh absolute path nằm trong workspace; `Move-Item`; `New-Item`; `Import-Csv` + `Export-Csv`; `Remove-Item -Recurse -Force`.
+    - `apply_patch`: code, JSON report, research docs, external assets, context, changelog.
+    - `ruff check --no-cache`; `git diff --check`; `git diff --stat`; `git status --short`; GMT+7 `Get-Date`.

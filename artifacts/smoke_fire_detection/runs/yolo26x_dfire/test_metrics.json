@@ -1,0 +1,30 @@
+{
+  "dataset": "D-Fire-fixed-split-clip-edges-drop-degenerate",
+  "split": "test",
+  "images": 4306,
+  "instances": 5197,
+  "resolution": 800,
+  "batch": 8,
+  "framework": "ultralytics-8.4.90",
+  "gpu": "Tesla T4",
+  "precision": 0.7185992454248931,
+  "recall": 0.6590663456270229,
+  "map50": 0.7286786385280953,
+  "map50_95": 0.40957009681716394,
+  "smoke": {
+    "images": 2103,
+    "instances": 2323,
+    "precision": 0.76,
+    "recall": 0.716,
+    "map50": 0.778,
+    "map50_95": 0.458
+  },
+  "fire": {
+    "images": 1106,
+    "instances": 2874,
+    "precision": 0.677,
+    "recall": 0.602,
+    "map50": 0.679,
+    "map50_95": 0.361
+  }
+}

@@ -287,7 +287,7 @@ def pyro_sdis_cli(action: str = "cache"):
 
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=86400)
 def evaluate(
-    weights: str = "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/weights/best.pt",
+    weights: str = "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt",
     data_yaml: str = "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
     out: str = "artifacts/smoke_fire_detection/eval_report.json",
     split: str = "val",

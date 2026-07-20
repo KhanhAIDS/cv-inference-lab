@@ -1,35 +1,32 @@
-- **Vai trò:** bộ nhớ ngắn hạn agent; keyword; bullet; không log dài.
-- **Repo:** lab CV inference; core portable Windows/Linux; Modal wrapper tách core; không hard-code OS/path/user/GPU; root `docs/` chỉ đọc/sửa khi user yêu cầu.
-- **Lệnh:** Windows dùng `py`; Linux server dùng `.venv/bin/python`/pip.
-- **Tracking:** mọi thay đổi append `CHANGELOG.md`, timestamp GMT+7, command, file trực tiếp/gián tiếp.
-- **Scope:** `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
-- **Mục tiêu:** early smoke/fire detection video; ưu tiên event-level TTD, false alarm/hour; phụ AUROC, mAP, latency, cost.
-- **Scope correction:** FIgLib cadence 60s + Modal/GPU hiện tại chỉ benchmark scenario/hạ tầng thí nghiệm; không phải constraint vĩnh viễn; RQ1 fixed-camera chỉ track hiện tại.
-- **Near–far:** phổ kích thước biểu kiến, không hai class; A/B/C không loại trừ; thêm scale-MoE, spatial coarse-to-fine, dynamic model, temporal multi-rate, camera-conditioned, edge-cloud.
-- **Architecture gate:** baseline đúng domain + error slice trước; tiny-visible ưu tiên data-scale control → P2/stride4 → P2↔P5 compute-match → adaptive ROI; kernel/neck/distill sau.
-- **Dataset:** Pyro-SDIS parquet, 33,636 row, 5,499 empty annotation, source class `1` remap output class `0`; FIgLib 40,362 frame hợp lệ, 511 folder / 510 event có frame, 143 camera, weak label theo ignition offset.
-- **D-Fire dataset:** `datasets/smoke_fire_detection/D-Fire/` — train 15,500 / valid 1,721 / test 4,306 ảnh, total 43,055 file. Bản train-ready (GUI relabel đã chốt) swap vào 2026-07-16, thay bản cũ + xóa `D-Fire.zip`/`D-Fire-train-ready.zip`. Tooling GUI relabel (`review_dfire_label_fixes.py`, `review_dfire_valid_labels.py`) đã xóa — nhiệm vụ xong, không tái tạo trừ khi user yêu cầu.
-- **FIgLib split (2026-07-14):** camera-disjoint, seed `20260707`, dev 359 seq/108 cam, final 152 seq/35 cam; artifacts `figlib_index.jsonl`/`figlib_split_manifest.json` (`figlib_audit.json` đã xóa 2026-07-17, audit one-time xong việc); không hash lock.
-- **No-hash rule:** tuyệt đối không tự thêm hash/checksum/fingerprint cho dataset/split/checkpoint/artifact/file-list; chỉ khi user yêu cầu rõ trong lượt hiện tại; integrity/reproducibility/audit chung chung không đủ. Legacy SHA-256 shard-lock (`pyro_sdis_snapshot.json` + `convert_pyro_sdis`/`package_pyro_sdis` trong `modal_app.py` + `--expected-shards` trong `dataset.py`) đã xóa 2026-07-16 — one-time dataset packaging đã xong, archive đã có sẵn trên Modal volume, không cần hash-lock nữa. `sha256_path` + toàn bộ máy móc train/kill-resume/packaging trong `modal_app.py` đã xóa 2026-07-17 (training YOLO xong); chỉ còn checksum third-party trong `download_pyronear`.
-- **Doc layering:** research_plan static, số chốt inline; agent_context/CHANGELOG volatile, file static không referred sang; không thêm process layer (hash/ledger/manifest phụ) khi chưa có failure mode.
-- **Protocol:** score max smoke/fire confidence; offset `<0` false alarm; TTD = alarm offset; FA/hour theo negative-window hours; bootstrap event tối thiểu 1,000; operating points 1/camera/day và 1/camera/week.
-- **Code:** `dataset.py` FIgLib index; `eval.py` accuracy/cache; `temporal_eval.py` G0/temporal/compare; `modal_app.py` eval-path; `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb` fresh RF-DETR/D-Fire native recipe; `to_be_resolved/yolo26x_d-fire/colab_train_dfire_yolo26x.ipynb` fresh YOLO26x/D-Fire native recipe; `to_be_resolved/rf-detr_pyro-sdis/rf-detr-pyro-sdis.ipynb` resume RF-DETR/Pyro-SDIS; `report/demo_inference.py` demo.
-- **Server ai2 (DGX Spark GB10):** aarch64, CUDA 13.0, unified memory `121.69GiB` = 1 pool RAM+VRAM; đo footprint = delta `free -h` + `nvidia-smi` per-process; `KillUserProcesses=false` (D-Bus verified) → tmux sống qua logout, linger không cần.
-- **13f RF-DETR-L (user chốt 2026-07-14):** pin `rfdetr @ git+e877b758c...` trong `.venv`; protocol khóa 1280/20ep/b4×acc4/seed 20260707/patience 5/ckpt-interval 1, chọn `val/mAP_50_95`; shim `pyro-sdis-yolo-rfdetr/` symlink layout Roboflow, script tự tạo.
-- **Removed (không tái tạo trừ khi user yêu cầu):** D-Fire relabel GUI tooling, hard-negative, tiling, motion/temporal probes phụ, smoke/resume-gate, CPU preflight, staging cache, checkpoint manifest/hash/snapshot, report README/slide_script/demo_results bản nháp #1. Thêm 2026-07-17: `train.py`, `train_rfdetr.py`, `test_pyro_sdis_converter.py`, converter Pyro trong `dataset.py`, train/packaging wrappers trong `modal_app.py`, `datasets/.../pyro-sdis/` (parquet 3.1G), shim `pyro-sdis-yolo-rfdetr/`, `figlib_audit.json`, `run_metadata.json`, `train_segment_state.json`.
-- **Training policy fresh/retrain:** đủ `20` epoch, không early stop; seed `20260707`; không custom augmentation override; mỗi framework giữ native trainer recipe.
-- **Fairness theo dataset:** Pyro: cùng split `train/val`, `1280`, 20ep, seed. D-Fire chuẩn: cùng split `train/valid/test`, `800`, 20ep, seed; effective batch theo framework; hyperparameter còn lại native từng framework, không ép giống nhau.
-- **Checkpoint contract:** `last.pt`/`best.pt` dùng inference; `last_resume.pt` full model + EMA + optimizer + scaler + scheduler + train args + updates; atomic save; verify state trước resume; commit Volume mỗi epoch.
-- **Modal target:** App `smoke-fire-detection-yolo`; Volume `smoke-fire-step13-volume`; checkpoint path `/workspace/artifacts/smoke_fire_detection/runs/<run_name>/weights/last_resume.pt`.
-- **YOLO26x/Pyro-SDIS: DONE 20/20 epoch** (`artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis_budget9/`). Best mAP50-95 = epoch 19 = `0.4949` (epoch 20 = `0.49303`); full history epoch 3-20 trong `results.csv`. Epoch 1-2: CHỐT không phục hồi được (2026-07-17 đã rà git history, `train_results` trong ckpt Kaggle chỉ chứa epoch 19, cả 2 Modal volume — volume csv cũng bắt đầu epoch 3, app logs không còn vì chạy ephemeral). Nguồn duy nhất còn khả dĩ: output version cũ notebook Kaggle của user. `unknown/last_resume.pt` (471M, to_be_resolved) đã xác định = ckpt resume Kaggle epoch 19/20 của run này, run xong → đã xóa.
-- **RF-DETR-L/Pyro-SDIS: resume Kaggle đến `checkpoint_9` (10/20 epoch hoàn chỉnh); epoch 10 interrupted, chưa có ckpt.** EMA mAP50-95 epoch 9=`0.4626`, không reset optimizer/scheduler. Notebook user `to_be_resolved/rf-detr_pyro-sdis/rf-detr-pyro-sdis.ipynb`: 2×T4 micro2×accum4 = effective16, fp16; giữ API resolution1280 + native internal multi-scale, không early-stop, scheduler step/lr_drop100. Patch 2026-07-17: preserve `metrics.csv` thành `metrics_through_epoch_XX.csv` trước mỗi resume; checkpoint extension do user tự xử lý.
-- **Detector cache YOLO26x/Pyro-SDIS trên FIgLib dev (DONE 2026-07-17):** `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl`, `28360/28361` frame dev split (`imgsz=1280`/`conf=0.05`/`iou=0.6`), chạy local GPU `ai2` không qua Modal. 1 frame lỗi: `20231110.112257-Border36Fire-om-w-mobo-c/1699646403_+02226.jpg` file rỗng 0 byte tại nguồn (anomaly mới, chưa từng document trước đây) — đã skip có log (`.errors.json`). Chỉ split `dev`, CHƯA đụng `test`/final (giữ tới sau khi khóa winner 13d).
-- **eval.py hash fix (2026-07-17):** xóa `sha256_file`/`weights_hash`/field `weights_sha256` (dead code 0 reader, vi phạm no-hash rule dù viết trước khi rule tồn tại) + import `hashlib` thừa; đã strip field khỏi cache jsonl trên.
-- **Next:** RF-DETR còn 12 epoch trên Kaggle → cache candidate đó trên FIgLib dev (adapter riêng cần viết, `eval.py detector-cache` hiện chỉ gắn ultralytics API) → gate 13d (`temporal_eval.py compare-candidates`) chọn winner → final camera-held-out split `test` (chạy 1 lần, sau khi khóa winner).
-- **RF-DETR-L/D-Fire LEGACY:** 20/20 epoch, `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_kaggle/`; 800px; ép cosine/lr_min_factor theo fairness cũ, lệch native RF-DETR step. Best EMA epoch 11=`0.49614`; best regular epoch 18=`0.49324`. Chỉ so same-family với fresh native rerun; không dùng so YOLO chuẩn. Notebook fresh: `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
-- **YOLO26x/D-Fire LEGACY:** 20/20 epoch, `to_be_resolved/yolo26x_d-fire/`; 800px; ép warmup0+cosine, lệch native Ultralytics. Test mAP50-95=`0.0805`, smoke recall=`0.074`. Chỉ giữ best/config/metrics/report làm legacy. Notebook fresh đã sửa native recipe: `colab_train_dfire_yolo26x.ipynb`.
-- **D-Fire next:** user tự xóa run/checkpoint legacy; fresh train YOLO26x + RF-DETR tại 800px bằng notebook đã sửa; chỉ sau đó so model-family.
-- **Track near-field (D-Fire-style): PROPOSAL 2026-07-17, chưa duyệt** — `research_plan.md` mục 10 (RQ5, envelope S2 số cụ thể, gate NG0-NG4, experiment NE1-NE5, dataset survey), `research_toolbox.md` menu near-field riêng. Key: FA budget near-field ~1/50-100 detector/năm (khác wildfire 1/camera/ngày ~3-4 bậc); response ≤30s (FM 3232); object size KHÔNG tiny-object mặc định (~1.1-1.6% bề rộng ảnh); nuisance khác (welding/steam/backlight/dust, không phải cloud/fog); privacy ép edge-only. Dataset ưu tiên nếu duyệt: FIRESENSE (Zenodo CC BY 4.0, tải mở), ONFIRE (MIVIA, có fire-onset time, email), LFDN (hard-negative ảnh). Chưa tải gì, chờ user quyết định 4 điểm ở mục 10.6.
-- **External assets:** `tasks/smoke_fire_detection/docs/external_assets.md` liệt kê dataset/checkpoint nặng không track git + cách lấy lại khi chuyển máy (không hash).
-- **Report:** `tasks/smoke_fire_detection/report/` chỉ còn `demo_inference.py` (script tái dùng được, path checkpoint vẫn khớp). README/slide_script/demo_results bản nháp #1 đã xóa 2026-07-16 — user sẽ làm lại report từ đầu bằng checkpoint cuối cùng (không phải bản dở dang).
-- **Trim 2026-07-16:** xóa D-Fire.zip cũ + D-Fire-train-ready.zip (sau audit PASS) + review_dfire_*.py + 4 artifact json/md lỗi thời (`human_review_labels.json`, `human_review_pack.md`, `human_review_pack_key.json`, `pyro_sdis_audit.json`, `pyro_sdis_yolo_archive.json`) + checkpoint_0-6 RF-DETR + `--workers` dead CLI arg trong `dataset.py`; `.gitignore` thêm `*.pt`/`*.ckpt`/`*.pth`/`*.onnx`/`*.engine`; `.git` gc/prune xóa 5 blob checkpoint rác unreachable (~2.64GB, không thuộc history hiện tại, không cần force-push) → `.git` 2.7GB→132MB. Chi tiết đầy đủ: `CHANGELOG.md`.
+- Vai trò: bộ nhớ ngắn hạn agent; dữ kiện sống; không command log.
+- Repo: lab CV inference; core portable Windows/Linux; Modal wrapper tách core; không hard-code path/OS/GPU/user.
+- Platform: Windows dùng `py`; Linux server dùng `.venv/bin/python`/pip.
+- Tracking: append `CHANGELOG.md`; GMT+7; đủ command; file trực tiếp/gián tiếp.
+- Không hash/checksum/fingerprint dataset, split, checkpoint, artifact, file list nếu user không yêu cầu rõ.
+- Root `docs/`: không đọc/sửa/xóa nếu user không yêu cầu rõ.
+- Scope: `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
+- D-Fire: train `15,500`; valid `1,721`; test `4,306`; class `smoke=0`, `fire=1`; train-ready.
+- Pyro-SDIS YOLO: train `29,537`; val `4,099`; class `smoke=0`; resolution nguồn `1280×720`.
+- FIgLib: `40,362` frame hợp lệ; `511` folder; `510` event có frame; `143` camera; split camera-disjoint seed `20260707`.
+- Protocol fair:
+  - Pyro-SDIS: cùng split; resolution `1280`; `20` epoch; seed `20260707`.
+  - D-Fire: cùng train/valid/test; resolution `800`; `20` epoch; seed `20260707`.
+  - Batch/effective batch, optimizer, scheduler, augmentation: native từng framework; không ép iso-config cross-framework.
+  - Kiến trúc: YOLO26x gốc; RF-DETR-L gốc; chỉ thay cấu hình train/runtime, class count, resolution.
+- Weight giữ:
+  - E0 YOLO26n/D-Fire: `artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`; test mAP50-95 `0.404`.
+  - YOLO26x/Pyro-SDIS: `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt`; val best mAP50-95 `0.4949`, epoch 19.
+  - RF-DETR-L/Pyro-SDIS: `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth`; train đủ 20/20.
+  - YOLO26x/D-Fire fresh: `artifacts/smoke_fire_detection/runs/yolo26x_dfire/weights/best.pt`; val best `0.41535`, epoch 20; test `0.40957`.
+  - RF-DETR-L/D-Fire fresh: `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`; best EMA val `0.49588`, epoch 17.
+- Notebook giữ:
+  - `tasks/smoke_fire_detection/colab_train_dfire_yolo26x.ipynb`.
+  - `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
+  - `tasks/smoke_fire_detection/kaggle_train_pyro_sdis_rfdetr.ipynb`.
+- Code giữ: `dataset.py`, `eval.py`, `temporal_eval.py`, `modal_app.py`, `report/demo_inference.py`.
+- FIgLib dev cache YOLO26x/Pyro-SDIS: `28,360/28,361` frame; một JPEG rỗng có error log; final split chưa mở.
+- Đã dọn 2026-07-20:
+  - Xóa `to_be_resolved/`, `.ruff_cache/`, RF-DETR legacy, checkpoint resume/epoch, plot/batch preview, weight thành phần thừa.
+  - RF-DETR: giữ `checkpoint_best_total.pth`; final winner inference do framework chọn regular/EMA.
+  - YOLO26x/D-Fire: file `best.pt` 471 MB thực chất full-state cũ; giữ final stripped `last.pt` và đổi tên `best.pt`.
+- Next: viết adapter RF-DETR detector-cache; chạy FIgLib dev; compare candidates; khóa winner; sau đó mở final split một lần.
