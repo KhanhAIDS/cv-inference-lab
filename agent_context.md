@@ -70,12 +70,23 @@
 - D-Fire baseline literature: mọi số tìm được đều là mAP50 (60.6-80.9%), KHÔNG có mAP50-95 công khai nào để đối chiếu trực tiếp. Số của mình: YOLO26x mAP50 test `0.7287` (trong range); RF-DETR-L mAP50 test `0.8194` (nhỉnh hơn biên trên range, hợp lý). YOLO26x/Pyro-SDIS val mAP50 `0.7450`; RF-DETR-L/Pyro-SDIS val mAP50 `0.7502` — 2 kiến trúc gần bằng nhau ở source-domain Pyro-SDIS.
 - Latency GPU: không tìm được số latency wildfire-smoke cụ thể trên T4/L4/A10. Benchmark chính hãng RF-DETR-L @704px T4 TensorRT10.4 FP16 batch1 = 6.8ms; YOLO26-X @640px cùng điều kiện = 9.6ms (Roboflow/Ultralytics docs). Số của mình (L4, 1280px, PyTorch eager không TensorRT): RF-DETR-L 136-141ms, YOLO26x 77-82ms — cao hơn ~20x/~8-9x, giải thích hợp lý bằng resolution cao hơn (~3-4x pixel) + thiếu TensorRT/FP16 optimize (chưa gọi `model.optimize_for_inference`), KHÔNG phải do L4 yếu hơn T4. Ghi caveat này trong report, không so trực tiếp số latency.
 
-## Next — sẵn sàng chạy Giai đoạn 4 ngay khi `rfdetr_large_dfire`@1280 xong
+## Làm việc từ local clone (không GPU, không SSH server) — bổ sung 2026-07-20 20:51 GMT+7
 
-- Lý do phiên trước bàn giao: hội thoại dài + user cần tắt máy/rời server sớm do ràng buộc thời gian; job cache vẫn chạy nền độc lập (systemd linger) nên có thể tiếp tục bất kể session nào đứng ra làm winner-lock.
-- Việc cần làm ngay theo thứ tự (không cần hỏi lại, đã đủ dữ kiện):
-  1. Confirm `wc -l figlib_detector_cache_rfdetr_large_dfire_dev.jsonl` = 28,360 (không tin `systemctl status`, xem bài học crash ở trên).
-  2. Chạy `compare-matrix` (copy nguyên, chỉ đổi path nếu file di chuyển):
+- Bối cảnh: server `ai2` (GB10) chỉ truy cập được qua mạng nội bộ công ty, không VPN. User mang laptop về nhà — mất kết nối server tới khi quay lại mạng công ty. Đã commit+push tiến độ lên GitHub (`github.com/KhanhAIDS/cv-inference-lab`, remote `origin`) để làm tiếp được từ local clone.
+- **Có sau khi `git pull`:** toàn bộ code, docs, `agent_context.md`/`CHANGELOG.md`, VÀ cache detection JSONL đã track trong git (`artifacts/smoke_fire_detection/figlib_detector_cache_*.jsonl` + `.meta.json`/`.errors.json`, `figlib_index.jsonl`, `figlib_split_manifest.json`, `profile_*.json`, `runs/*/results.csv`/`test_metrics.json`/`training_config.json` — KHÔNG gồm checkpoint nhị phân).
+- **KHÔNG có sau khi `git pull`** (gitignore: `datasets/`, `*.pt`/`*.pth`/`*.onnx`/`*.ckpt`/`*.engine`, `.venv/`): dataset D-Fire/Pyro-SDIS/FIgLib gốc, mọi checkpoint (`best.pt`, `checkpoint_best_total.pth`, `pyronear_yolov8s.pt`), virtualenv. Đây là setup cố ý (xem `external_assets.md`) — không phải thiếu sót.
+- **Hệ quả quan trọng:** `temporal_eval.py` (`compare-matrix`, `temporal`, `g0`, `diagnose`) **không import torch/ultralytics/rfdetr — chỉ cần `numpy`+`rich`** (verify: đầu file chỉ có `argparse,json,random,statistics,collections,pathlib,numpy,rich`). Nghĩa là **toàn bộ phân tích Giai đoạn 4 (bước 2-7 ở mục "Next" dưới) chạy được 100% trên máy local (Windows, không GPU)**, miễn có file cache JSONL cần thiết (đã có trong git) — KHÔNG cần server/SSH/GPU cho các bước này.
+- **KHÔNG chạy được ở local** (thiếu checkpoint + dataset + GPU + `.venv` với torch/ultralytics/rfdetr): `eval.py detector-cache` để sinh cache MỚI — tức 2 cache D-Fire@800 còn dở, `yolo26n_dfire_control`, `pyronear_yolov8s_reference` (xem Giai đoạn 3) VẪN phải chờ server. Cache 4 candidate sạch @1280 đã xong VÀ đã push — đủ để làm winner-lock ở local ngay.
+- **Setup local (Windows, theo CLAUDE.md — dùng `py` không dùng `python`):** `py -m pip install numpy rich` (2 dependency duy nhất của `temporal_eval.py`). KHÔNG cần cài `torch`/`ultralytics`/`rfdetr` cho các lệnh `temporal_eval.py` (chỉ cần nếu muốn chạy `eval.py`, mà `eval.py` cũng không chạy được vì thiếu checkpoint/dataset local).
+- Việc thực thi được ngay ở local: **bước 2 (compare-matrix, rerun nếu file `figlib_dev_compare_matrix.json` chưa kịp push xong từ server), bước 3-5 (đọc winner, tính operating point, viết `figlib_dev_winner_lock.json`), bước 7 (viết report tĩnh — dùng SOTA facts + source-domain metrics đã có sẵn trong file này)**.
+- Việc PHẢI chờ quay lại server: **bước 6 (so AUROC@800 vs @1280 — cache `@800` D-Fire chưa xong)**, và toàn bộ Giai đoạn 5 (final test split, one-shot, cần checkpoint+dataset+GPU+user duyệt tường minh).
+- Khi quay lại server: `git pull` để lấy report/winner-lock đã làm ở local (nếu đã commit), rồi tiếp tục bước 6 + dọn artifact theo Giai đoạn 5.
+
+## Next — Giai đoạn 4, trạng thái thực thi 2026-07-20 20:24 GMT+7
+
+- Lý do bàn giao: user phải rời server (mang máy về) trước khi xong toàn bộ, ràng buộc thời gian. Mọi job nền đều persistent (systemd + linger `tts01`), không cần agent đứng cạnh.
+- **Bước 1 (cache 4 candidate @1280): DONE.** Cả 4 file `figlib_detector_cache_{yolo26x_pyro_sdis,rfdetr_large_pyro_sdis,yolo26x_dfire,rfdetr_large_dfire}_dev.jsonl` đều 28,360 dòng, verify JSON dòng cuối hợp lệ.
+- **Bước 2 (compare-matrix): ĐANG CHẠY nền, unit systemd `giai-doan4-compare-matrix.scope`** (log `/tmp/giai_doan4_compare_matrix.log`, script `/tmp/run_giai_doan4_compare_matrix.sh` — scratch, không thuộc repo). Bootstrap 1000 mẫu, thuần Python/CPU, ước ~20-40 phút (không có progress log giữa chừng, chỉ ghi file ở bước cuối). **Việc đầu tiên của agent tiếp theo: kiểm tra `artifacts/smoke_fire_detection/figlib_dev_compare_matrix.json` đã tồn tại chưa** — nếu có rồi thì dùng luôn, ĐỪNG chạy lại (tốn thêm 20-40 phút vô ích). Nếu chưa có VÀ không còn process `pgrep -f "temporal_eval compare-matrix"` nào sống → job đã chết, chạy lại lệnh dưới đây (copy nguyên, đây chính là nội dung `/tmp/run_giai_doan4_compare_matrix.sh`):
 
 ```
 .venv/bin/python -m tasks.smoke_fire_detection.temporal_eval compare-matrix \
@@ -93,10 +104,32 @@
   --latency-ms yolo26x_dfire=77.26 --latency-ms rfdetr_large_dfire=136.05 \
   --out artifacts/smoke_fire_detection/figlib_dev_compare_matrix.json
 ```
-  3. Đọc `winner`/`leader`/`top_set` trong output JSON. Nếu `winner` null (tie thật, top_set>1, thiếu latency) — không thể xảy ra ở đây vì đã truyền đủ `--latency-ms` cho cả 4, rule sẽ luôn resolve được 1 winner.
-  4. Chạy `temporal_eval.py temporal --cache <cache của winner>` để lấy 2 operating point khóa (FA≤1/camera/ngày và FA≤1/camera/tuần, recall cao nhất, tie→TTD thấp nhất, tie tiếp→FA thấp nhất) — tham khảo cách chọn điểm đã làm ở G1 (`research_plan.md` mục 8 bước 10).
-  5. Viết `artifacts/smoke_fire_detection/figlib_dev_winner_lock.json` — field bắt buộc tối thiểu cho gate G5 đọc được: `winner_candidate_id`, `allowlist_candidate_ids: ["yolo26n_dfire_control", "pyronear_yolov8s_reference"]` (xem `eval.py:allowed_test_candidates`, test `FinalSplitGateTests`). Thêm inline: decision rule + AUROC/CI từ bước 2, resolution=1280, conf=0.05, postprocess (yolo: nms iou=0.6; rfdetr: native threshold=0.05), 2 operating point bước 4.
-  6. Khi 2 cache D-Fire `@800` xong (đã ưu tiên chạy trước control/reference, xem Giai đoạn 3): chạy `temporal_eval.py g0 --cache <cache@800>` cho `yolo26x_dfire`/`rfdetr_large_dfire`, so AUROC@800 vs AUROC@1280 (lấy từ `per_candidate` trong compare-matrix JSON bước 2, cùng ignore-band/seed để so công bằng). Nếu @800 vượt rõ @1280 → viết thẳng là **oversight quy trình** trong report (xem dòng "User quyết định 19:20" ở Giai đoạn 3) — KHÔNG đổi winner ngược lại.
-  7. Viết report tĩnh `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md` (theo `post_train_benchmark_plan.md` mục "Báo cáo, artifact, cleanup") — dùng số source-domain đã có ở mục Weight giữ trên, dùng SOTA facts ở mục trên, dùng winner-lock bước 5, resolution-oversight bước 6 nếu có.
-- Ràng buộc vẫn giữ: chỉ làm phần impactful nhất (winner-lock + report cốt lõi + câu hỏi resolution); spatial-persistence overlay restore/hủy, human-visibility stratification phụ, roadmap P1-P3, RQ5, SmokeyNet reproduction — CHƯA LÀM, ghi rõ "để khi có thêm thời gian" trong report, không tự ý làm thêm.
+  Job chạy nền qua `systemd-run --user --scope --unit=giai-doan4-compare-matrix ...` — nếu cần chạy lại, dùng đúng pattern này (không chạy foreground trần, dễ mất khi mất kết nối; đặt unit name mới nếu `giai-doan4-compare-matrix.scope` còn tồn tại, xem bài học "đừng tin `systemctl status`" ở Giai đoạn 3).
+- **Bước 3:** đọc field `winner` trong JSON kết quả (không phải `leader`) — đây là candidate_id thắng cuộc theo rule đã chốt. Vì đã truyền đủ `--latency-ms` cho cả 4 candidate, rule luôn resolve được 1 winner (không rơi vào case `top_set>1` không tie-break được).
+- **Bước 4 (2 operating point khóa) — quy trình chính xác, field name thật trong code (`temporal_eval.py:evaluate_rule`):**
+  1. Chạy: `.venv/bin/python -m tasks.smoke_fire_detection.temporal_eval temporal --cache artifacts/smoke_fire_detection/figlib_detector_cache_<winner_id>_dev.jsonl --score smoke --out artifacts/smoke_fire_detection/figlib_dev_temporal_<winner_id>.json` (giữ default `--thresholds`/`--nofm`/`--ema-alphas`/`--bootstrap-samples 1000`/`--seed 20260707` — khớp protocol đã dùng ở G1).
+  2. Output có field `results`: list các row `{rule, threshold, n/m hoặc alpha, false_alarm_rate_per_hour, event_recall, event_precision, ttd_median_seconds, ttd_mean_seconds, ...}`. **Chú ý: `false_alarm_rate_per_hour` tính theo GIỜ, ngân sách plan tính theo NGÀY/TUẦN** — phải tự quy đổi: FA≤1/camera/ngày ⇔ `false_alarm_rate_per_hour ≤ 1/24 ≈ 0.041667`; FA≤1/camera/tuần ⇔ `false_alarm_rate_per_hour ≤ 1/168 ≈ 0.0059524`.
+  3. Với mỗi budget: lọc row thỏa ngưỡng trên, chọn `event_recall` cao nhất; tie → `ttd_median_seconds` thấp nhất; tie tiếp → `false_alarm_rate_per_hour` thấp nhất. Đây chính là 2 operating point khóa (ghi lại `rule`+`threshold`+`n/m` hoặc `alpha` của row được chọn, cùng recall/TTD/FA/precision).
+- **Bước 5 — Viết `artifacts/smoke_fire_detection/figlib_dev_winner_lock.json`.** 2 field BẮT BUỘC để gate G5 (`eval.py:allowed_test_candidates`, test `FinalSplitGateTests`) đọc được: `winner_candidate_id` (string), `allowlist_candidate_ids` (list, luôn gồm `["yolo26n_dfire_control", "pyronear_yolov8s_reference"]`). Field khuyến nghị thêm (không bắt buộc cho code, nhưng cần cho report/audit) — template:
+
+```json
+{
+  "winner_candidate_id": "<candidate_id từ bước 3>",
+  "allowlist_candidate_ids": ["yolo26n_dfire_control", "pyronear_yolov8s_reference"],
+  "decision_rule": "<winner_rule string từ compare-matrix JSON>",
+  "auroc_per_candidate": "<copy per_candidate từ compare-matrix JSON>",
+  "resolution": 1280,
+  "conf": 0.05,
+  "postprocess": {"yolo": "nms iou=0.6", "rfdetr": "native threshold=0.05"},
+  "operating_points": {
+    "fa_le_1_per_camera_per_day": "<row đã chọn ở bước 4, budget ngày>",
+    "fa_le_1_per_camera_per_week": "<row đã chọn ở bước 4, budget tuần>"
+  },
+  "compare_matrix_source": "artifacts/smoke_fire_detection/figlib_dev_compare_matrix.json",
+  "locked_at_gmt7": "<timestamp lúc ghi file>"
+}
+```
+- **Bước 6 (câu hỏi resolution, mở khi 2 cache `@800` xong — xem Giai đoạn 3 cho trạng thái/ETA):** chạy `temporal_eval.py g0 --cache artifacts/smoke_fire_detection/figlib_detector_cache_{yolo26x_dfire,rfdetr_large_dfire}_dev_res800.jsonl` (default ignore-band 180s, bootstrap 1000, seed 20260707 — khớp protocol) để lấy AUROC@800 mỗi model; so với AUROC@1280 (lấy từ `per_candidate.<id>.auroc` trong compare-matrix JSON bước 2, CÙNG ignore-band/seed nên so được thẳng). Nếu @800 vượt rõ @1280 → viết thẳng là **oversight quy trình** trong report (winner đã khóa bằng @1280 TRƯỚC KHI có số @800 — quyết định user 2026-07-20 19:20 GMT+7), KHÔNG đổi ngược winner đã chọn, KHÔNG diễn giải giảm nhẹ.
+- **Bước 7 — Report tĩnh `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md`** (cấu trúc đầy đủ đã ghi trong `post_train_benchmark_plan.md` mục "Báo cáo, artifact, cleanup"): dùng số source-domain ở mục "Weight giữ" trên, dùng SOTA facts ở mục trên, dùng winner-lock bước 5, resolution-oversight bước 6 nếu có. Sau report: update `research_plan.md` (13d/13e), `external_assets.md` (thêm 4 cache dev sạch + winner-lock + compare-matrix vào danh sách giữ), `CHANGELOG.md`.
+- Ràng buộc vẫn giữ nguyên: chỉ làm phần impactful nhất (winner-lock + report cốt lõi + câu hỏi resolution); spatial-persistence overlay restore/hủy, human-visibility stratification phụ, roadmap P1-P3, RQ5, SmokeyNet reproduction — CHƯA LÀM, ghi rõ "để khi có thêm thời gian" trong report, không tự ý làm thêm.
 - Dừng lại sau winner-lock + report nháp — KHÔNG tự chạy Giai đoạn 5 (`--split test`, one-shot). Báo cáo đầy đủ, chờ user duyệt tường minh.
