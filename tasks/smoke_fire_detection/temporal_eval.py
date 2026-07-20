@@ -50,6 +50,18 @@ def parse_args():
     compare.add_argument("--bootstrap-samples", type=int, default=1000)
     compare.add_argument("--seed", type=int, default=20260707)
 
+    compare_matrix = subparsers.add_parser("compare-matrix", help="AUROC matrix across N candidate caches: per-candidate, pairwise, architecture/dataset/interaction effects, winner rule")
+    compare_matrix.add_argument("--candidate", action="append", required=True, help="candidate_id=cache_path, repeatable")
+    compare_matrix.add_argument("--clean", required=True, help="Comma-separated candidate_ids competing for winner; others are reported as controls only")
+    compare_matrix.add_argument("--architecture", action="append", default=[], help="candidate_id=architecture_label, repeatable (clean candidates only); labels must be exactly 'rfdetr' and 'yolo'")
+    compare_matrix.add_argument("--dataset", action="append", default=[], help="candidate_id=dataset_label, repeatable (clean candidates only)")
+    compare_matrix.add_argument("--dataset-order", default="pyro,dfire", help="first_label,second_label; dataset effect reported as first-minus-second")
+    compare_matrix.add_argument("--latency-ms", action="append", default=[], help="candidate_id=latency_ms, repeatable, used only to tie-break a non-unique winner")
+    compare_matrix.add_argument("--out", required=True)
+    compare_matrix.add_argument("--ignore-band-seconds", type=float, default=180)
+    compare_matrix.add_argument("--bootstrap-samples", type=int, default=1000)
+    compare_matrix.add_argument("--seed", type=int, default=20260707)
+
     return parser.parse_args()
 
 def percentile(values, pct):
@@ -162,6 +174,207 @@ def cmd_compare_candidates(args):
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     console.print(f"Candidate comparison saved: {out_path}")
+
+def parse_kv_pairs(items):
+    parsed = {}
+    for item in items:
+        key, _, value = item.partition("=")
+        parsed[key] = value
+    return parsed
+
+def build_joined_records(cache_paths_by_candidate, ignore_band_seconds):
+    per_candidate = {}
+    for candidate_id, path in cache_paths_by_candidate.items():
+        per_candidate[candidate_id] = {cache_key(record): record for record in read_cache_flat(Path(path))}
+
+    key_sets = {candidate_id: set(records) for candidate_id, records in per_candidate.items()}
+    common_keys = set.intersection(*key_sets.values()) if key_sets else set()
+    alignment = {
+        candidate_id: {
+            "total_frames": len(key_sets[candidate_id]),
+            "missing_from_common": len(key_sets[candidate_id] - common_keys),
+        }
+        for candidate_id in key_sets
+    }
+
+    joined = {}
+    for key in common_keys:
+        any_record = next(iter(per_candidate.values()))[key]
+        label = label_of(any_record, ignore_band_seconds)
+        if label is None:
+            continue
+        entry = {
+            "_label": label,
+            "sequence_id": any_record["sequence_id"],
+            "camera_id": any_record["camera_id"],
+        }
+        for candidate_id, records in per_candidate.items():
+            entry[candidate_id] = records[key]["max_smoke_confidence"]
+        joined[key] = entry
+    return joined, alignment
+
+def combo_auroc_bootstrap(groups, group_ids, combo, samples, seed):
+    rng = random.Random(seed)
+    values = []
+    for _ in range(samples):
+        resample_ids = [rng.choice(group_ids) for _ in group_ids]
+        scores_by_candidate = defaultdict(list)
+        labels = []
+        for group_id in resample_ids:
+            for record in groups[group_id]:
+                labels.append(record["_label"])
+                for _, candidate_id in combo:
+                    scores_by_candidate[candidate_id].append(record[candidate_id])
+        aurocs = {}
+        for _, candidate_id in combo:
+            if candidate_id not in aurocs:
+                aurocs[candidate_id] = auroc(scores_by_candidate[candidate_id], labels)
+        if any(value is None for value in aurocs.values()):
+            continue
+        values.append(sum(sign * aurocs[candidate_id] for sign, candidate_id in combo))
+    return {
+        "ci95": [percentile(values, 2.5), percentile(values, 97.5)],
+        "median": float(np.median(values)) if values else None,
+        "n_resamples_used": len(values),
+        "n_resamples_requested": samples,
+    }
+
+def candidate_auroc_report(joined, candidate_id, bootstrap_samples, seed):
+    records = list(joined.values())
+    scores = [record[candidate_id] for record in records]
+    labels = [record["_label"] for record in records]
+    groups_event = defaultdict(list)
+    groups_camera = defaultdict(list)
+    for record in records:
+        groups_event[record["sequence_id"]].append(record)
+        groups_camera[record["camera_id"]].append(record)
+    return {
+        "auroc": auroc(scores, labels),
+        "n_frames": len(records),
+        "bootstrap_event": auroc_bootstrap_ci(groups_event, sorted(groups_event), candidate_id, bootstrap_samples, seed),
+        "bootstrap_camera": auroc_bootstrap_ci(groups_camera, sorted(groups_camera), candidate_id, bootstrap_samples, seed + 1),
+    }
+
+def combo_report(joined, combo, bootstrap_samples, seed):
+    records = list(joined.values())
+    groups_event = defaultdict(list)
+    groups_camera = defaultdict(list)
+    for record in records:
+        groups_event[record["sequence_id"]].append(record)
+        groups_camera[record["camera_id"]].append(record)
+    aurocs = {}
+    for _, candidate_id in combo:
+        if candidate_id not in aurocs:
+            aurocs[candidate_id] = auroc([record[candidate_id] for record in records], [record["_label"] for record in records])
+    point_value = sum(sign * aurocs[candidate_id] for sign, candidate_id in combo)
+    return {
+        "point_value": point_value,
+        "bootstrap_event": combo_auroc_bootstrap(groups_event, sorted(groups_event), combo, bootstrap_samples, seed),
+        "bootstrap_camera": combo_auroc_bootstrap(groups_camera, sorted(groups_camera), combo, bootstrap_samples, seed + 1),
+    }
+
+def cmd_compare_matrix(args):
+    cache_by_candidate = parse_kv_pairs(args.candidate)
+    architecture_of = parse_kv_pairs(args.architecture)
+    dataset_of = parse_kv_pairs(args.dataset)
+    latency_of = {key: float(value) for key, value in parse_kv_pairs(args.latency_ms).items()}
+    clean_ids = [item for item in args.clean.split(",") if item]
+    control_ids = [candidate_id for candidate_id in cache_by_candidate if candidate_id not in clean_ids]
+
+    joined, alignment = build_joined_records(cache_by_candidate, args.ignore_band_seconds)
+
+    per_candidate = {
+        candidate_id: candidate_auroc_report(joined, candidate_id, args.bootstrap_samples, args.seed)
+        for candidate_id in cache_by_candidate
+    }
+
+    pairwise = []
+    for i, rival_id in enumerate(clean_ids):
+        for leader_id in clean_ids[i + 1:]:
+            report = combo_report(joined, [(1, leader_id), (-1, rival_id)], args.bootstrap_samples, args.seed)
+            pairwise.append({"a": rival_id, "b": leader_id, "delta_b_minus_a": report})
+
+    architecture_effects = {}
+    for dataset_label in sorted(set(dataset_of.get(cid) for cid in clean_ids if cid in dataset_of)):
+        rf_ids = [cid for cid in clean_ids if dataset_of.get(cid) == dataset_label and architecture_of.get(cid) == "rfdetr"]
+        yolo_ids = [cid for cid in clean_ids if dataset_of.get(cid) == dataset_label and architecture_of.get(cid) == "yolo"]
+        if rf_ids and yolo_ids:
+            architecture_effects[dataset_label] = combo_report(joined, [(1, rf_ids[0]), (-1, yolo_ids[0])], args.bootstrap_samples, args.seed)
+
+    dataset_order = [item for item in args.dataset_order.split(",") if item]
+    dataset_effects = {}
+    for architecture_label in sorted(set(architecture_of.get(cid) for cid in clean_ids if cid in architecture_of)):
+        ids_by_dataset = {
+            dataset_of[cid]: cid for cid in clean_ids
+            if architecture_of.get(cid) == architecture_label and cid in dataset_of
+        }
+        if len(dataset_order) == 2 and all(dataset_label in ids_by_dataset for dataset_label in dataset_order):
+            first_dataset, second_dataset = dataset_order
+            dataset_effects[architecture_label] = combo_report(
+                joined,
+                [(1, ids_by_dataset[first_dataset]), (-1, ids_by_dataset[second_dataset])],
+                args.bootstrap_samples,
+                args.seed,
+            )
+
+    interaction = None
+    if len(dataset_order) == 2 and len(architecture_effects) == 2:
+        first_dataset, second_dataset = dataset_order
+        if first_dataset in architecture_effects and second_dataset in architecture_effects:
+            rf_first = next(cid for cid in clean_ids if dataset_of.get(cid) == first_dataset and architecture_of.get(cid) == "rfdetr")
+            yolo_first = next(cid for cid in clean_ids if dataset_of.get(cid) == first_dataset and architecture_of.get(cid) == "yolo")
+            rf_second = next(cid for cid in clean_ids if dataset_of.get(cid) == second_dataset and architecture_of.get(cid) == "rfdetr")
+            yolo_second = next(cid for cid in clean_ids if dataset_of.get(cid) == second_dataset and architecture_of.get(cid) == "yolo")
+            interaction = combo_report(
+                joined,
+                [(1, rf_first), (-1, yolo_first), (-1, rf_second), (1, yolo_second)],
+                args.bootstrap_samples,
+                args.seed,
+            )
+
+    def beats(leader_id, rival_id):
+        report = combo_report(joined, [(1, leader_id), (-1, rival_id)], args.bootstrap_samples, args.seed)
+        event_lower_ci = report["bootstrap_event"]["ci95"][0]
+        camera_median = report["bootstrap_camera"]["median"]
+        return (event_lower_ci is not None and event_lower_ci > 0) and (camera_median is not None and camera_median > 0)
+
+    leader_id = max(clean_ids, key=lambda cid: per_candidate[cid]["auroc"]) if clean_ids else None
+    rivals = [cid for cid in clean_ids if cid != leader_id]
+    beats_map = {rival_id: beats(leader_id, rival_id) for rival_id in rivals} if leader_id else {}
+    beats_all = leader_id is not None and all(beats_map.values())
+    top_set = [leader_id] + [rival_id for rival_id in rivals if not beats_map.get(rival_id, False)] if leader_id else []
+
+    winner = None
+    winner_rule = "leader beats all clean rivals (event lower CI > 0 and camera median delta > 0)"
+    if beats_all:
+        winner = leader_id
+    elif len(top_set) == 1:
+        winner = top_set[0]
+    elif top_set and all(candidate_id in latency_of for candidate_id in top_set):
+        winner = min(top_set, key=lambda candidate_id: latency_of[candidate_id])
+        winner_rule = "tie in AUROC top-set -> lowest latency_ms tie-break"
+
+    result = {
+        "clean_candidates": clean_ids,
+        "control_candidates": control_ids,
+        "alignment": alignment,
+        "per_candidate": per_candidate,
+        "pairwise": pairwise,
+        "architecture_effect_rfdetr_minus_yolo_by_dataset": architecture_effects,
+        "dataset_effect_by_architecture": dataset_effects,
+        "interaction": interaction,
+        "leader": leader_id,
+        "leader_beats_rival": beats_map,
+        "top_set": top_set,
+        "winner": winner,
+        "winner_rule": winner_rule,
+        "no_multiple_comparison_correction": True,
+    }
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    console.print(f"Compare matrix saved: {out_path}")
+    console.print(f"Leader: {leader_id} | winner: {winner} | top_set: {top_set}")
 
 def label_of(record, ignore_band_seconds):
     offset = record["ignition_offset_seconds"]
@@ -616,6 +829,8 @@ def main():
         cmd_diagnose(args)
     elif args.command == "compare-candidates":
         cmd_compare_candidates(args)
+    elif args.command == "compare-matrix":
+        cmd_compare_matrix(args)
 
 if __name__ == "__main__":
     main()

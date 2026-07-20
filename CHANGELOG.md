@@ -484,3 +484,33 @@
     - `git status --short` trước và sau audit.
   - Verify: split disjoint đúng plan; cache cũ đủ dùng không cần chạy lại GPU; pyronear checksum khớp; 6 candidate ID chốt không đổi so với plan.
   - Next: Giai đoạn 1 — mở rộng `eval.py detector-cache` thêm backend RF-DETR, viết COCO-mAP eval RF-DETR, Modal wrapper RF-DETR (chỉ profiling).
+
+- 2026-07-20 11:06:40 +07:00
+  - Mục tiêu: Giai đoạn 1 `post_train_benchmark_plan.md` — mở rộng inference/cache đa backend, viết mới COCO-mAP eval RF-DETR, mở rộng Modal wrapper.
+  - Research API RF-DETR (`rfdetr==1.8.3` cài sẵn `.venv`) qua Explore agent + tự verify lại bằng code thật (không đoán API):
+    - `RFDETRLarge.from_checkpoint(path)` tự nhận diện class/num_classes từ checkpoint.
+    - `model.predict(paths_hoặc_path, threshold=, shape=(H,W), include_source_image=False)` — nếu không truyền `shape`, mặc định resize theo `model.resolution` (checkpoint của mình không lưu resolution train thật trong `model_config`, `model.resolution=704` mặc định) — **bắt buộc truyền `shape=(imgsz,imgsz)` tường minh** để khớp resolution mong muốn, không dựa mặc định.
+    - Box `xyxy` trả về ở hệ ảnh gốc (verify qua source `models/postprocess.py` + test thật ảnh FIgLib 2048x1536) — không cần rescale thêm.
+    - Không NMS ngoài — chỉ lọc theo `threshold`, đúng `postprocess=native` như plan giả định.
+    - `model.class_names` đọc từ checkpoint (`['smoke']` cho Pyro-SDIS, `['smoke','fire']` cho D-Fire) — verify load thật 2 checkpoint.
+  - `eval.py`:
+    - `detector-cache`: thêm `--backend {yolo,rfdetr}`, `--candidate-id`, `--class-names` (override thứ tự class), giữ CLI cũ tương thích. RF-DETR dùng `RFDETRLarge.from_checkpoint` + batch list path; YOLO giữ nguyên `ultralytics`. Batch lỗi → retry từng frame (dùng chung cho cả 2 backend qua `load_backend()` trả `predict_batch`/`predict_one`).
+    - Sửa lỗi merge errors sidecar: code cũ ghi đè `.errors.json` mỗi lần chạy (mất lỗi cũ khi resume) — nay merge theo `frame_path`, đúng yêu cầu "resume không duplicate, error merge".
+    - Thêm sidecar `<cache>.meta.json`: candidate_id, backend, checkpoint, imgsz/conf/iou hoặc postprocess=native, framework version, runtime (torch/cuda/GPU/VRAM), batch, command, index/written/failed rows, elapsed. Không hash.
+    - Thêm subcommand `rfdetr-accuracy` (COCO bbox mAP cho RF-DETR, thiếu trước đây): tự dựng ground-truth COCO dict từ label YOLO-format (`read_yolo_labels`/`yolo_label_path`, generic cho cả layout `train/images` và `images/train`), dùng `rfdetr.evaluation.coco_eval.CocoEvaluator` (nội bộ package, đọc source trước khi gọi — không đoán API `train(epochs=0)` như cảnh báo trong plan, vì package không có code xử lý `epochs=0` đặc biệt).
+    - Thêm subcommand `profile`: batch=1, N round warmup+measured, mean/p50/p95/fps + peak VRAM (`torch.cuda.max_memory_allocated`), dùng chung `load_backend`.
+    - Sửa bug tiềm ẩn có sẵn trong `split_images()`: `Path(data.get("path", data_yaml.parent)).resolve()` dùng `Path(".")` resolve theo cwd tiến trình chứ không theo thư mục chứa yaml khi `path: .` — khiến `rfdetr-accuracy`/latency-profiling YOLO cũ lấy sai thư mục khi chạy ngoài đúng cwd. Sửa thành resolve tương đối theo `data_yaml.parent`.
+  - `modal_app.py`: thêm `rfdetr_image` (pin `rfdetr==1.8.3`, torch/torchvision khớp bản local), 2 function `profile_yolo_candidate`/`profile_rfdetr_candidate` (cả hai `gpu="L4"`, cùng protocol qua `eval.py profile`), thêm action `profile-yolo`/`profile-rfdetr` vào `local_entrypoint`.
+  - Test mới `tasks/smoke_fire_detection/test_eval.py` (18 test, unittest stdlib): class map 1/2 class, schema RF-DETR khớp key YOLO, empty detection, batch-alignment-mismatch → fallback từng frame, resume không ghi trùng, error merge, path portability (`resolve_frame_path`, `yolo_label_path` cả 2 layout dataset).
+  - Test mới `tasks/smoke_fire_detection/test_temporal_eval.py` (6 test, synthetic data, seed cố định): `combo_auroc_bootstrap`, `build_joined_records` alignment report, và test end-to-end `compare-matrix` — bắt được bug thật khi viết test: `dataset_effect` dùng `sorted()` trên tên dataset khiến chiều trừ đảo ngược (alphabetical "dfire" < "pyro") so với định nghĩa plan "Pyro−D-Fire" — sửa bằng thêm `--dataset-order` tường minh thay vì suy luận từ sort.
+  - `temporal_eval.py`: thêm subcommand `compare-matrix` (giữ `compare-candidates` cũ) — AUROC+CI mỗi candidate, 6 pairwise (paired bootstrap event+camera), architecture effect (RF−YOLO) mỗi dataset, dataset effect (Pyro−D-Fire) mỗi kiến trúc theo `--dataset-order`, interaction, leader/winner rule đúng theo plan (event lower-CI>0 và camera median delta cùng dấu >0; không thắng hết → top-set tie-break latency), không multiple-comparison correction (ghi cờ trong output).
+  - Validate thật (không chỉ unit test): pilot 30 frame cả 2 backend (YOLO/RF-DETR) trên D-Fire checkpoint, resume 2 lần → 0 frame mới, batch alignment đúng. Chạy full RF-DETR D-Fire test mAP (4306 ảnh, xem kết quả ở mốc tiếp theo) và Pyro-SDIS val mAP (4099 ảnh, đang chạy nền lúc ghi mốc này).
+  - Command đã chạy (chính, không lặp lại từng lệnh debug nhỏ):
+    - `.venv/bin/python -m tasks.smoke_fire_detection.eval detector-cache --backend yolo|rfdetr ... --pilot` (2 lần, cả resume).
+    - `.venv/bin/python -m tasks.smoke_fire_detection.eval profile --backend yolo|rfdetr ...` (smoke test nhỏ, warmup=3 measured=5 rounds=2).
+    - `.venv/bin/python -m tasks.smoke_fire_detection.eval rfdetr-accuracy --data D-Fire/data.yaml --split test` full 4306 ảnh (nền).
+    - `.venv/bin/python -m tasks.smoke_fire_detection.eval rfdetr-accuracy --data pyro-sdis-yolo/dataset.yaml --split val` full 4099 ảnh (nền, chưa xong lúc ghi mốc).
+    - `.venv/bin/python -m unittest tasks.smoke_fire_detection.test_eval -v` → 18 pass.
+    - `.venv/bin/python -m unittest tasks.smoke_fire_detection.test_temporal_eval -v` → 6 pass (sau khi sửa bug dataset-order).
+    - `.venv/bin/python -m py_compile` cho cả 3 file sửa.
+  - Next: chờ Pyro-SDIS val mAP xong → ghi số vào `agent_context.md`/`research_plan.md`; sang Giai đoạn 2 phần còn lại (pilot resolution-confound D-Fire RF-DETR 800 vs 1280, profiling chuẩn Modal L4).

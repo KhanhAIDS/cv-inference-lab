@@ -34,4 +34,12 @@
   - Cache cũ `figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl` (28,360/28,361, 1 lỗi JPEG) — tái dùng, thêm sidecar `.meta.json` map tên cũ `yolo26x_pyro_sdis_budget9`→`yolo26x_pyro_sdis`.
   - Tải `pyronear_yolov8s.pt` (revision `cd075ce`, sha256 khớp pin sẵn trong `modal_app.py`) thẳng server (có internet) — không qua Modal; load được, 1 class `smoke`, 11.1M param; manifest `pyronear_yolov8s_manifest.json`.
   - Candidate ID chốt (6): `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire`, `yolo26n_dfire_control`, `pyronear_yolov8s_reference`.
-- Next: Giai đoạn 1 `post_train_benchmark_plan.md` — mở rộng `eval.py detector-cache` backend RF-DETR, COCO-mAP eval RF-DETR mới, Modal wrapper RF-DETR (chỉ cho profiling).
+- Giai đoạn 1 (post_train_benchmark_plan.md) — DONE 2026-07-20:
+  - `eval.py detector-cache`: thêm `--backend {yolo,rfdetr}`, `--candidate-id`, `--class-names`; RF-DETR dùng `RFDETRLarge.from_checkpoint` + `predict(shape=(imgsz,imgsz))` (bắt buộc truyền `shape` tường minh, mặc định model không khớp resolution train). Sidecar `<cache>.meta.json` mọi cache mới. Fix bug errors-sidecar bị ghi đè khi resume (nay merge).
+  - `eval.py rfdetr-accuracy` mới: COCO bbox mAP cho RF-DETR qua `rfdetr.evaluation.coco_eval.CocoEvaluator`, tự dựng GT từ label YOLO-format. Fix bug có sẵn trong `split_images()` (resolve path sai cwd thay vì thư mục yaml).
+  - `eval.py profile` mới: batch=1, N round, mean/p50/p95/fps + peak VRAM.
+  - `modal_app.py`: thêm `rfdetr_image`, `profile_yolo_candidate`/`profile_rfdetr_candidate` (L4).
+  - `temporal_eval.py`: thêm `compare-matrix` (giữ `compare-candidates` cũ) — AUROC+CI/candidate, pairwise, architecture/dataset effect (`--dataset-order` tường minh, tránh bug đảo chiều do sort), interaction, leader/winner rule, tie-break latency.
+  - Test mới: `test_eval.py` (18 test), `test_temporal_eval.py` (6 test, synthetic — bắt được bug dataset-order thật).
+- RF-DETR-L/D-Fire test mAP (COCO, 4306 ảnh, imgsz 800) — DONE 2026-07-20: mAP50-95 `0.4801` (smoke `0.5548`, fire `0.4054`), mAP50 `0.8194`.
+- Next: Pyro-SDIS val mAP RF-DETR đang chạy nền (imgsz 1280) → ghi số khi xong; sau đó Giai đoạn 2 còn lại: pilot resolution-confound D-Fire RF-DETR (800 vs 1280), profiling chuẩn Modal L4.

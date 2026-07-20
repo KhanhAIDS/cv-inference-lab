@@ -31,6 +31,22 @@ yolo_image = modal.Image.debian_slim(python_version="3.12").apt_install(
     "rich==14.1.0",
 )
 
+rfdetr_image = modal.Image.debian_slim(python_version="3.12").apt_install(
+    "libgl1",
+    "libglib2.0-0",
+).pip_install(
+    "torch==2.12.1+cu130",
+    "torchvision==0.27.1+cu130",
+    extra_index_url="https://download.pytorch.org/whl/cu130",
+).pip_install(
+    "rfdetr==1.8.3",
+    "opencv-python-headless",
+    "numpy==2.5.1",
+    "pillow==11.3.0",
+    "pyyaml==6.0.2",
+    "rich==14.1.0",
+)
+
 def add_tasks(image):
     if hasattr(image, "add_local_python_source"):
         return image.add_local_python_source("tasks")
@@ -40,6 +56,7 @@ def add_tasks(image):
 
 utility_image = add_tasks(utility_image)
 yolo_image = add_tasks(yolo_image)
+rfdetr_image = add_tasks(rfdetr_image)
 volume = modal.Volume.from_name("smoke-fire-step13-volume", create_if_missing=True)
 PYRONEAR_REVISION = "cd075ce"
 PYRONEAR_SHA256 = "2898ecdf96eae513cdca995e4325d3536472016db2131588c7c4e27d5a829483"
@@ -193,6 +210,95 @@ def probe_detector(
     volume.commit()
     return result
 
+@app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=7200)
+def profile_yolo_candidate(
+    weights: str,
+    images: str,
+    candidate_id: str = "",
+    class_names: str = "",
+    imgsz: int = 1280,
+    conf: float = 0.05,
+    iou: float = 0.6,
+    warmup: int = 30,
+    measured: int = 300,
+    rounds: int = 3,
+    out: str = "artifacts/smoke_fire_detection/profile_report.json",
+):
+    command = [
+        "tasks.smoke_fire_detection.eval",
+        "profile",
+        "--backend",
+        "yolo",
+        "--weights",
+        str(workspace_path(weights)),
+        "--images",
+        str(workspace_path(images)),
+        "--candidate-id",
+        candidate_id,
+        "--imgsz",
+        str(imgsz),
+        "--conf",
+        str(conf),
+        "--iou",
+        str(iou),
+        "--warmup",
+        str(warmup),
+        "--measured",
+        str(measured),
+        "--rounds",
+        str(rounds),
+        "--out",
+        str(workspace_path(out)),
+    ]
+    if class_names:
+        command.extend(["--class-names", class_names])
+    result = run_module(command)
+    volume.commit()
+    return result
+
+@app.function(image=rfdetr_image, gpu="L4", volumes={"/workspace": volume}, timeout=7200)
+def profile_rfdetr_candidate(
+    weights: str,
+    images: str,
+    candidate_id: str = "",
+    class_names: str = "",
+    imgsz: int = 1280,
+    conf: float = 0.05,
+    warmup: int = 30,
+    measured: int = 300,
+    rounds: int = 3,
+    out: str = "artifacts/smoke_fire_detection/profile_report.json",
+):
+    command = [
+        "tasks.smoke_fire_detection.eval",
+        "profile",
+        "--backend",
+        "rfdetr",
+        "--weights",
+        str(workspace_path(weights)),
+        "--images",
+        str(workspace_path(images)),
+        "--candidate-id",
+        candidate_id,
+        "--imgsz",
+        str(imgsz),
+        "--conf",
+        str(conf),
+        "--warmup",
+        str(warmup),
+        "--measured",
+        str(measured),
+        "--rounds",
+        str(rounds),
+        "--out",
+        str(workspace_path(out)),
+    ]
+    if class_names:
+        command.extend(["--class-names", class_names])
+    result = run_module(command)
+    volume.commit()
+    return result
+
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=3600)
 def download_pyronear(
     out: str = "artifacts/smoke_fire_detection/pyronear_yolov8s.pt",
@@ -282,6 +388,10 @@ def pyro_sdis_cli(action: str = "cache"):
         print(run_temporal.remote())
     elif action == "compare":
         print(compare_candidates.remote())
+    elif action == "profile-yolo":
+        print(profile_yolo_candidate.remote())
+    elif action == "profile-rfdetr":
+        print(profile_rfdetr_candidate.remote())
     else:
         raise ValueError(f"unsupported action: {action}")
 
