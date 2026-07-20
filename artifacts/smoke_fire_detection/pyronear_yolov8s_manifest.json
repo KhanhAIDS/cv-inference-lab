@@ -1,0 +1,10 @@
+{
+  "model": "pyronear/yolov8s",
+  "revision": "cd075ce",
+  "filename": "yolov8s.pt",
+  "sha256": "2898ecdf96eae513cdca995e4325d3536472016db2131588c7c4e27d5a829483",
+  "url": "https://huggingface.co/pyronear/yolov8s/resolve/cd075ce/yolov8s.pt?download=true",
+  "license": "Apache-2.0",
+  "imgsz_verified_onnx": 1024,
+  "downloaded_via": "curl truc tiep server ai2 (co internet), khong qua Modal"
+}

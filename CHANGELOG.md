@@ -456,3 +456,31 @@
     - PowerShell xác minh absolute path nằm trong workspace; `Move-Item`; `New-Item`; `Import-Csv` + `Export-Csv`; `Remove-Item -Recurse -Force`.
     - `apply_patch`: code, JSON report, research docs, external assets, context, changelog.
     - `ruff check --no-cache`; `git diff --check`; `git diff --stat`; `git status --short`; GMT+7 `Get-Date`.
+
+- 2026-07-20 10:34:59 +07:00
+  - Mục tiêu: bắt đầu thực thi `tasks/smoke_fire_detection/docs/post_train_benchmark_plan.md` — Giai đoạn 0 (audit + mốc).
+  - Audit checkpoint local: 5/5 file tồn tại đúng path (`yolo26x_pyro_sdis/weights/best.pt`, `yolo26x_dfire/weights/best.pt`, `rfdetr_large_pyro_sdis/checkpoint_best_total.pth`, `rfdetr_large_dfire/checkpoint_best_total.pth`, `dfire_yolo26n_baseline_full_vram/weights/best.pt`) — không tải lại/không load lại (đã verify load 2026-07-20 sáng, chưa đổi).
+  - Audit split `figlib_split_manifest.json`: seed `20260707`, dev `359` sequence/`108` camera, final `152` sequence/`35` camera, overlap sequence `0`, overlap camera `0`, union == toàn bộ `511` sequence — khớp plan, không lệch.
+  - Audit cache cũ `figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl`: `28,360` dòng (kỳ vọng `28,361`, `1` lỗi JPEG rỗng đã log trong `.errors.json`); record cache còn field `model_weights`/`candidate_revision` trỏ tên run cũ `yolo26x_pyro_sdis_budget9` (đã đổi tên `yolo26x_pyro_sdis` ở đợt dọn trước) — không rewrite file 29MB, `frame_path_index` tương đối vẫn dùng được.
+  - Tải `pyronear/yolov8s` (chưa có local): thẳng server `ai2` (`curl`, có internet trực tiếp, không qua Modal), pin revision `cd075ce`, verify sha256 khớp giá trị đã pin sẵn trong `modal_app.py` (`PYRONEAR_SHA256`, không phải hash mới tự thêm). Load bằng `ultralytics.YOLO` PASS: `names={0:'smoke'}`, `nc=1`, `11,135,987` param (khớp kiến trúc yolov8s).
+  - Candidate ID chốt (6, theo plan mục "Giai đoạn 0"): `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire`, `yolo26n_dfire_control`, `pyronear_yolov8s_reference`.
+  - Thêm trực tiếp:
+    - `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl.meta.json`: sidecar mapping tên run cũ→mới, không hash.
+    - `artifacts/smoke_fire_detection/pyronear_yolov8s_manifest.json`: revision/sha256/license/imgsz đã verify ONNX trước đó.
+  - Thay đổi gián tiếp (do lệnh chạy, không phải AI tạo tay):
+    - `artifacts/smoke_fire_detection/pyronear_yolov8s.pt` (`.gitignore`d — theo pattern `*.pt`/`*.pth` sẵn có, không track git): tải bằng `curl` từ HuggingFace, revision `cd075ce`.
+  - Sửa:
+    - `agent_context.md`: ghi kết quả audit Giai đoạn 0, candidate ID chốt, next trỏ Giai đoạn 1.
+    - `tasks/smoke_fire_detection/docs/external_assets.md`: thêm `pyronear_yolov8s.pt` vào weight bắt buộc, thêm sidecar `.meta.json` vào artifact đắt cần copy.
+    - `CHANGELOG.md`: append mốc này.
+  - Command đã chạy:
+    - `uname -a`; `nvidia-smi -L` → server `ai2`, Linux aarch64, GPU `NVIDIA GB10`.
+    - `.venv/bin/pip show modal`; `.venv/bin/modal token show` (sai cú pháp, bỏ qua); `cat ~/.modal.toml` (chỉ xem token_id, che token_secret) → Modal đã auth sẵn, profile `khanhaids` active.
+    - `stat -c%s` 5 checkpoint local; `find . -iname '*pyronear*'` → xác nhận thiếu local.
+    - `.venv/bin/python` đọc `figlib_split_manifest.json`, tính overlap sequence/camera bằng `figlib_index.jsonl`.
+    - `head -1`/`wc -l`/`cat` cache cũ + errors sidecar.
+    - `curl -s -o /dev/null -w '%{http_code}' https://huggingface.co` (test internet); `curl -sL ... yolov8s.pt?download=true -o pyronear_yolov8s.pt`; `sha256sum` verify.
+    - `.venv/bin/python -c "from ultralytics import YOLO; ..."` load + in class map/param count.
+    - `git status --short` trước và sau audit.
+  - Verify: split disjoint đúng plan; cache cũ đủ dùng không cần chạy lại GPU; pyronear checksum khớp; 6 candidate ID chốt không đổi so với plan.
+  - Next: Giai đoạn 1 — mở rộng `eval.py detector-cache` thêm backend RF-DETR, viết COCO-mAP eval RF-DETR, Modal wrapper RF-DETR (chỉ profiling).

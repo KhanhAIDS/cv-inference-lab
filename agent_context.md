@@ -29,4 +29,9 @@
   - Xóa `to_be_resolved/`, `.ruff_cache/`, RF-DETR legacy, checkpoint resume/epoch, plot/batch preview, weight thành phần thừa.
   - RF-DETR: giữ `checkpoint_best_total.pth`; final winner inference do framework chọn regular/EMA.
   - YOLO26x/D-Fire: file `best.pt` 471 MB thực chất full-state cũ; giữ final stripped `last.pt` và đổi tên `best.pt`.
-- Next: viết adapter RF-DETR detector-cache; chạy FIgLib dev; compare candidates; khóa winner; sau đó mở final split một lần.
+- Giai đoạn 0 (post_train_benchmark_plan.md) — DONE 2026-07-20:
+  - Audit 5 checkpoint local + split manifest (dev 359 seq/108 cam, final 152 seq/35 cam, overlap 0, seed 20260707) — khớp plan, không lệch.
+  - Cache cũ `figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl` (28,360/28,361, 1 lỗi JPEG) — tái dùng, thêm sidecar `.meta.json` map tên cũ `yolo26x_pyro_sdis_budget9`→`yolo26x_pyro_sdis`.
+  - Tải `pyronear_yolov8s.pt` (revision `cd075ce`, sha256 khớp pin sẵn trong `modal_app.py`) thẳng server (có internet) — không qua Modal; load được, 1 class `smoke`, 11.1M param; manifest `pyronear_yolov8s_manifest.json`.
+  - Candidate ID chốt (6): `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire`, `yolo26n_dfire_control`, `pyronear_yolov8s_reference`.
+- Next: Giai đoạn 1 `post_train_benchmark_plan.md` — mở rộng `eval.py detector-cache` backend RF-DETR, COCO-mAP eval RF-DETR mới, Modal wrapper RF-DETR (chỉ cho profiling).

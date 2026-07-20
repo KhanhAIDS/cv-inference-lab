@@ -9,9 +9,9 @@
   - `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth`: RF-DETR-L/Pyro-SDIS final.
   - `artifacts/smoke_fire_detection/runs/yolo26x_dfire/weights/best.pt`: YOLO26x/D-Fire fresh final.
   - `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`: RF-DETR-L/D-Fire fresh final.
+  - `artifacts/smoke_fire_detection/pyronear_yolov8s.pt`: reference/leakage-caveat, revision `cd075ce`, manifest `pyronear_yolov8s_manifest.json`.
 - Artifact đắt cần copy:
-  - `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl`.
-  - `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl.errors.json`.
+  - `artifacts/smoke_fire_detection/figlib_detector_cache_yolo26x_pyro_sdis_dev.jsonl` + `.errors.json` + `.meta.json`.
 - Notebook cần commit:
   - `tasks/smoke_fire_detection/colab_train_dfire_yolo26x.ipynb`.
   - `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
