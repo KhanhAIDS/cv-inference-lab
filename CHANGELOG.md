@@ -514,3 +514,12 @@
     - `.venv/bin/python -m unittest tasks.smoke_fire_detection.test_temporal_eval -v` → 6 pass (sau khi sửa bug dataset-order).
     - `.venv/bin/python -m py_compile` cho cả 3 file sửa.
   - Next: chờ Pyro-SDIS val mAP xong → ghi số vào `agent_context.md`/`research_plan.md`; sang Giai đoạn 2 phần còn lại (pilot resolution-confound D-Fire RF-DETR 800 vs 1280, profiling chuẩn Modal L4).
+
+- 2026-07-20 11:13:48 +07:00
+  - Mục tiêu: Giai đoạn 2 `post_train_benchmark_plan.md` — source-domain eval RF-DETR (tái dùng eval.py rfdetr-accuracy mới viết ở mốc trước).
+  - Kết quả RF-DETR-L/Pyro-SDIS val COCO mAP: mAP50-95 `0.4627`, mAP50 `0.7502`, `4099` ảnh, `imgsz=1280`, `4:12:54` phút chạy (batch 16, GPU GB10).
+  - Source-domain eval 4/4 candidate sạch nay đủ số: YOLO26x/Pyro val `0.4949`, RF-DETR/Pyro val `0.4627`, YOLO26x/D-Fire test `0.40957`, RF-DETR/D-Fire test `0.4801` (không so trực tiếp Pyro vs D-Fire, khác class composition theo plan).
+  - Thêm trực tiếp: `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/val_metrics.json`.
+  - Sửa: `agent_context.md`, `tasks/smoke_fire_detection/docs/research_plan.md` (mục 13f), `CHANGELOG.md`.
+  - Command: `.venv/bin/python -m tasks.smoke_fire_detection.eval rfdetr-accuracy --weights .../rfdetr_large_pyro_sdis/checkpoint_best_total.pth --data .../pyro-sdis-yolo/dataset.yaml --split val --imgsz 1280 --batch 16 --out .../val_metrics.json` (chạy nền, đã hoàn tất rc=0).
+  - Next: pilot resolution-confound D-Fire RF-DETR (checkpoint train@800, predict thử @1280, xác nhận box sane) — quyết định resolution chính cho Giai đoạn 3 trước khi cache full FIgLib.

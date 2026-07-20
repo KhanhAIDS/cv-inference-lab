@@ -42,4 +42,6 @@
   - `temporal_eval.py`: thêm `compare-matrix` (giữ `compare-candidates` cũ) — AUROC+CI/candidate, pairwise, architecture/dataset effect (`--dataset-order` tường minh, tránh bug đảo chiều do sort), interaction, leader/winner rule, tie-break latency.
   - Test mới: `test_eval.py` (18 test), `test_temporal_eval.py` (6 test, synthetic — bắt được bug dataset-order thật).
 - RF-DETR-L/D-Fire test mAP (COCO, 4306 ảnh, imgsz 800) — DONE 2026-07-20: mAP50-95 `0.4801` (smoke `0.5548`, fire `0.4054`), mAP50 `0.8194`.
-- Next: Pyro-SDIS val mAP RF-DETR đang chạy nền (imgsz 1280) → ghi số khi xong; sau đó Giai đoạn 2 còn lại: pilot resolution-confound D-Fire RF-DETR (800 vs 1280), profiling chuẩn Modal L4.
+- RF-DETR-L/Pyro-SDIS val mAP (COCO, 4099 ảnh, imgsz 1280) — DONE 2026-07-20: mAP50-95 `0.4627`, mAP50 `0.7502`.
+- Source-domain eval Giai đoạn 2 coi như xong (4/4 candidate sạch có số: YOLO26x/Pyro `0.4949` val, RF-DETR/Pyro `0.4627` val, YOLO26x/D-Fire `0.40957` test, RF-DETR/D-Fire `0.4801` test — không so trực tiếp mAP Pyro vs D-Fire, khác class).
+- Next: Giai đoạn 2 còn lại — pilot resolution-confound D-Fire RF-DETR (800 vs 1280, kiểm tra box sane), pilot 30 frame/checkpoint cho cả 6 candidate trên FIgLib, profiling chuẩn Modal L4 (batch 1, 30 warmup + 300 measured x3).

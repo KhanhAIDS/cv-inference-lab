@@ -1,0 +1,38 @@
+{
+  "backend": "rfdetr",
+  "split": "val",
+  "weights": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth",
+  "data": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
+  "conf": 0.001,
+  "imgsz": 1280,
+  "images": 4099,
+  "command": [
+    "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/tasks/smoke_fire_detection/eval.py",
+    "rfdetr-accuracy",
+    "--weights",
+    "artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth",
+    "--data",
+    "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
+    "--split",
+    "val",
+    "--imgsz",
+    "1280",
+    "--batch",
+    "16",
+    "--out",
+    "artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/val_metrics.json"
+  ],
+  "python": "3.12.3 (main, Mar 23 2026, 19:04:32) [GCC 13.3.0]",
+  "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+  "framework": "rfdetr==1.8.3",
+  "mAP50": 0.7501772858240932,
+  "mAP50_95": 0.46273127304514605,
+  "AR_100": 0.7127853881278539,
+  "classes": {
+    "smoke": {
+      "class_id": 0,
+      "mAP50": 0.7501772858240932,
+      "mAP50_95": 0.46273127304514605
+    }
+  }
+}
