@@ -222,5 +222,47 @@ class DetectorCacheBatchFallbackTests(unittest.TestCase):
         self.assertEqual(len(second_run_lines), 2)
 
 
+class FinalSplitGateTests(unittest.TestCase):
+    def _make_args(self, split, candidate_id, winner_lock):
+        return type("Args", (), {
+            "split": split,
+            "candidate_id": candidate_id,
+            "winner_lock": str(winner_lock),
+        })()
+
+    def test_dev_split_bypasses_gate_even_without_lock_file(self):
+        args = self._make_args("dev", "anything", Path("/nonexistent/lock.json"))
+        evalmod.check_final_split_gate(args)  # must not raise
+
+    def test_test_split_without_lock_file_raises(self):
+        args = self._make_args("test", "winner_id", Path("/nonexistent/lock.json"))
+        with self.assertRaises(FileNotFoundError):
+            evalmod.check_final_split_gate(args)
+
+    def test_test_split_rejects_losing_candidate(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump({"winner_candidate_id": "rfdetr_large_pyro_sdis", "allowlist_candidate_ids": ["yolo26n_dfire_control"]}, handle)
+            lock_path = Path(handle.name)
+        try:
+            args = self._make_args("test", "yolo26x_dfire", lock_path)  # a losing clean candidate
+            with self.assertRaises(ValueError):
+                evalmod.check_final_split_gate(args)
+        finally:
+            lock_path.unlink()
+
+    def test_test_split_allows_winner_and_allowlist(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump({"winner_candidate_id": "rfdetr_large_pyro_sdis", "allowlist_candidate_ids": ["yolo26n_dfire_control", "pyronear_yolov8s_reference"]}, handle)
+            lock_path = Path(handle.name)
+        try:
+            for candidate_id in ("rfdetr_large_pyro_sdis", "yolo26n_dfire_control", "pyronear_yolov8s_reference"):
+                args = self._make_args("test", candidate_id, lock_path)
+                evalmod.check_final_split_gate(args)  # must not raise
+        finally:
+            lock_path.unlink()
+
+
 if __name__ == "__main__":
     unittest.main()

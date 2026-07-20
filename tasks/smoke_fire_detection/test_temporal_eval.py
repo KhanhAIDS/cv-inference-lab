@@ -36,6 +36,28 @@ def make_synthetic_cache(path, quality, seed, noise_scale=0.3):
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+class AurocTieHandlingTests(unittest.TestCase):
+    def test_all_scores_tied_gives_chance_auroc(self):
+        # Every score identical -> ranks all tie to the mean rank -> AUROC must be exactly 0.5.
+        scores = [0.5, 0.5, 0.5, 0.5]
+        labels = [0, 1, 0, 1]
+        self.assertEqual(tmod.auroc(scores, labels), 0.5)
+
+    def test_partial_ties_match_mid_rank_correction(self):
+        # Two negatives at 0.1, one positive at 0.1 (tied with negatives), one positive at 0.9.
+        # Tied group at 0.1 spans ranks 1-3 (mean rank 2); the untied top score gets rank 4.
+        scores = [0.1, 0.1, 0.1, 0.9]
+        labels = [0, 0, 1, 1]
+        n_pos, n_neg = 2, 2
+        rank_sum_pos = 2 + 4  # tied positive gets mean rank 2, untied positive gets rank 4
+        expected = (rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+        self.assertAlmostEqual(tmod.auroc(scores, labels), expected)
+
+    def test_single_class_returns_none(self):
+        self.assertIsNone(tmod.auroc([0.1, 0.2, 0.3], [1, 1, 1]))
+        self.assertIsNone(tmod.auroc([0.1, 0.2, 0.3], [0, 0, 0]))
+
+
 class ComboBootstrapTests(unittest.TestCase):
     def test_combo_auroc_bootstrap_pairwise_matches_sign(self):
         groups = {

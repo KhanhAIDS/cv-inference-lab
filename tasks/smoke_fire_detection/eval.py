@@ -10,8 +10,6 @@ from pathlib import Path
 import numpy as np
 import yaml
 from rich.console import Console
-from ultralytics import YOLO
-from ultralytics import __version__ as ultralytics_version
 
 console = Console()
 
@@ -61,6 +59,7 @@ def parse_args():
     detector_cache.add_argument("--candidate-revision", default="")
     detector_cache.add_argument("--pilot", action="store_true")
     detector_cache.add_argument("--sequence-ids", help="Comma-separated sequence_id allowlist to restrict the index to (for targeted pilot runs)")
+    detector_cache.add_argument("--winner-lock", default="artifacts/smoke_fire_detection/figlib_dev_winner_lock.json", help="Winner-lock JSON checked before any --split test run; only winner_candidate_id + allowlist_candidate_ids may run")
 
     profile = subparsers.add_parser("profile", help="Repeated batch=1 latency + peak VRAM profiling for a candidate")
     profile.add_argument("--backend", choices=["yolo", "rfdetr"], default="yolo")
@@ -247,6 +246,8 @@ def pilot_records(records, limit):
     return selected[:limit]
 
 def cmd_accuracy(args):
+    from ultralytics import YOLO
+
     weights_path = Path(args.weights).resolve()
     data_path = Path(args.data).resolve()
     if not weights_path.exists():
@@ -473,6 +474,8 @@ def load_backend(args, weights_path):
         override_names = None
 
     if args.backend == "yolo":
+        from ultralytics import YOLO
+        from ultralytics import __version__ as ultralytics_version
         model = YOLO(weights_path)
         class_map = class_map_from_names(override_names) if override_names else model_class_map(model)
         predict_kwargs = {"conf": args.conf, "iou": args.iou, "imgsz": args.imgsz, "verbose": False}
@@ -544,7 +547,29 @@ def runtime_info():
         info["gpu_vram_bytes"] = torch.cuda.get_device_properties(0).total_memory
     return info
 
+def allowed_test_candidates(winner_lock):
+    allowed = set(winner_lock.get("allowlist_candidate_ids", []))
+    winner_candidate_id = winner_lock.get("winner_candidate_id")
+    if winner_candidate_id:
+        allowed.add(winner_candidate_id)
+    return allowed
+
+def check_final_split_gate(args):
+    if args.split != "test":
+        return
+    lock_path = Path(args.winner_lock).resolve()
+    if not lock_path.exists():
+        raise FileNotFoundError(f"--split test requires winner-lock file, not found: {lock_path}")
+    winner_lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    allowed = allowed_test_candidates(winner_lock)
+    if args.candidate_id not in allowed:
+        raise ValueError(
+            f"candidate_id={args.candidate_id!r} not in winner+allowlist {sorted(allowed)} "
+            f"from {lock_path} -- refusing to run final split=test cache"
+        )
+
 def cmd_detector_cache(args):
+    check_final_split_gate(args)
     index_path = Path(args.index).resolve()
     weights_path = Path(args.weights).resolve()
     if not index_path.exists():

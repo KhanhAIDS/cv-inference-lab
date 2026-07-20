@@ -44,4 +44,11 @@
 - RF-DETR-L/D-Fire test mAP (COCO, 4306 ảnh, imgsz 800) — DONE 2026-07-20: mAP50-95 `0.4801` (smoke `0.5548`, fire `0.4054`), mAP50 `0.8194`.
 - RF-DETR-L/Pyro-SDIS val mAP (COCO, 4099 ảnh, imgsz 1280) — DONE 2026-07-20: mAP50-95 `0.4627`, mAP50 `0.7502`.
 - Source-domain eval Giai đoạn 2 coi như xong (4/4 candidate sạch có số: YOLO26x/Pyro `0.4949` val, RF-DETR/Pyro `0.4627` val, YOLO26x/D-Fire `0.40957` test, RF-DETR/D-Fire `0.4801` test — không so trực tiếp mAP Pyro vs D-Fire, khác class).
-- Next: Giai đoạn 2 còn lại — pilot resolution-confound D-Fire RF-DETR (800 vs 1280, kiểm tra box sane), pilot 30 frame/checkpoint cho cả 6 candidate trên FIgLib, profiling chuẩn Modal L4 (batch 1, 30 warmup + 300 measured x3).
+- Pilot resolution-confound RF-DETR/D-Fire (train@800, predict@1280 trên FIgLib) — PASS 2026-07-20: 30 frame pilot cả 2 resolution, không NaN, không zero-size, box lớn nhất (~60% frame) khớp nhau giữa 2 resolution (cùng frame, cùng vị trí — smoke plume thật, không phải lỗi degenerate). → giữ nguyên plan mặc định: resolution chính `1280` cho 4 candidate sạch + control, `1024` cho Pyronear main; D-Fire cache thêm `800` phụ.
+- Thêm gate an toàn Giai đoạn 5 (`eval.py detector-cache --split test`): đọc `figlib_dev_winner_lock.json` (`--winner-lock`), reject candidate không phải winner/allowlist trước khi infer. Test `FinalSplitGateTests` (4 case).
+- Thêm test AUROC tie-handling (`AurocTieHandlingTests`, 3 case) — verify tie-corrected rank-sum đúng công thức tay.
+- Tổng test hiện có: 31 (test_eval.py 22, test_temporal_eval.py 9).
+- Modal: upload 3 checkpoint thiếu (yolo26x_dfire, rfdetr_large_dfire, rfdetr_large_pyro_sdis) lên volume `smoke-fire-step13-volume`. Phát hiện + fix bug: `eval.py` import `ultralytics` không điều kiện ở top-level làm backend rfdetr crash trên `rfdetr_image` (không có ultralytics) — sửa thành lazy import trong `cmd_accuracy`/`load_backend`.
+- Phát hiện (chưa dọn, ngoài scope plan này): volume Modal còn nhiều run dir cũ trước đợt dọn local 2026-07-20 (`yolo26x_pyro_sdis_budget9`, `_smoke_locked`, `_archive_benchmark`, `_warmstart`, `_resume_gate`, `resume_gate`) — không tự xóa, cần user xác nhận.
+- Đang chạy nền: profiling Modal L4 6 candidate (30 warmup+300 measured x3, resolution chính) + cache FIgLib dev 8 lượt còn lại (GB10 local, `--resume`, batch 16) — xem log khi có kết quả.
+- Next: chờ 2 job nền xong → ghi số profiling + cache vào agent_context/CHANGELOG, chạy Giai đoạn 4 `compare-matrix` thật, khóa winner.
