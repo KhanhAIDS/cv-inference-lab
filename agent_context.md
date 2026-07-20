@@ -50,5 +50,13 @@
 - Tổng test hiện có: 31 (test_eval.py 22, test_temporal_eval.py 9).
 - Modal: upload 3 checkpoint thiếu (yolo26x_dfire, rfdetr_large_dfire, rfdetr_large_pyro_sdis) lên volume `smoke-fire-step13-volume`. Phát hiện + fix bug: `eval.py` import `ultralytics` không điều kiện ở top-level làm backend rfdetr crash trên `rfdetr_image` (không có ultralytics) — sửa thành lazy import trong `cmd_accuracy`/`load_backend`.
 - Phát hiện (chưa dọn, ngoài scope plan này): volume Modal còn nhiều run dir cũ trước đợt dọn local 2026-07-20 (`yolo26x_pyro_sdis_budget9`, `_smoke_locked`, `_archive_benchmark`, `_warmstart`, `_resume_gate`, `resume_gate`) — không tự xóa, cần user xác nhận.
-- Đang chạy nền: profiling Modal L4 6 candidate (30 warmup+300 measured x3, resolution chính) + cache FIgLib dev 8 lượt còn lại (GB10 local, `--resume`, batch 16) — xem log khi có kết quả.
-- Next: chờ 2 job nền xong → ghi số profiling + cache vào agent_context/CHANGELOG, chạy Giai đoạn 4 `compare-matrix` thật, khóa winner.
+- Profiling Modal L4 (batch 1, 30 warmup + 300 measured x3, resolution chính) — DONE 2026-07-20, `artifacts/smoke_fire_detection/profile_<candidate_id>.json`:
+  - `yolo26x_pyro_sdis` (1280): mean `82.26ms` p95 `159.09ms` fps `12.81` VRAM `798.7MB`.
+  - `rfdetr_large_pyro_sdis` (1280): mean `141.18ms` p95 `162.53ms` fps `7.08` VRAM `461.5MB`.
+  - `yolo26x_dfire` (1280): mean `77.26ms` p95 `78.84ms` fps `12.94` VRAM `798.5MB`.
+  - `rfdetr_large_dfire` (1280): mean `136.05ms` p95 `139.44ms` fps `7.35` VRAM `461.5MB`.
+  - `yolo26n_dfire_control` (1280): mean `41.73ms` p95 `46.11ms` fps `23.97` VRAM `142.6MB`.
+  - `pyronear_yolov8s_reference` (1024): mean `34.82ms` p95 `38.91ms` fps `28.72` VRAM `141.4MB`.
+  - Nhận xét: RF-DETR-L ~1.7-1.9x chậm hơn YOLO26x cùng resolution (transformer backbone nặng hơn), nhưng VRAM thấp hơn (461MB vs 798MB). $/camera-tháng chưa tính — chỉ tính khi cần tie-break thật ở Giai đoạn 4.
+- Đang chạy nền: cache FIgLib dev Giai đoạn 3 trên GB10 (8 lượt, `--resume`, batch 16) — RẤT CHẬM (~2h/lượt RF-DETR@1280 ước tính), có thể mất nhiều giờ tổng cộng. Theo dõi qua `/tmp/giai_doan3_cache.log`.
+- Next: chờ cache Giai đoạn 3 xong từng lượt → audit alignment → Giai đoạn 4 `compare-matrix` thật, khóa winner.

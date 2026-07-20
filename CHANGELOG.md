@@ -537,3 +537,18 @@
   - Test mới: `FinalSplitGateTests` (4 case, `test_eval.py`), `AurocTieHandlingTests` (3 case, `test_temporal_eval.py`, verify công thức tie-correction tay). Tổng `31` test, tất cả PASS.
   - Command chính: `.venv/bin/modal volume put ...` x3; `.venv/bin/modal run tasks/smoke_fire_detection/modal_app.py::profile_yolo_candidate|profile_rfdetr_candidate ...` (test nhỏ x2 + launch full x6 nền); `.venv/bin/modal volume rm ...` x2 (dọn file test); `.venv/bin/python -m tasks.smoke_fire_detection.eval detector-cache --pilot` x2 (800/1280); `.venv/bin/python -m unittest tasks.smoke_fire_detection.test_eval tasks.smoke_fire_detection.test_temporal_eval -v` → 31 pass; launch nền 8 lệnh `detector-cache` Giai đoạn 3.
   - Next: chờ 2 job nền (profiling Modal L4 + cache FIgLib dev GB10) hoàn tất → chạy `temporal_eval.py compare-matrix` thật, khóa winner, tạo `figlib_dev_winner_lock.json`.
+
+- 2026-07-20 11:36:02 +07:00
+  - Mục tiêu: hoàn tất profiling Modal L4 Giai đoạn 2 (6/6 candidate), ghi số.
+  - Kết quả (batch 1, 30 warmup + 300 measured x3 lượt, GPU NVIDIA L4):
+    - yolo26x_pyro_sdis (1280): mean 82.26ms, p50 67.87ms, p95 159.09ms, fps 12.81, peak VRAM 798.7MB.
+    - rfdetr_large_pyro_sdis (1280): mean 141.18ms, p50 138.51ms, p95 162.53ms, fps 7.08, peak VRAM 461.5MB.
+    - yolo26x_dfire (1280): mean 77.26ms, p50 77.05ms, p95 78.84ms, fps 12.94, peak VRAM 798.5MB.
+    - rfdetr_large_dfire (1280): mean 136.05ms, p50 135.99ms, p95 139.44ms, fps 7.35, peak VRAM 461.5MB.
+    - yolo26n_dfire_control (1280): mean 41.73ms, p50 40.93ms, p95 46.11ms, fps 23.97, peak VRAM 142.6MB.
+    - pyronear_yolov8s_reference (1024): mean 34.82ms, p50 35.28ms, p95 38.91ms, fps 28.72, peak VRAM 141.4MB.
+  - Thêm trực tiếp: 6 file `artifacts/smoke_fire_detection/profile_<candidate_id>.json` (copy từ Modal volume).
+  - Sửa: `agent_context.md` (bảng số profiling + next step).
+  - Command: `.venv/bin/modal volume get smoke-fire-step13-volume artifacts/smoke_fire_detection/profile_<candidate_id>.json /tmp/profile_results/...` x6; copy vào repo.
+  - Giai đoạn 3 cache FIgLib dev vẫn đang chạy nền (GB10) — lượt đầu (rfdetr_large_pyro_sdis@1280) mới đạt ~2400/28361 frame sau ~10 phút, ước tính có thể mất hàng giờ cho toàn bộ 8 lượt.
+  - Next: chờ từng lượt cache Giai đoạn 3 hoàn tất, audit alignment, rồi Giai đoạn 4.

@@ -1,0 +1,90 @@
+{
+  "candidate_id": "yolo26n_dfire_control",
+  "backend": "yolo",
+  "checkpoint": "/workspace/artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
+  "class_map": {
+    "names": {
+      "0": "smoke",
+      "1": "fire"
+    },
+    "smoke_class_id": 0,
+    "fire_class_id": 1
+  },
+  "imgsz": 1280,
+  "conf": 0.05,
+  "iou": 0.6,
+  "postprocess": "nms",
+  "framework": "ultralytics==8.4.90",
+  "runtime": {
+    "python": "3.12.10 (main, May 21 2025, 23:34:56) [GCC 12.2.0]",
+    "platform": "Linux-4.19.0-gvisor-x86_64-with-glibc2.36",
+    "torch": "2.12.1+cu130",
+    "cuda_available": true,
+    "cuda_version": "13.0",
+    "gpu_name": "NVIDIA L4",
+    "gpu_vram_bytes": 23659151360
+  },
+  "batch": 1,
+  "warmup": 30,
+  "measured": 300,
+  "source_images": 81,
+  "command": [
+    "/root/tasks/smoke_fire_detection/eval.py",
+    "profile",
+    "--backend",
+    "yolo",
+    "--weights",
+    "/workspace/artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
+    "--images",
+    "/workspace/datasets/smoke_fire_detection/FIgLib/FIgLib/20160604_FIRE_rm-n-mobo-c",
+    "--candidate-id",
+    "yolo26n_dfire_control",
+    "--imgsz",
+    "1280",
+    "--conf",
+    "0.05",
+    "--iou",
+    "0.6",
+    "--warmup",
+    "30",
+    "--measured",
+    "300",
+    "--rounds",
+    "3",
+    "--out",
+    "/workspace/artifacts/smoke_fire_detection/profile_yolo26n_dfire_control.json",
+    "--class-names",
+    "smoke,fire"
+  ],
+  "rounds": [
+    {
+      "round": 0,
+      "mean_ms": 42.30884255000003,
+      "p50_ms": 41.49552550000202,
+      "p95_ms": 47.09847755000087,
+      "fps": 23.635721039123517,
+      "peak_vram_bytes": 142612992
+    },
+    {
+      "round": 1,
+      "mean_ms": 41.45196372666678,
+      "p50_ms": 40.490888499999045,
+      "p95_ms": 45.63633209999871,
+      "fps": 24.124309443913805,
+      "peak_vram_bytes": 117114368
+    },
+    {
+      "round": 2,
+      "mean_ms": 41.42344576999955,
+      "p50_ms": 40.815959499997945,
+      "p95_ms": 45.59177790000071,
+      "fps": 24.14091781626333,
+      "peak_vram_bytes": 117114368
+    }
+  ],
+  "mean_ms": 41.72808401555545,
+  "p50_ms": 40.93412449999967,
+  "p95_ms": 46.10886251666676,
+  "fps": 23.96698276643355,
+  "peak_vram_bytes": 142612992
+}
