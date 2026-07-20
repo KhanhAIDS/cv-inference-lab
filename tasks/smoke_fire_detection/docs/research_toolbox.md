@@ -1,6 +1,6 @@
 # Research Toolbox — Smoke/Fire (v2)
 
-- Updated: `2026-07-08`
+- Updated: `2026-07-20`
 - Vai trò: menu kỹ thuật + **điều kiện rút ra dùng** (trigger). Quyết định và thứ tự nằm ở `research_plan.md`.
 - Nguyên tắc chọn: một kỹ thuật chỉ được dùng khi (a) một gate/failure mode trong plan gọi tên nó, và (b) cost implement + cost inference của nó được khai báo trước. Toolbox không phải wish list.
 
@@ -49,6 +49,16 @@
 - batch nhiều camera trên 1 GPU; asynchronous pipeline; candidate clip buffering.
 - cascade on-demand (heavy verifier chỉ chạy trên candidate).
 - đo `$/camera-tháng` thực trên Modal thay vì suy diễn từ FLOPs.
+
+## Model-level composition — routing/merging/distill/MoE/ensemble (chốt 2026-07-20)
+
+- Quyết định kiến trúc triển khai đa phong bì đã chốt ở `research_plan.md` mục 2.3 — mục này chỉ liệt kê trigger cụ thể cho từng kỹ thuật.
+- **Ensemble probe (0-GPU, trigger: ngay khi có ≥2 bộ đệm candidate cùng split):** trộn `max_smoke_confidence` giữa 2 backend (vd YOLO26x + RF-DETR) trên CPU từ bộ đệm sẵn có, so AUROC tổ hợp vs từng model đơn lẻ. Mục đích: chẩn đoán 2 model có sai khác nhau hay không — KHÔNG phải phương án triển khai (chi phí gấp đôi runtime), chỉ để quyết định có đáng đầu tư ensemble/distill tiếp không.
+- **Model soup / weight averaging (gần miễn phí, trigger: có ≥2 seed cùng candidate/cấu hình):** trộn trung bình checkpoint cùng kiến trúc + cùng cấu hình huấn luyện, khác seed. KHÔNG áp dụng khác kiến trúc/khác dataset/khác số lớp — sẽ hỏng đầu phát hiện. Luôn benchmark riêng sau khi trộn, không mặc định "1+1>1".
+- **Model merging cross-domain/cross-arch (TIES/DARE/task arithmetic): KHÔNG dùng cho lab này** — 2 phong bì khác tập lớp, khác domain train, không cùng ancestry.
+- **MoE: parked** — quy mô 2 phong bì/1 GPU không đủ lớn để bù chi phí router/load-balancing.
+- **Specialist + static routing theo camera:** mặc định kiến trúc triển khai đa phong bì (không phải learned router) — xem `research_plan.md` mục 2.3.
+- **Một mô hình thống nhất đa phong bì (MTL-style shared backbone):** ứng viên cần chứng minh bằng số SAU khi có ≥2 specialist đã benchmark, không phải mặc định — rủi ro negative transfer giữa 2 phân bố kích thước vật thể lệch ~1 bậc độ lớn (mục 10.2 vs mục 8 bước 8 của plan).
 
 ## Unverified literature leads (giữ lại từ v1 — chưa tự verify, đọc trước khi cam kết dùng)
 

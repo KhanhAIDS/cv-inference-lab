@@ -25,6 +25,7 @@
   - `model_weights`/`candidate_revision` trỏ tên cũ `yolo26x_pyro_sdis_budget9` (dir đã đổi tên `yolo26x_pyro_sdis`) — KHÔNG rewrite file 29MB này, `frame_path_index` đã tương đối và đủ dùng. Chỉ ghi mapping `budget9→yolo26x_pyro_sdis` vào sidecar `.meta.json` mới.
   - Đã audit đủ (28,360/28,361, 1 lỗi JPEG rỗng có log) → tái dùng, không chạy lại GPU.
 - Candidate ID chốt: `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire`, `yolo26n_dfire_control`, `pyronear_yolov8s_reference`.
+- D-Fire label: `yolo26n_dfire_control` = label gốc. `yolo26x_dfire`, `rfdetr_large_dfire` = label đã relabel (khác control). Không relabel thêm (user quyết 2026-07-20).
 
 ## Giai đoạn 1 — mở rộng inference/cache đa backend
 
@@ -51,6 +52,7 @@
 ## Giai đoạn 3 — cache FIgLib dev
 
 - Resolution chính `1280` cho 4 candidate sạch + YOLO26n control; Pyronear `1024` (main) + `1280` (phụ). Resolution phụ D-Fire: `800` cho cả YOLO26x và RF-DETR-L (xem Giai đoạn 2).
+- **User confirm 2026-07-20: giữ `1280` làm resolution winner cho cả 4 candidate sạch** (kể cả 2 model D-Fire train@800). Cache `@800` D-Fire vẫn chỉ diagnostic, KHÔNG vào winner rule. Việc cần làm ở Giai đoạn 4: so trực tiếp AUROC@1280 vs AUROC@800 của 2 model D-Fire — nếu @800 vượt @1280 rõ rệt, phải nêu rõ trong report là 1 giới hạn của winner rule (không tự đổi rule ngược, không giấu).
 - Sau mỗi cache: alignment với dev index, missing = lỗi đã log, unique frame key, metadata đồng nhất, không lẫn final row, không path tuyệt đối (file MỚI — cache cũ giữ nguyên theo Giai đoạn 0).
 - Không chạy lại nếu resume đã đủ.
 
