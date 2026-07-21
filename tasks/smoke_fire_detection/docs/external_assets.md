@@ -1,4 +1,5 @@
-- Mục tiêu: copy asset bị `.gitignore` khi chuyển máy; không hash/checksum.
+- Mục tiêu: liệt kê asset bị `.gitignore` cần copy thủ công khi chuyển máy (vd về Windows local); không hash/checksum.
+- Kết quả JSON nhỏ (gate, compare, temporal, profile, manifest) + toàn bộ code/docs: đã track trong git — KHÔNG cần copy thủ công.
 - Dataset bắt buộc:
   - `datasets/smoke_fire_detection/D-Fire/`: train-ready; train `15,500`; valid `1,721`; test `4,306`.
   - `datasets/smoke_fire_detection/pyro-sdis-yolo/`: train `29,537`; val `4,099`.
@@ -8,17 +9,13 @@
   - `artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt`: YOLO26x/Pyro-SDIS final.
   - `artifacts/smoke_fire_detection/runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth`: RF-DETR-L/Pyro-SDIS final.
   - `artifacts/smoke_fire_detection/runs/yolo26x_dfire/weights/best.pt`: YOLO26x/D-Fire fresh final.
-  - `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`: RF-DETR-L/D-Fire fresh final.
+  - `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`: RF-DETR-L/D-Fire fresh final (winner).
   - `artifacts/smoke_fire_detection/pyronear_yolov8s.pt`: reference/leakage-caveat, revision `cd075ce`, manifest `pyronear_yolov8s_manifest.json`.
-- Artifact đắt cần copy:
-  - `artifacts/smoke_fire_detection/figlib_detector_cache_{yolo26x_pyro_sdis,rfdetr_large_pyro_sdis,yolo26x_dfire,rfdetr_large_dfire}_dev.jsonl` + `.errors.json` + `.meta.json` (4 cache dev sạch, resolution 1280, dùng cho winner).
-  - `artifacts/smoke_fire_detection/figlib_detector_cache_{yolo26n_dfire_control,pyronear_yolov8s_reference}_dev.jsonl` + sidecar (2 cache control/reference, resolution 1280/1024).
-  - `artifacts/smoke_fire_detection/figlib_dev_compare_matrix.json`, `figlib_dev_winner_lock.json`, `figlib_dev_temporal_rfdetr_large_dfire.json`, `gate_g0_auroc_{yolo26n_dfire_control,pyronear_yolov8s_reference}.json` — kết quả Giai đoạn 4, cần cho report/audit.
-  - `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md` — report tĩnh dev-stage.
-- Notebook cần commit:
-  - `tasks/smoke_fire_detection/colab_train_dfire_yolo26x.ipynb`.
-  - `tasks/smoke_fire_detection/kaggle_train_dfire_rfdetr.ipynb`.
-  - `tasks/smoke_fire_detection/kaggle_train_pyro_sdis_rfdetr.ipynb`.
-- Không copy:
-  - `.venv/`, cache, plot train/val, checkpoint epoch/resume, weight regular/EMA riêng khi đã có `checkpoint_best_total.pth`.
-  - `to_be_resolved/`: đã giải quyết và xóa 2026-07-20.
+- Detector cache (gitignored từ 2026-07-21; chỉ giữ winner, các cache khác đã xóa — tái tạo bằng `eval.py detector-cache` nếu cần, tốn GPU):
+  - `artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_dev.jsonl` + `.errors.json` + `.meta.json`.
+  - `artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_test.jsonl` + `.meta.json`.
+- `artifacts/smoke_fire_detection/figlib_index.jsonl`: gitignored; copy hoặc tái tạo bằng `dataset.py figlib` (seed `20260707`) từ dataset local — split manifest đã track trong git để đối chiếu.
+- Dashboard `tasks/results_dashboard/` (chạy được trên Windows):
+  - Code đi theo git. Cần Node.js LTS: `cd tasks/results_dashboard/frontend && npm install && npm run dev` (hoặc `npm run build && npm run preview`).
+  - `frontend/public/data/` (gitignored, output exporter): copy nguyên folder nếu muốn giữ frame gallery đủ 4 model — 3 cache dev loser đã xóa nên exporter không tái tạo lại đầy đủ phần này được nữa; số liệu bảng/chart thì exporter tái tạo được từ artifact JSON đã track (Windows: `py tasks/results_dashboard/exporter/export.py`, cần Pillow).
+- Không copy: `.venv/`, `node_modules/`, `dist/`, cache pip/npm, plot train/val, checkpoint epoch/resume, weight regular/EMA riêng khi đã có `checkpoint_best_total.pth`.

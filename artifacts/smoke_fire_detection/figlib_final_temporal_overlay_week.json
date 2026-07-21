@@ -1,0 +1,31 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_final_spatial_persistence_rfdetr_large_dfire.jsonl",
+  "score": "smoke",
+  "sequences": 152,
+  "bootstrap_samples": 1000,
+  "results": [
+    {
+      "rule": "ema",
+      "threshold": 0.55,
+      "alpha": 0.05,
+      "ema_init": "score",
+      "total_events": 152,
+      "false_alarm_events": 4,
+      "true_alarm_events": 56,
+      "negative_window_hours": 97.63361111111111,
+      "false_alarm_rate_per_hour": 0.04096949763998623,
+      "event_precision": 0.9333333333333333,
+      "event_recall": 0.3684210526315789,
+      "ttd_mean_seconds": 1861.8214285714287,
+      "ttd_median_seconds": 1859.5,
+      "false_alarm_rate_per_hour_ci95": [
+        0.010169577708285664,
+        0.08185771537390217
+      ],
+      "ttd_mean_seconds_ci95": [
+        1765.2115384615386,
+        1956.408163265306
+      ]
+    }
+  ]
+}

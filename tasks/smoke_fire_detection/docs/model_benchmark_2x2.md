@@ -1,6 +1,6 @@
 # Benchmark 2×2 — YOLO26x/RF-DETR-L × Pyro-SDIS/D-Fire trên FIgLib (dev)
 
-Trạng thái: **dev-stage xong, winner khóa. Final camera-held-out (`--split test`) CHƯA chạy — chờ duyệt.**
+Trạng thái: **DONE — dev-stage + final camera-held-out (`--split test`) đều xong, winner khóa, gate final PASS (2026-07-21).**
 
 ## 1. Protocol
 
@@ -130,6 +130,48 @@ Theo ràng buộc thời gian, các phần sau trong plan gốc **cố ý chưa 
 - **Roadmap P1-P3** (PYRONEAR-2025 data-lever, SmokeyNet reference reproduction, tối ưu suy luận cấp xuất xưởng, RQ5 near-field) — parked, sequenced sau khi user duyệt final.
 - **$/camera-tháng** — không cần vì không có tie-break thật ở winner rule.
 
-## 12. Bước tiếp theo
+## 12. Final camera-held-out (test split) — DONE 2026-07-21, gate PASS
 
-Giai đoạn 5 (final camera-held-out, `eval.py detector-cache --split test`) là thao tác **one-shot, không lặp lại được** — chỉ chạy `rfdetr_large_dfire` (winner), `yolo26n_dfire_control`, `pyronear_yolov8s_reference` (allowlist trong `figlib_dev_winner_lock.json`). **Chưa chạy, chờ user duyệt tường minh.**
+- Split: 152 sequence / 35 camera, 0 overlap với dev (359 seq/108 cam). One-shot, mở đúng 1 lần theo `figlib_dev_winner_lock.json` (`check_final_split_gate` reject candidate ngoài winner+allowlist). Chỉ chạy 3 candidate: `rfdetr_large_dfire` (winner), `yolo26n_dfire_control`, `pyronear_yolov8s_reference` — không chạy lại 3 candidate sạch đã thua trên dev (kỷ luật train/dev/test, tránh multiple-look trên tập held-out).
+- 12,001 frame/candidate, 477 rơi vào ignore-band, 11,524 frame dùng, 5,587 positive/5,937 negative. Resolution/conf/postprocess giữ nguyên winner-lock.
+
+| Candidate | AUROC(smoke) | CI95 event | CI95 camera |
+|---|---|---|---|
+| `rfdetr_large_dfire` (winner) | **0.8347** | [0.8040, 0.8643] | [0.7851, 0.8708] |
+| `yolo26n_dfire_control` | 0.7551 | [0.7229, 0.7875] | [0.6978, 0.7946] |
+| `pyronear_yolov8s_reference` (leakage-caveat) | 0.8486 | [0.8196, 0.8766] | [0.8042, 0.8826] |
+
+- **Gate AUROC≥0.80: PASS** (0.8347 ≥ 0.80) — khớp dev (0.8317), không rớt gate trên tập held-out chưa từng đụng tới.
+- **Pairwise winner vs control:** Δ=+0.0796, event CI [0.0556, 0.1074], camera CI [0.0487, 0.1083] — CI không chứa 0 → winner thắng control rõ, khớp hướng dev.
+- **Pairwise winner vs Pyronear reference (leakage-caveat):** Δ=-0.0138, event CI [-0.0383, 0.0109], camera CI [-0.0379, 0.0114] — **CI chứa 0 cả 2 phía, khác biệt không có ý nghĩa thống kê**, dù điểm Pyronear nhỉnh hơn (0.8486 vs 0.8347). Không phải "winner thua" — 2 số không phân biệt được bằng thống kê, và Pyronear vẫn mang leakage-caveat (mục 10) nên số của nó không đáng tin hơn winner.
+- Artifact: `gate_g0_auroc_{rfdetr_large_dfire,yolo26n_dfire_control,pyronear_yolov8s_reference}_final.json`, `figlib_final_compare_winner_vs_control.json`, `figlib_final_compare_winner_vs_pyronear.json`.
+
+### 12.1 Replay operating point khóa (không quét lại threshold trên test)
+
+| Tier | Rule khóa | Recall | Precision | FA/giờ (CI95) | TTD median | So với dev |
+|---|---|---|---|---|---|---|
+| FA≤1/ngày | EMA α=0.5, thr=0.6 | 0.704 | 0.947 | 0.0615 [0.0104, 0.1122] | 539s | dev: recall 0.690, FA 0.0347/h — recall giữ, **FA vượt budget ngày (0.0417/h) ~1.5x** |
+| FA≤1/tuần | EMA α=0.1, thr=0.8 | 0.099 | 0.882 | 0.0205 [0, 0.0511] | 1980s | dev: recall 0.067, FA 0.00434/h — recall nhích, **FA vượt budget tuần (0.00595/h) ~3.4x** |
+
+- **Giới hạn phát hiện được, không giấu:** cả 2 threshold khóa trên dev đều KHÔNG giữ đúng FA budget khi replay 1 lần trên test. Nguyên nhân nhiều khả năng là cỡ mẫu: final chỉ có 97.6 giờ cửa sổ âm (dev 230.6 giờ) và 35 camera (dev 108) — vài false-alarm event thêm/bớt đổi hẳn FA/giờ. Đây đúng là lý do kỷ luật "khóa trên dev, replay đúng 1 lần trên test" tồn tại — nó bắt được hiện tượng operating point không transfer hoàn hảo mà nếu chỉ tin số dev sẽ không phát hiện ra. Không đổi winner, không tự tune lại threshold trên test.
+
+## 13. Spatial-persistence overlay (restore + chạy, quyết định user 2026-07-21)
+
+- Cam kết cũ (`research_plan.md` mục 8 bước 12, 2026-07-09): giữ overlay 0-GPU (rescoring = trung bình cửa sổ 5-frame theo vị trí, thay `max_smoke_confidence`) cho tier FA≤1/tuần + zero-FA. Subcommand từng bị trim khỏi `temporal_eval.py`, đã restore nguyên bản từ git history (commit `d82bfcf`).
+- Threshold khóa trên **dev** cache của winner (không tìm trên test): sweep EMA α∈{0.05,0.1,0.2,0.3,0.5} × threshold∈{0.5..0.99} + N-of-M mặc định, chọn theo đúng rule (đạt budget, recall cao nhất, tie→TTD, tie→FA).
+- Pooled AUROC(smoke) overlay: dev 0.8319 (raw 0.8317, CI trùng), final 0.8349 (raw 0.8347, CI trùng) — **overlay không đổi AUROC pooled**, đúng phát hiện gốc 2026-07-09 trên detector khác; giá trị của nó chỉ ở định hình lại operating point đuôi (tail), không phải cải thiện detector.
+
+| Tier | Rule khóa trên dev | Recall dev | FA/giờ dev | Recall final (replay) | FA/giờ final (replay) |
+|---|---|---|---|---|---|
+| "Zero-FA" | EMA α=0.1, thr=0.7 | 0.246 | 0.0 (CI [0,0]) | 0.342 | **0.0307** (CI [0, 0.0617]) — không còn zero trên final (3 false-alarm event) |
+| FA≤1/tuần | EMA α=0.05, thr=0.55 | 0.305 | 0.00434 (CI [0, 0.0131]) | 0.368 | **0.0410** (CI [0.0102, 0.0819]) — vượt budget tuần ~6.9x trên final |
+
+- **Đọc kết quả trung thực:** recall overlay (0.246-0.368) cao hơn hẳn recall raw ở tier tương ứng (raw tuần: 0.067 dev / 0.099 final) — hướng cải thiện giữ nhất quán dev→final, tín hiệu thật. NHƯNG cam kết "zero-FA"/"FA≤1/tuần" không giữ được trên final, cùng pattern budget-overshoot đã thấy ở raw score (mục 12.1) — củng cố giả thuyết đây là giới hạn cỡ mẫu của chính final split, không phải lỗi riêng của overlay. Không có CI cho `event_recall` (hạn chế sẵn có của pipeline, đã ghi từ bản gốc 2026-07-09) — số recall trên là điểm ước lượng, chưa có khoảng tin cậy.
+- Kết luận vai trò: overlay xác nhận lại đúng vai trò ban đầu — **diagnostic/tham khảo cho tier chặt, không thay được raw score làm operating point chính thức** (không đủ độ tin cậy để cam kết FA budget cứng ở quy mô camera hiện có).
+- Artifact: `gate_g0_auroc_rfdetr_large_dfire_spatial_persistence_{dev,final}.json`, `figlib_final_temporal_overlay_{zerofa,week}.json`. Sweep khóa threshold dev (`figlib_dev_temporal_overlay_sweep.json`) đã xóa 2026-07-21 sau khi chốt số vào đây — cần lại thì tra git history hoặc chạy lại `temporal_eval.py` sweep từ cache winner. Cache rescored trung gian (`figlib_{dev,final}_spatial_persistence_rfdetr_large_dfire.jsonl`) không giữ lại — tái tạo được bằng 1 lệnh `temporal_eval.py spatial-persistence` từ cache gốc đã giữ.
+
+## 14. Bước tiếp theo (đề xuất, chưa tự chạy)
+
+- Final AUROC 0.8347 ≥ 0.80 → gate PASS, không cần proposal xếp hạng G4 (chỉ cần khi fail).
+- Đề xuất mở tiếp theo đúng roadmap đã ghi (`research_plan.md` mục P1, chưa đổi): (a) lát cắt lỗi L0 trên winner trước khi chọn đòn bẩy nào; (b) PYRONEAR-2025 data-lever (lọc FIgLib-source) làm data-only scale-up, có control; (c) SmokeyNet reference reproduction (2 lead đã tìm, chưa tải); (d) E1a qua đường tải thay thế để có FA/hour denominator đúng domain; (e) chỉ mở G2 (learned verifier) sau khi có E1 data.
+- Không tự chạy bất kỳ mục nào ở trên — chờ user duyệt riêng từng mục.

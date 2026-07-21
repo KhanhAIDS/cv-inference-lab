@@ -62,6 +62,23 @@ def parse_args():
     compare_matrix.add_argument("--bootstrap-samples", type=int, default=1000)
     compare_matrix.add_argument("--seed", type=int, default=20260707)
 
+    persistence = subparsers.add_parser("spatial-persistence", help="Recompute confidence as window-averaged confidence of spatially-matching detections across nearby frames (post-process, no GPU rerun)")
+    persistence.add_argument("--cache", required=True, help="Path to figlib_detector_cache.jsonl")
+    persistence.add_argument("--out", required=True)
+    persistence.add_argument("--window-frames", type=int, default=5)
+    persistence.add_argument("--distance-factor", type=float, default=3.0, help="Match radius = distance_factor * max(bbox diag of the two detections)")
+    persistence.add_argument("--sequence-ids", help="Comma-separated sequence_id subset, for cheap verification before a full run")
+
+    error_slice = subparsers.add_parser("error-slice", help="L0: bbox area/short-side vs confidence, offset-band AUROC, per-camera AUROC, FP audit candidates, visibility cross-reference (CPU-only, no GPU rerun)")
+    error_slice.add_argument("--cache", required=True, help="Path to winner figlib_detector_cache.jsonl")
+    error_slice.add_argument("--out", required=True)
+    error_slice.add_argument("--ignore-band-seconds", type=float, default=180)
+    error_slice.add_argument("--frame-width", type=float, default=2048)
+    error_slice.add_argument("--frame-height", type=float, default=1536)
+    error_slice.add_argument("--area-bucket-edges", default="0.1,0.3,0.7,1.5,5", help="Percent-of-frame-area bucket edges (comma-separated); a 'no_detection' bucket is added for frames with zero smoke detections")
+    error_slice.add_argument("--visibility-labels", help="Optional path to human_review_labels.json (per-sequence visibility subset) to cross-reference against per-sequence AUROC")
+    error_slice.add_argument("--fp-top-n", type=int, default=15, help="Number of highest-confidence pre-ignition (false-positive candidate) frames to list for visual triage")
+
     return parser.parse_args()
 
 def percentile(values, pct):
@@ -648,6 +665,168 @@ def cmd_diagnose(args):
         console.print(f"band [{band['offset_start_seconds']},{band['offset_end_seconds']}) n={band['n_positive_frames']} auroc={band['auroc_vs_all_negative']} zero_rate={band['zero_detection_rate']}")
     console.print(f"low-AUROC(<{args.low_auroc_threshold}) sequences: {len(low_auroc)} -> silent={len(silent)} confused={len(confused)} other={len(other)}")
 
+def best_smoke_detection(record):
+    best = None
+    for detection in record["detections"]:
+        if detection["class_id"] != 0:
+            continue
+        if best is None or detection["confidence"] > best["confidence"]:
+            best = detection
+    return best
+
+def cmd_error_slice(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    records = read_cache_flat(cache_path)
+    labeled = []
+    for record in records:
+        label = label_of(record, args.ignore_band_seconds)
+        if label is None:
+            continue
+        record["_label"] = label
+        labeled.append(record)
+
+    positives = [r for r in labeled if r["_label"] == 1]
+    negatives = [r for r in labeled if r["_label"] == 0]
+    score_key = "max_smoke_confidence"
+    frame_area = args.frame_width * args.frame_height
+
+    edges = [float(x) for x in args.area_bucket_edges.split(",") if x]
+    bucket_bounds = [0.0] + edges + [float("inf")]
+    buckets = [{
+        "range_pct_area": f"[{bucket_bounds[i]},{bucket_bounds[i + 1]})" if bucket_bounds[i + 1] != float("inf") else f"[{bucket_bounds[i]},inf)",
+        "n_frames": 0, "mean_confidence": 0.0, "frac_conf_ge_0.3": 0.0, "frac_conf_ge_0.5": 0.0,
+    } for i in range(len(bucket_bounds) - 1)]
+    no_detection_bucket = {"n_frames": 0, "mean_confidence": 0.0}
+
+    area_values = []
+    confidence_values = []
+    for record in positives:
+        detection = best_smoke_detection(record)
+        conf = record[score_key]
+        if detection is None:
+            no_detection_bucket["n_frames"] += 1
+            no_detection_bucket["mean_confidence"] += conf
+            continue
+        x1, y1, x2, y2 = detection["xyxy"]
+        area_pct = (x2 - x1) * (y2 - y1) / frame_area * 100
+        area_values.append(area_pct)
+        confidence_values.append(conf)
+        for i in range(len(bucket_bounds) - 1):
+            if bucket_bounds[i] <= area_pct < bucket_bounds[i + 1]:
+                buckets[i]["n_frames"] += 1
+                buckets[i]["mean_confidence"] += conf
+                if conf >= 0.3:
+                    buckets[i]["frac_conf_ge_0.3"] += 1
+                if conf >= 0.5:
+                    buckets[i]["frac_conf_ge_0.5"] += 1
+                break
+
+    for bucket in buckets:
+        if bucket["n_frames"] > 0:
+            bucket["frac_conf_ge_0.3"] /= bucket["n_frames"]
+            bucket["frac_conf_ge_0.5"] /= bucket["n_frames"]
+            bucket["mean_confidence"] /= bucket["n_frames"]
+    if no_detection_bucket["n_frames"] > 0:
+        no_detection_bucket["mean_confidence"] /= no_detection_bucket["n_frames"]
+
+    correlation = float(np.corrcoef(area_values, confidence_values)[0, 1]) if len(area_values) >= 2 else None
+
+    neg_scores = [r[score_key] for r in negatives]
+    neg_labels = [0 for _ in negatives]
+    band_report = []
+    for start, end in [(args.ignore_band_seconds, 600), (600, 1200), (1200, 100000)]:
+        band_positives = [r for r in positives if start <= r["ignition_offset_seconds"] < end]
+        band_auc = auroc(neg_scores + [r[score_key] for r in band_positives], neg_labels + [1 for _ in band_positives]) if band_positives else None
+        band_report.append({"offset_start_seconds": start, "offset_end_seconds": end, "n_positive_frames": len(band_positives), "auroc_vs_all_negative": band_auc})
+
+    by_camera = defaultdict(list)
+    for record in labeled:
+        by_camera[record["camera_id"]].append(record)
+    per_camera_auroc = []
+    for camera_id, camera_records in by_camera.items():
+        cam_pos = [r for r in camera_records if r["_label"] == 1]
+        cam_neg = [r for r in camera_records if r["_label"] == 0]
+        if not cam_pos or not cam_neg:
+            continue
+        value = auroc([r[score_key] for r in cam_neg] + [r[score_key] for r in cam_pos], [0 for _ in cam_neg] + [1 for _ in cam_pos])
+        if value is not None:
+            per_camera_auroc.append({"camera_id": camera_id, "auroc": value, "n_positive": len(cam_pos), "n_negative": len(cam_neg)})
+    per_camera_auroc.sort(key=lambda item: item["auroc"])
+    auroc_vals = [item["auroc"] for item in per_camera_auroc]
+
+    fp_candidates = sorted(negatives, key=lambda r: r[score_key], reverse=True)[:args.fp_top_n]
+    fp_report = [{
+        "sequence_id": r["sequence_id"], "camera_id": r["camera_id"], "frame_path": r["frame_path"],
+        "ignition_offset_seconds": r["ignition_offset_seconds"], "max_smoke_confidence": r[score_key],
+        "n_detections": len(r["detections"]),
+    } for r in fp_candidates]
+
+    visibility_join = None
+    if args.visibility_labels:
+        vis_labels = json.loads(Path(args.visibility_labels).resolve().read_text(encoding="utf-8"))
+        by_sequence = defaultdict(list)
+        for record in labeled:
+            by_sequence[record["sequence_id"]].append(record)
+        per_sequence_auroc = {}
+        for sequence_id, seq_records in by_sequence.items():
+            seq_pos = [r for r in seq_records if r["_label"] == 1]
+            seq_neg = [r for r in seq_records if r["_label"] == 0]
+            if not seq_pos or not seq_neg:
+                continue
+            value = auroc([r[score_key] for r in seq_neg] + [r[score_key] for r in seq_pos], [0 for _ in seq_neg] + [1 for _ in seq_pos])
+            if value is not None:
+                per_sequence_auroc[sequence_id] = value
+        visibility_join = [{
+            "sequence_id": item["sequence_id"], "visibility_label": item["visibility_label"],
+            "group": item["group"], "auroc_on_winner": per_sequence_auroc[item["sequence_id"]],
+        } for item in vis_labels if item["sequence_id"] in per_sequence_auroc]
+
+    result = {
+        "cache": str(cache_path),
+        "n_positive_frames": len(positives),
+        "n_negative_frames": len(negatives),
+        "bbox_size_vs_confidence": {
+            "frame_width": args.frame_width,
+            "frame_height": args.frame_height,
+            "n_positive_with_detection": len(area_values),
+            "n_positive_no_detection": no_detection_bucket["n_frames"],
+            "pearson_correlation_area_vs_confidence": correlation,
+            "buckets": buckets,
+            "no_detection_bucket": no_detection_bucket,
+        },
+        "offset_band_auroc": band_report,
+        "per_camera_auroc": {
+            "n_cameras_with_both_labels": len(per_camera_auroc),
+            "percentiles": {
+                "p10": percentile(auroc_vals, 10), "p25": percentile(auroc_vals, 25),
+                "median": percentile(auroc_vals, 50), "p75": percentile(auroc_vals, 75), "p90": percentile(auroc_vals, 90),
+            },
+            "worst_10": per_camera_auroc[:10],
+            "best_10": per_camera_auroc[-10:],
+        },
+        "fp_audit_candidates": {
+            "note": "highest-confidence pre-ignition frames; category (haze/glare/cloud/etc) needs a quick visual pass, not auto-labeled here",
+            "top_n": fp_report,
+        },
+        "visibility_cross_reference": {
+            "note": "partial coverage: only sequences present in the human_review_labels.json subset" if visibility_join is not None else "not requested (--visibility-labels not passed)",
+            "n_sequences_matched": len(visibility_join) if visibility_join is not None else 0,
+            "rows": visibility_join,
+        },
+    }
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    console.print(f"Error-slice report saved: {out_path}")
+    console.print(f"bbox area vs confidence correlation = {correlation}")
+    for band in band_report:
+        console.print(f"offset band [{band['offset_start_seconds']},{band['offset_end_seconds']}) n={band['n_positive_frames']} auroc={band['auroc_vs_all_negative']}")
+    console.print(f"per-camera AUROC: n={len(per_camera_auroc)} median={percentile(auroc_vals, 50)}")
+
 def read_cache_sequences(cache_path: Path):
     sequences = defaultdict(list)
     for line in cache_path.read_text(encoding="utf-8").splitlines():
@@ -658,6 +837,67 @@ def read_cache_sequences(cache_path: Path):
     for frames in sequences.values():
         frames.sort(key=lambda item: item["ignition_offset_seconds"])
     return sequences
+
+def bbox_center_and_diag(xyxy):
+    x1, y1, x2, y2 = xyxy
+    center = ((x1 + x2) / 2, (y1 + y2) / 2)
+    diag = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    return center, diag
+
+def best_match_confidence(center, radius, detections, class_id):
+    best = 0.0
+    for detection in detections:
+        if detection["class_id"] != class_id:
+            continue
+        other_center, _ = bbox_center_and_diag(detection["xyxy"])
+        dist = ((other_center[0] - center[0]) ** 2 + (other_center[1] - center[1]) ** 2) ** 0.5
+        if dist <= radius and detection["confidence"] > best:
+            best = detection["confidence"]
+    return best
+
+def spatial_persistence_scores(frames, window_frames, distance_factor, class_id):
+    scores = [0.0] * len(frames)
+    for i, frame in enumerate(frames):
+        best_score = 0.0
+        for detection in frame["detections"]:
+            if detection["class_id"] != class_id:
+                continue
+            center, diag = bbox_center_and_diag(detection["xyxy"])
+            radius = distance_factor * max(diag, 1e-6)
+            accumulated = detection["confidence"]
+            for j in range(max(0, i - window_frames), i):
+                accumulated += best_match_confidence(center, radius, frames[j]["detections"], class_id)
+            score = accumulated / (window_frames + 1)
+            if score > best_score:
+                best_score = score
+        scores[i] = best_score
+    return scores
+
+def cmd_spatial_persistence(args):
+    cache_path = Path(args.cache).resolve()
+    if not cache_path.exists():
+        raise FileNotFoundError(cache_path)
+
+    sequences = read_cache_sequences(cache_path)
+    if args.sequence_ids:
+        wanted = set(args.sequence_ids.split(","))
+        sequences = {sid: frames for sid, frames in sequences.items() if sid in wanted}
+
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    with out_path.open("w", encoding="utf-8") as out_file:
+        for frames in sequences.values():
+            smoke_scores = spatial_persistence_scores(frames, args.window_frames, args.distance_factor, class_id=0)
+            fire_scores = spatial_persistence_scores(frames, args.window_frames, args.distance_factor, class_id=1)
+            for frame, smoke_score, fire_score in zip(frames, smoke_scores, fire_scores):
+                frame["max_smoke_confidence"] = smoke_score
+                frame["max_fire_confidence"] = fire_score
+                frame["max_any_confidence"] = max(smoke_score, fire_score)
+                out_file.write(json.dumps(frame, ensure_ascii=False) + "\n")
+                written += 1
+
+    console.print(f"Spatial-persistence cache saved: {out_path} ({written} frames, window={args.window_frames}, distance_factor={args.distance_factor})")
 
 def score_of(record, score_type):
     if score_type == "smoke":
@@ -831,6 +1071,10 @@ def main():
         cmd_compare_candidates(args)
     elif args.command == "compare-matrix":
         cmd_compare_matrix(args)
+    elif args.command == "spatial-persistence":
+        cmd_spatial_persistence(args)
+    elif args.command == "error-slice":
+        cmd_error_slice(args)
 
 if __name__ == "__main__":
     main()

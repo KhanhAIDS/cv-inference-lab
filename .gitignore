@@ -4,6 +4,7 @@
 .agents/
 __pycache__/
 datasets/
+tasks/results_dashboard/
 
 *.mp4
 *.avi

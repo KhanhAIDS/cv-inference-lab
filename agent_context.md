@@ -4,69 +4,58 @@
 - Tracking: append `CHANGELOG.md`; GMT+7; đủ command; file trực tiếp/gián tiếp.
 - Không hash/checksum/fingerprint dataset, split, checkpoint, artifact, file list nếu user không yêu cầu rõ.
 - Root `docs/`: không đọc/sửa/xóa nếu user không yêu cầu rõ.
-- Scope: `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
-- Plan đang chạy: `tasks/smoke_fire_detection/docs/post_train_benchmark_plan.md` (2×2 benchmark YOLO26x/RF-DETR-L × Pyro-SDIS/D-Fire, eval trên FIgLib). Đọc file này trước khi làm tiếp Giai đoạn 4+.
+- Scope chính: `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
+- Task phụ: `tasks/results_dashboard/` (xem mục riêng cuối file) — front-end demo, độc lập hoàn toàn, chỉ đọc artifact của task chính, không đụng ngược lại.
 
 ## Dataset/checkpoint
 
-- D-Fire: train 15,500; valid 1,721; test 4,306; class smoke=0, fire=1.
-- Pyro-SDIS YOLO: train 29,537; val 4,099; class smoke=0; nguồn 1280×720.
-- FIgLib: 40,362 frame hợp lệ; 511 folder; 143 camera; split camera-disjoint seed 20260707; dev 359 seq/108 cam, final 152 seq/35 cam, overlap 0.
-- Protocol fair: Pyro-SDIS resolution 1280, D-Fire resolution 800, cả 2 đều 20 epoch seed 20260707. Batch/optimizer/scheduler/augmentation native từng framework, không ép iso-config. Kiến trúc YOLO26x/RF-DETR-L gốc, chỉ đổi train/runtime config + class count + resolution.
-- D-Fire label: `yolo26n_dfire_control` = label gốc. `yolo26x_dfire` + `rfdetr_large_dfire` = label đã relabel (khác control). Không relabel thêm (user quyết 2026-07-20) — không so trực tiếp mAP domain-gốc giữa control và 2 model fresh để suy diễn data-quality effect.
-- 6 candidate ID: `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire` (4 candidate sạch, tranh winner); `yolo26n_dfire_control`, `pyronear_yolov8s_reference` (control/reference, KHÔNG tranh winner).
-- Weight giữ:
-  - YOLO26x/Pyro-SDIS: `runs/yolo26x_pyro_sdis/weights/best.pt`; val mAP50-95 `0.4949`.
-  - RF-DETR-L/Pyro-SDIS: `runs/rfdetr_large_pyro_sdis/checkpoint_best_total.pth`; val mAP50-95 `0.4627`.
-  - YOLO26x/D-Fire: `runs/yolo26x_dfire/weights/best.pt`; test mAP50-95 `0.40957`.
-  - RF-DETR-L/D-Fire: `runs/rfdetr_large_dfire/checkpoint_best_total.pth`; test mAP50-95 `0.4801` (smoke 0.5548, fire 0.4054).
-  - YOLO26n/D-Fire control: `runs/dfire_yolo26n_baseline_full_vram/weights/best.pt`; test mAP50-95 `0.404`.
-  - Pyronear yolov8s reference: `artifacts/smoke_fire_detection/pyronear_yolov8s.pt` (pin sha256 có sẵn, revision `cd075ce`); leakage-caveat, không rõ tập train.
-- Notebook giữ: `colab_train_dfire_yolo26x.ipynb`, `kaggle_train_dfire_rfdetr.ipynb`, `kaggle_train_pyro_sdis_rfdetr.ipynb`.
-- Code giữ: `dataset.py`, `eval.py`, `temporal_eval.py`, `modal_app.py`, `report/demo_inference.py`, `test_eval.py`, `test_temporal_eval.py`.
+- D-Fire: train 15,500; valid 1,721; test 4,306; class smoke=0, fire=1. Label: `yolo26n_dfire_control` = gốc; `yolo26x_dfire`/`rfdetr_large_dfire` = đã relabel (khác control, không so trực tiếp).
+- Pyro-SDIS YOLO: train 29,537; val 4,099; class smoke=0.
+- FIgLib: 40,362 frame hợp lệ; 511 folder; 143 camera; split camera-disjoint seed 20260707; dev 359 seq/108 cam, final(test) 152 seq/35 cam, overlap 0.
+- 6 candidate: `yolo26x_pyro_sdis`, `rfdetr_large_pyro_sdis`, `yolo26x_dfire`, `rfdetr_large_dfire` (4 sạch, tranh winner); `yolo26n_dfire_control`, `pyronear_yolov8s_reference` (control/reference, không tranh winner).
+- Weight/mAP mỗi checkpoint: xem `external_assets.md`.
+- Code giữ: `dataset.py`, `eval.py`, `temporal_eval.py`, `modal_app.py`, `test_eval.py`, `test_temporal_eval.py`. `temporal_eval.py` chỉ cần numpy+rich (không torch/ultralytics/rfdetr) — chạy được cả trên Windows local không GPU.
+- Dọn 2026-07-21 (tra git history khi cần): xóa 3 notebook train, `report/demo_inference.py`, docs `post_train_benchmark_plan.md` + `research_toolbox.md`; docs/ còn đúng 3 file (`research_plan`, `model_benchmark_2x2`, `external_assets`).
+- Artifact 2026-07-21: chỉ giữ cache winner (`rfdetr_large_dfire` dev+test); cache 5 candidate khác + 2 test control/pyronear + `figlib_dev_temporal_overlay_sweep.json` + 2 gate res800 ĐÃ XÓA (tái tạo = chạy lại GPU). `.gitignore` mới: `figlib_detector_cache_*` + `figlib_index.jsonl` không track; JSON kết quả nhỏ track hết.
 
-## Giai đoạn 0-2 — DONE 2026-07-20
+## Benchmark 2×2 — DONE TOÀN BỘ 2026-07-21 (Giai đoạn 0-5)
 
-- G0: audit checkpoint/split/cache cũ khớp plan; tải pyronear_yolov8s.pt; chốt 6 candidate ID.
-- G1: `eval.py` thêm backend RF-DETR (`detector-cache`, `rfdetr-accuracy`, `profile`); `modal_app.py` thêm image+function RF-DETR; `temporal_eval.py` thêm `compare-matrix`. Test: `test_eval.py`(22) + `test_temporal_eval.py`(9) = 31, tất cả pass.
-- G2: Pilot resolution-confound RF-DETR/D-Fire (train@800, predict@1280 trên FIgLib) — PASS, không NaN/degenerate.
-- **Winner resolution — user confirm 2026-07-20: `1280` cho cả 4 candidate sạch** (kể cả 2 model D-Fire train@800). Cache `@800` D-Fire chỉ diagnostic (architecture-effect cross-check + cờ resolution-confound), KHÔNG vào winner rule. Việc mở cần làm ở G4: so AUROC@1280 vs @800 của 2 model D-Fire — @800 vượt rõ rệt thì phải nêu thẳng trong report là giới hạn của winner rule, không giấu, không tự đổi rule.
-- Gate an toàn G5 (`eval.py detector-cache --split test`): đọc `figlib_dev_winner_lock.json`, reject candidate không phải winner/allowlist. Test `FinalSplitGateTests` (4 case) đã pass.
-- Profiling Modal L4 (batch 1, 30 warmup + 300 measured×3, resolution chính) — `artifacts/smoke_fire_detection/profile_<candidate_id>.json`:
-  - `yolo26x_pyro_sdis`(1280): mean 82.26ms fps 12.81 VRAM 798.7MB.
-  - `rfdetr_large_pyro_sdis`(1280): mean 141.18ms fps 7.08 VRAM 461.5MB.
-  - `yolo26x_dfire`(1280): mean 77.26ms fps 12.94 VRAM 798.5MB.
-  - `rfdetr_large_dfire`(1280): mean 136.05ms fps 7.35 VRAM 461.5MB.
-  - `yolo26n_dfire_control`(1280): mean 41.73ms fps 23.97 VRAM 142.6MB.
-  - `pyronear_yolov8s_reference`(1024): mean 34.82ms fps 28.72 VRAM 141.4MB.
-  - RF-DETR-L ~1.7-1.9x chậm hơn YOLO26x cùng resolution, VRAM thấp hơn (461MB vs 798MB). $/camera-tháng chưa tính, chỉ tính khi cần tie-break thật.
-- Modal volume còn run-dir cũ trước dọn local (`yolo26x_pyro_sdis_budget9`, `_smoke_locked`, `_archive_benchmark`, `_warmstart`, `_resume_gate`, `resume_gate`) — chưa xóa, ngoài scope plan, cần user xác nhận riêng.
+- **Winner: `rfdetr_large_dfire`.** Dev AUROC(smoke)=0.8317, final(test) AUROC=0.8347 — cả 2 PASS gate ≥0.80. Thắng control rõ trên cả dev+final (CI không chứa 0); vs Pyronear reference (leakage-caveat) khác biệt không có ý nghĩa thống kê trên cả 2 split.
+- Resolution winner 1280 cho 4 candidate sạch (kể cả 2 model D-Fire train@800) — đã verify @800 không vượt @1280, không phải oversight.
+- Operating point khóa trên dev, replay 1 lần trên final: **cả 2 tier (FA≤1/ngày, FA≤1/tuần) đều vượt budget khi replay** (~1.5x và ~3.4x) — nhiều khả năng do cỡ mẫu final nhỏ hơn dev (97.6h âm vs 230.6h). Đã ghi rõ trong report, không tự tune lại threshold trên test.
+- Overlay spatial-persistence (`temporal_eval.py spatial-persistence`, restore từ git history `d82bfcf` 2026-07-21): pooled AUROC không đổi; recall cải thiện thật ở tier chặt (0.25-0.37 vs raw 0.07-0.10) nhưng cũng vượt budget khi replay trên final — chỉ dùng diagnostic, không thay raw score làm operating point chính thức.
+- Report tĩnh đầy đủ (mọi số, protocol, caveat, SOTA comparison, final split, overlay): `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md`. Đọc file này trước khi hỏi lại số liệu.
+- CHỦ ĐỘNG CHƯA làm (ghi ở report mục 11, không phải bỏ sót): human-visibility stratification, lát cắt lỗi L0 trên winner, roadmap P1-P3, RQ5, SmokeyNet reproduction.
 
-## Giai đoạn 3 — cache FIgLib dev — DONE 2026-07-21
+## Quyết định user khác (chưa thực thi)
 
-- 8 cache dev đều 28,360/28,360 dòng: 4 candidate sạch @1280, `yolo26n_dfire_control`@1280, `pyronear_yolov8s_reference`@1024, D-Fire@800×2 (diagnostic, đã xóa raw sau khi chốt số — xem Giai đoạn 4).
-- Job từng crash 1 lần giữa chừng (`rfdetr_large_dfire`@1280, ~18:55 GMT+7 2026-07-20, nguyên nhân không xác định chắc — không có quyền đọc kernel log) — resume an toàn, không mất dữ liệu. **Bài học giữ lại: đừng tin `systemctl status` một mình khi debug job nền, cross-check `pgrep`/mtime file thật** (lần đó unit báo `active` dù process con đã chết, do lỗi phụ cạn inotify instance lúc start unit).
+- RQ5 near-field: duyệt mở, sequenced sau — `research_plan.md` mục 10.
+- SmokeyNet reference: 2 lead (`gitlab.nrp-nautilus.io/anshumand/pytorch-lightning-smoke-detection`, `github.com/iperezx/sage-smoke-detection`), chưa tự tải/verify.
+- Kiến trúc triển khai đa phong bì (routing tĩnh theo camera + specialist + verifier chung) — chốt `research_plan.md` mục 2.3.
+- Modal volume còn run-dir rác cũ (`yolo26x_pyro_sdis_budget9`, `_smoke_locked`, `_archive_benchmark`, `_warmstart`, `_resume_gate`, `resume_gate`) — ngoài scope, cần user xác nhận riêng nếu muốn dọn.
 
-## Giai đoạn 4 — phân tích 2×2 + winner — DONE 2026-07-21
+## P1 roadmap — TRẠNG THÁI 2026-07-21 16:16 (user duyệt auto-mode, không hỏi lại việc reversible)
 
-- **Winner: `rfdetr_large_dfire`** (RF-DETR-L/D-Fire). AUROC(smoke) FIgLib dev = 0.8317 (CI event [0.8103,0.8498], camera [0.8097,0.8518]) — thắng cả 3 candidate sạch còn lại đúng rule (event lower CI>0 và camera median delta>0), không cần tie-break latency/cost. Control (0.7380) và Pyronear reference leakage-caveat (0.8078) đều thấp hơn winner.
-- Interaction kiến trúc×dataset có ý nghĩa (-0.068, CI không chứa 0): RF-DETR-L tốt hơn trên D-Fire, YOLO26x tốt hơn trên Pyro-SDIS — không có kiến trúc thắng tuyệt đối cả 2 dataset.
-- Câu hỏi bắt buộc resolution@1280 vs @800: **đã trả lời, không có oversight** — cả 2 model D-Fire, `@1280` bằng hoặc nhỉnh hơn `@800` (yolo26x_dfire 0.760 vs 0.731; winner 0.832 vs 0.826, CI chồng lấn). Quyết định khóa resolution 1280 trước đó là đúng.
-- Operating point khóa (winner): FA≤1/ngày → EMA α=0.5 ngưỡng 0.6, recall 0.690, TTD median 598s. FA≤1/tuần → EMA α=0.1 ngưỡng 0.8, recall 0.067, TTD median 2010s.
-- Artifact: `figlib_dev_compare_matrix.json`, `figlib_dev_winner_lock.json`, `figlib_dev_temporal_rfdetr_large_dfire.json`, `gate_g0_auroc_{yolo26n_dfire_control,pyronear_yolov8s_reference,yolo26x_dfire_res800,rfdetr_large_dfire_res800}.json`, report tĩnh `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md` (đầy đủ protocol/số liệu/SOTA/caveat, xem file đó thay vì hỏi lại).
-- Đã dọn theo retention plan: xóa 2 cache D-Fire@800 raw + pyronear@1280 raw (số đã chốt vào `gate_g0_auroc_*` trước khi xóa).
-- CHƯA LÀM (cố ý để dành, không phải bỏ sót — xem mục 11 report): human-visibility stratification, spatial-persistence overlay restore/hủy, lát cắt lỗi L0, roadmap P1-P3, RQ5, SmokeyNet reproduction.
+- ✅ (a) L0 error-slice trên winner — DONE. Subcommand mới `temporal_eval.py error-slice` (giữ trong repo). Kết quả: bucket mean-confidence tăng đơn điệu theo bbox area (0.39→0.69 dev, 6 bucket) — xác nhận tiny-object là nguyên nhân miss chính cho winner cụ thể (không chỉ detector cũ). 26% positive frame dev không có detection nào. Per-camera AUROC median 0.876 (107/143 cam), ~10 camera chronic thấp (0.5-0.6) — nghi line-of-sight/vị trí, không phải nhiễu per-fire. Artifact: `l0_error_slice_rfdetr_large_dfire_{dev,final}.json`, `diagnose_rfdetr_large_dfire_dev.json` (chạy lần đầu cho winner RF-DETR, trước đây chỉ có cho detector cũ).
+- ✅ (b) PYRONEAR-2025 data-lever — DATA PREP DONE, fine-tune CHỜ USER CHẠY KAGGLE. Giải nén 145,657 file/9.2GB (`datasets/smoke_fire_detection/PYRONEAR-2025/`). Lọc leakage exact-match tên video vs `figlib_split_manifest.json` (511 sequence_id, cả dev+final): **315/592 video (53%) trùng thẳng FIgLib** — loại hết, còn 277 video sạch. Class_id (0/1) KHÔNG phải smoke/fire thật — verify bằng ảnh + thống kê nguồn (mỗi camera-source thuần 1 class_id) → artifact pipeline, remap cả 2 về `smoke`. Output: `datasets/smoke_fire_detection/PYRONEAR-2025-clean/{train,val,test}/{images,labels}` (train 32,784 ảnh/32,159 box, val 8,260/7,316, test 4,267/3,628) + `data.yaml` + `filter_report.json`.
+  - User chọn venue **Kaggle thủ công** (không Modal/không GB10 local). Đã viết `tasks/smoke_fire_detection/kaggle_train_pyronear2025_rfdetr_finetune.ipynb`: continue-train `RFDETRLarge(resolution=800, pretrain_weights=checkpoint_best_total.pth)` — **800px khớp training gốc winner, KHÔNG phải 1280 (đó là imgsz lúc eval FIgLib, biến khác)**. Epoch=8 (judgment call chưa validate). Chỉ train trên PYRONEAR-2025-clean (không gộp D-Fire) — data-only lever, control=winner hiện tại.
+  - Việc user tự làm (agent không có Kaggle credential/CLI): upload 2 Kaggle Dataset — data (`pyronear2025-clean-kaggle-upload.zip` tại scratchpad, 4.6GB) + checkpoint (`artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth`, 130MB) — rồi tạo notebook Kaggle UI paste nội dung `.ipynb`, Accelerator GPU T4x2, chạy tay.
+  - Sau khi có checkpoint mới (việc agent, chưa làm): copy vào `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_pyronear2025_ft/`, chạy `eval.py detector-cache` + `temporal_eval.py g0`/`compare-candidates` so winner trên FIgLib **dev** (không đụng final — one-shot).
+- 🔄 (c) SmokeyNet reference — ĐANG CHẠY. Checkpoint ONNX từ `sagecontinuum/sage-smoke-detection` (repo đổi tên/org so với lead cũ — tra `api.github.com/repositories/404460520` nếu cần lại URL). Adapter mới `tasks/smoke_fire_detection/smokeynet_cache.py` (onnxruntime, giữ tách khỏi eval.py — input 2-frame tile-classifier khác box-detector). **CPU-only trên GB10 (không có onnxruntime-gpu phù hợp aarch64+CUDA13) → ~22s/frame, full dev set ước ~7 ngày → đã giảm phạm vi còn subsample 30 sequence (seed 20260707), ETA ~14h, chạy qua `systemd-run --unit=smokeynet-subsample30`.** Script có `--resume`/`flush()` mỗi frame (bug ban đầu: thiếu flush → mất tiến độ nếu job chết, đã fix trước khi chạy thật).
+- 🔄 SOTA anchor khác đã xong: `pyronear/yolo11s_rapid-raccoon_v8.1.0` (HF, ungated, imgsz=1024, single_cls, cùng leakage-caveat Pyronear) — cache FIgLib dev đang chạy nền (`run_in_background`, ETA ~1h).
+- ⚠️ Câu hỏi treo cho user: có mở `--split test` (final) cho 2 candidate reference mới (Pyronear yolo11s, SmokeyNet) không — cần sửa `figlib_dev_winner_lock.json` allowlist, đụng kỷ luật "final split one-shot", KHÔNG tự quyết.
+- (d) E1a qua đường tải thay thế — vẫn chưa làm, server `ai2` không kết nối HPWREN.
+- NE4 (bbox area/short-side D-Fire, không phải L0 nhưng cùng đợt) — DONE: median short-side smoke ~29-31% width, fire ~5.5% — xa vendor near-field spec (1.1-1.6%) 20-27 lần → **D-Fire không phải tiny-object domain, không copy ưu tiên P2 sang near-field.** Artifact: `artifacts/smoke_fire_detection/ne4_dfire_scale_histogram.json`.
+- FIRESENSE (near-field, Zenodo CC-BY-4.0, mở) — đã tải+giải nén: `datasets/near_field_fire_detection/FIRESENSE/{fire_videos,smoke_videos}/{pos,neg}/*.avi`, 49 video, 1.2GB. Chưa chạy detector qua video (cần trích frame, chưa làm).
+- Quy tắc dataset/checkpoint mới (chốt 2026-07-21): CHỈ lấy nguồn ungated/instant-grant (HF public, GitHub public, Zenodo open, Google Drive public-link). TUYỆT ĐỐI không lấy nguồn cần form/email duyệt thủ công (đã loại ONFIRE, LFDN vì lý do này).
 
-## Quyết định user khác (chưa thực thi, không chặn Giai đoạn 5)
+## Task phụ — `tasks/results_dashboard/` — DONE 2026-07-21 (session khác)
 
-- RQ5 near-field: duyệt mở, sequenced sau khi khóa winner RQ1 — `research_plan.md` mục 10.
-- SmokeyNet reference: ưu tiên tìm checkpoint public, 2 lead: `gitlab.nrp-nautilus.io/anshumand/pytorch-lightning-smoke-detection`, `github.com/iperezx/sage-smoke-detection` — chưa tự tải/verify.
-- Kiến trúc triển khai đa phong bì (routing tĩnh theo camera + specialist + bộ xác nhận chung) — chốt `research_plan.md` mục 2.3.
-- Roadmap ưu tiên P0-P3 — `research_plan.md` mục 8.1.
-
-## Next — Giai đoạn 5 (final camera-held-out, one-shot) — CHƯA CHẠY, chờ user duyệt tường minh
-
-- Naming: "final" trong plan = `eval.py detector-cache --split test`.
-- Chỉ chạy 3 candidate (đã trong `figlib_dev_winner_lock.json`): `rfdetr_large_dfire` (winner), `yolo26n_dfire_control`, `pyronear_yolov8s_reference`. Gate an toàn đã có sẵn (`check_final_split_gate`) sẽ tự reject candidate khác.
-- KHÔNG tự chạy khi chưa có xác nhận rõ ràng của user trong lượt hiện tại — đây là thao tác không lặp lại được (final split chỉ mở đúng 1 lần).
-- Sau khi user duyệt: chạy cache test-split cho 3 candidate trên → `temporal_eval.py` phân tích final (AUROC+CI event/camera, pairwise winner vs baseline, Pyronear leakage-caveat, replay đúng 2 operating point đã khóa — KHÔNG quét lại threshold) → cập nhật report → retention cleanup cuối (giữ winner/baseline/Pyronear final cache + report, xóa cache thừa không nằm allowlist).
+- Mục đích: front-end demo hiển thị benchmark 2×2 cho người có kinh nghiệm ML xem. KHÔNG đụng `tasks/smoke_fire_detection/` hay `artifacts/smoke_fire_detection/`.
+- Kiến trúc: `exporter/` (Python stdlib + Pillow) đọc artifact → ghi contract JSON + ảnh resize vào `frontend/public/data/`. `frontend/` (Vite+React+TS+Vega-Lite qua `react-vega`/`VegaEmbed`) chỉ fetch JSON tĩnh — không API server runtime. Build ra `dist/` là site tĩnh thuần.
+- **Dữ liệu export hiện tại chỉ có số dev-stage** (chạy trước khi Giai đoạn 5 xong) — số final split + overlay (mục 12-13 report) CHƯA có trong dashboard.
+- KHÔNG chạy lại exporter mù để lấy số final: (1) `build_evaluations` hard-code `split="dev"` cho mọi gate file → `gate_*_final.json` sẽ bị dán nhãn sai thành variant của dev; phải sửa parser trước. (2) 3 cache dev loser đã xóa 2026-07-21 → `build_frame_comparison` chỉ còn winner, frame gallery đa model không tái tạo được (bản export cũ còn nguyên trong `frontend/public/data/` trên server — đã gitignore, đừng xóa).
+- Gitignore 2026-07-21: `frontend/public/data/` (output exporter), `dist/`, `*.tsbuildinfo` không track; source (exporter+src) đã stage vào git.
+- Metadata hand-authored (không tự sinh từ artifact): `exporter/candidates_meta.json`, `exporter/caveats_registry.json` — sửa khi cần, số AUROC/comparison/profile tự động theo artifact.
+- Test: `.venv/bin/python -m unittest tasks.results_dashboard.exporter.test_export -v` (13 test, pass).
+- **Giới hạn chưa verify:** không có browser/screenshot tool trong môi trường agent — đã build sạch, đã compile-check spec Vega-Lite, đã verify HTTP/data-wiring bằng curl, nhưng CHƯA xem trực quan layout/tương tác thật. User tự mở `npm run preview` hoặc `python -m http.server` trong `dist/` để xác nhận trước khi demo.
