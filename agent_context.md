@@ -49,13 +49,17 @@
 - FIRESENSE (near-field, Zenodo CC-BY-4.0, mở) — đã tải+giải nén: `datasets/near_field_fire_detection/FIRESENSE/{fire_videos,smoke_videos}/{pos,neg}/*.avi`, 49 video, 1.2GB. Chưa chạy detector qua video (cần trích frame, chưa làm).
 - Quy tắc dataset/checkpoint mới (chốt 2026-07-21): CHỈ lấy nguồn ungated/instant-grant (HF public, GitHub public, Zenodo open, Google Drive public-link). TUYỆT ĐỐI không lấy nguồn cần form/email duyệt thủ công (đã loại ONFIRE, LFDN vì lý do này).
 
-## Task phụ — `tasks/results_dashboard/` — DONE 2026-07-21 (session khác)
+## Task phụ — `tasks/results_dashboard/` — server GPU + video demo
 
-- Mục đích: front-end demo hiển thị benchmark 2×2 cho người có kinh nghiệm ML xem. KHÔNG đụng `tasks/smoke_fire_detection/` hay `artifacts/smoke_fire_detection/`.
-- Kiến trúc: `exporter/` (Python stdlib + Pillow) đọc artifact → ghi contract JSON + ảnh resize vào `frontend/public/data/`. `frontend/` (Vite+React+TS+Vega-Lite qua `react-vega`/`VegaEmbed`) chỉ fetch JSON tĩnh — không API server runtime. Build ra `dist/` là site tĩnh thuần.
-- **Dữ liệu export hiện tại chỉ có số dev-stage** (chạy trước khi Giai đoạn 5 xong) — số final split + overlay (mục 12-13 report) CHƯA có trong dashboard.
-- KHÔNG chạy lại exporter mù để lấy số final: (1) `build_evaluations` hard-code `split="dev"` cho mọi gate file → `gate_*_final.json` sẽ bị dán nhãn sai thành variant của dev; phải sửa parser trước. (2) 3 cache dev loser đã xóa 2026-07-21 → `build_frame_comparison` chỉ còn winner, frame gallery đa model không tái tạo được (bản export cũ còn nguyên trong `frontend/public/data/` trên server — đã gitignore, đừng xóa).
-- Gitignore 2026-07-21: `frontend/public/data/` (output exporter), `dist/`, `*.tsbuildinfo` không track; source (exporter+src) đã stage vào git.
-- Metadata hand-authored (không tự sinh từ artifact): `exporter/candidates_meta.json`, `exporter/caveats_registry.json` — sửa khi cần, số AUROC/comparison/profile tự động theo artifact.
-- Test: `.venv/bin/python -m unittest tasks.results_dashboard.exporter.test_export -v` (13 test, pass).
-- **Giới hạn chưa verify:** không có browser/screenshot tool trong môi trường agent — đã build sạch, đã compile-check spec Vega-Lite, đã verify HTTP/data-wiring bằng curl, nhưng CHƯA xem trực quan layout/tương tác thật. User tự mở `npm run preview` hoặc `python -m http.server` trong `dist/` để xác nhận trước khi demo.
+- Scope: demo benchmark; chỉ đọc task/artifact smoke-fire.
+- Platform: Linux server GPU; Windows/Modal backlog, không làm hiện tại.
+- Git: user yêu cầu ignore toàn bộ `tasks/results_dashboard/`; `.gitignore` giữ đúng 1 dòng này; source/dashboard không hiện `git status`, không commit.
+- Backend: FastAPI; demo registry chỉ RF-DETR winner + Pyronear YOLO11s reference; lazy-load, gọi lần đầu mới chiếm VRAM; queue 1 worker; FIgLib 6 mẫu mặc định; FIRESENSE 49 OOD; upload ≤250 MiB. YOLO26n chỉ còn benchmark tĩnh/control.
+- Camera laptop: browser quay clip → upload → render; không live. Chỉ HTTPS/`localhost`; HTTP LAN bị browser chặn camera. Upload vẫn chạy qua LAN.
+- Frontend: 4 tab; glossary collapsed global (CI/CI95/AUROC/FA/TTD/mAP/VRAM...); benchmark ảnh 6 model = 2 cột×3 hàng desktop, 1 cột mobile; `Kết quả` có research status collapsed; không clutter default.
+- Exporter: parse `*_final` đúng split; `--skip-frames` giữ frame comparison cũ; metadata có Pyronear YOLO11s reference.
+- Test 2026-07-21: 26 unit pass; Vite build pass; API sau restart đúng 2 model, cả 2 `resident=false`; dashboard PID không có GPU allocation; CSS production có grid 2 cột + glossary.
+- Service sống: transient user unit `results-dashboard.service`; bind `0.0.0.0:8731`; LAN IP hiện tại `192.168.1.186`; loopback+LAN API curl 200.
+- Truy cập LAN: `http://<LAN-IP>:8731/`; cần cùng subnet/firewall cho TCP 8731. SSH tunnel: `ssh -L 8731:127.0.0.1:8731 <server>`.
+- Chưa verify: tương tác/layout bằng browser thật; camera permission thật trên laptop.
+- Backlog: live stream; Windows/Modal; SmokeyNet GPU; serving TensorRT/FP16/INT8.
