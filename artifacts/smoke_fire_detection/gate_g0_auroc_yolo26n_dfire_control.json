@@ -1,0 +1,47 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_yolo26n_dfire_control_dev.jsonl",
+  "design_decisions": {
+    "ignore_band_seconds": 180,
+    "label_rule": "offset < 0 -> negative (pre-ignition); offset >= ignore_band_seconds -> positive (post-ignition); [0, ignore_band_seconds) excluded",
+    "primary_gate_metric": "max_smoke_confidence",
+    "auroc_method": "mann_whitney_u_rank_sum (numpy, tie-corrected, no scipy/sklearn dependency)",
+    "bootstrap_event_unit": "sequence_id",
+    "bootstrap_camera_unit": "camera_id"
+  },
+  "counts": {
+    "total_frames": 28360,
+    "frames_dropped_by_ignore_band": 1097,
+    "frames_used": 27263,
+    "n_pos": 13266,
+    "n_neg": 13997,
+    "n_events": 358,
+    "n_cameras": 108
+  },
+  "auroc": {
+    "smoke": 0.7380060421079871,
+    "fire": 0.5115567855363377,
+    "any": 0.7458885005198235
+  },
+  "bootstrap_event_smoke": {
+    "ci95": [
+      0.7150960921915437,
+      0.760668557292666
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "bootstrap_camera_smoke": {
+    "ci95": [
+      0.7147328552266532,
+      0.759112713793222
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "gate": {
+    "name": "G0",
+    "auroc_smoke": 0.7380060421079871,
+    "decision": "marginal",
+    "next_action": "Thu imgsz lon hon hoac tiling truoc, do lai G0."
+  }
+}
