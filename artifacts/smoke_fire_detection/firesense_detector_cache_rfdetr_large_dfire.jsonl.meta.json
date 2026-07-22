@@ -1,0 +1,45 @@
+{
+  "candidate_id": "rfdetr_large_dfire",
+  "backend": "rfdetr",
+  "checkpoint": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth",
+  "framework": "rfdetr==1.8.3",
+  "class_map": {
+    "names": {
+      "0": "smoke",
+      "1": "fire"
+    },
+    "smoke_class_id": 0,
+    "fire_class_id": 1
+  },
+  "imgsz": 1280,
+  "conf": 0.05,
+  "target_fps": 1.0,
+  "batch": 8,
+  "runtime": {
+    "python": "3.12.3 (main, Mar 23 2026, 19:04:32) [GCC 13.3.0]",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "torch": "2.12.1+cu130",
+    "cuda_available": true,
+    "cuda_version": "13.0",
+    "gpu_name": "NVIDIA GB10"
+  },
+  "command": [
+    "tasks/smoke_fire_detection/firesense_cache.py",
+    "--weights",
+    "artifacts/smoke_fire_detection/runs/rfdetr_large_dfire/checkpoint_best_total.pth",
+    "--out",
+    "artifacts/smoke_fire_detection/firesense_detector_cache_rfdetr_large_dfire.jsonl",
+    "--target-fps",
+    "1.0",
+    "--imgsz",
+    "1280",
+    "--conf",
+    "0.05",
+    "--batch",
+    "8"
+  ],
+  "n_videos": 49,
+  "n_written": 49,
+  "n_failed": 0,
+  "elapsed_seconds": 439.6522366579993
+}

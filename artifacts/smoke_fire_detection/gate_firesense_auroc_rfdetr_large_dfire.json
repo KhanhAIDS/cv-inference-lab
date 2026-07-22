@@ -1,0 +1,94 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/firesense_detector_cache_rfdetr_large_dfire.jsonl",
+  "n_videos_total": 49,
+  "n_pos": 24,
+  "n_neg": 25,
+  "pooled_auroc_primary_class": 0.9766666666666667,
+  "pooled_bootstrap_video": {
+    "ci95": [
+      0.9326599326599326,
+      1.0
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "pooled_decision": "pass",
+  "by_category": {
+    "smoke": {
+      "category": "smoke",
+      "score_key": "max_smoke_confidence",
+      "n_videos": 22,
+      "n_pos": 13,
+      "n_neg": 9,
+      "auroc": 0.9914529914529915,
+      "bootstrap_video": {
+        "ci95": [
+          0.95,
+          1.0
+        ],
+        "n_resamples_used": 1000,
+        "n_resamples_requested": 1000
+      },
+      "decision": "pass"
+    },
+    "fire": {
+      "category": "fire",
+      "score_key": "max_fire_confidence",
+      "n_videos": 27,
+      "n_pos": 11,
+      "n_neg": 16,
+      "auroc": 0.9829545454545454,
+      "bootstrap_video": {
+        "ci95": [
+          0.9318181818181818,
+          1.0
+        ],
+        "n_resamples_used": 1000,
+        "n_resamples_requested": 1000
+      },
+      "decision": "pass"
+    }
+  },
+  "trick_negative_report_NG2": {
+    "definition": "toan bo negative FIRESENSE (25/49 video) la trick-negative theo thiet ke dataset goc (Zenodo 836749, ghi trong research_plan.md muc 10.5) -- khong co tap negative 'thuong' rieng biet de doi chieu",
+    "smoke_videos_neg": {
+      "category": "smoke",
+      "n_negative_videos": 9,
+      "mean": 0.16123776303397286,
+      "median": 0.12234823405742645,
+      "max": 0.6315158605575562,
+      "min": 0.0,
+      "n_above_threshold": {
+        "0.05": 8,
+        "0.25": 1,
+        "0.5": 1
+      },
+      "videos_above_0.5": [
+        "testneg07.813"
+      ]
+    },
+    "fire_videos_neg": {
+      "category": "fire",
+      "n_negative_videos": 16,
+      "mean": 0.35166650265455246,
+      "median": 0.46389496326446533,
+      "max": 0.8103283047676086,
+      "min": 0.0,
+      "n_above_threshold": {
+        "0.05": 11,
+        "0.25": 8,
+        "0.5": 6
+      },
+      "videos_above_0.5": [
+        "negsVideo10.1072",
+        "negsVideo4.861",
+        "negsVideo5.862",
+        "negsVideo6.863",
+        "negsVideo7.864",
+        "negsVideo9.866"
+      ]
+    }
+  },
+  "bootstrap_samples": 1000,
+  "seed": 20260707
+}

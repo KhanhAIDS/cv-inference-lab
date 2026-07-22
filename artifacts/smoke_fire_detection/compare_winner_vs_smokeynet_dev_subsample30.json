@@ -1,0 +1,29 @@
+{
+  "baseline_cache": "/tmp/claude-1003/-home-tts01-Luyen-Minh-Khanh-cv-inference-lab/278511a7-b5a5-4b43-a21c-3754106c4dd7/scratchpad/winner_dev_subsample30_matched.jsonl",
+  "candidate_cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_smokeynet_reference_dev_subsample30.jsonl",
+  "ignore_band_seconds": 180,
+  "paired_frames": 2274,
+  "paired_events": 30,
+  "paired_cameras": 24,
+  "baseline_auroc_smoke": 0.7797753939506517,
+  "candidate_auroc_smoke": 0.8092249465960806,
+  "delta_auroc_smoke": 0.029449552645428922,
+  "paired_bootstrap_event": {
+    "ci95": [
+      -0.06482723488807418,
+      0.1332867419550131
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "paired_bootstrap_camera": {
+    "ci95": [
+      -0.06866480379131068,
+      0.12620537393091918
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "winner_rule": "event and camera lower CI > 0",
+  "decision": "tie_or_not_proven"
+}

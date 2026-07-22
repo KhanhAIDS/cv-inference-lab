@@ -1,0 +1,12 @@
+{
+  "candidate_id": "smokeynet_reference_subsample30",
+  "model": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/smokeynet_model.onnx",
+  "n_frames_written_this_run": 2366,
+  "n_frames_skipped_resume": 0,
+  "n_frames_total_in_output": 2366,
+  "n_failed": 0,
+  "n_sequences": 30,
+  "n_first_frames_skipped_no_previous_frame": 30,
+  "temporal_delta": "1 native FIgLib sample step (60s cadence, matches SmokeyNet paper 2-frame spacing)",
+  "preprocessing": "resize(1392x1856) -> crop bottom 1040 rows -> tile 224x224 overlap 20 -> normalize (x/255-0.5)/0.5, replicated from sagecontinuum/sage-smoke-detection src/inference.py"
+}
