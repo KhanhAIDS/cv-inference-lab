@@ -152,6 +152,13 @@ Theo ràng buộc thời gian, các phần sau trong plan gốc **cố ý chưa 
 - **Pairwise winner vs Pyronear reference (leakage-caveat):** Δ=-0.0138, event CI [-0.0383, 0.0109], camera CI [-0.0379, 0.0114] — **CI chứa 0 cả 2 phía, khác biệt không có ý nghĩa thống kê**, dù điểm Pyronear nhỉnh hơn (0.8486 vs 0.8347). Không phải "winner thua" — 2 số không phân biệt được bằng thống kê, và Pyronear vẫn mang leakage-caveat (mục 10) nên số của nó không đáng tin hơn winner.
 - Artifact: `gate_g0_auroc_{rfdetr_large_dfire,yolo26n_dfire_control,pyronear_yolov8s_reference}_final.json`, `figlib_final_compare_winner_vs_control.json`, `figlib_final_compare_winner_vs_pyronear.json`.
 
+### 12.1bis Pooled dev+final cho winner (bổ sung, không thay số one-shot ở trên)
+
+- Vì winner đã khóa xong hoàn toàn trên dev trước khi final bị mở (không có bước "chọn lại" nào dùng tới final), gộp dev+final chỉ để tính lại AUROC của winner KHÔNG phát sinh selection-bias mới — chỉ đơn thuần lấy N lớn hơn để CI hẹp hơn (511 sequence/510 event dùng được, 143 camera, 40,361 frame cache có sẵn, không cần chạy GPU lại).
+- **AUROC(smoke) pooled = 0.8323**, CI95 event `[0.8156, 0.8482]`, CI95 camera `[0.8126, 0.8519]` — so với dev-only (0.8317, CI event [0.8103,0.8498]) và final-only (0.8347, CI event [0.8040,0.8643]): điểm nằm giữa 2 số gốc, CI hẹp hơn rõ cả 2 (đúng hiệu ứng tăng N).
+- Vai trò: bổ sung 1 ước lượng chặt hơn cho báo cáo, KHÔNG thay thế bảng one-shot ở mục 12 — bảng one-shot vẫn giữ nguyên vì tự nó là 1 finding riêng (mục 12.1: cho thấy threshold-transfer không ổn định khi đổi mẫu, quan sát này biến mất nếu chỉ nhìn số pooled).
+- Artifact: `gate_g0_auroc_rfdetr_large_dfire_pooled_dev_final.json` (cache pooled dựng tạm từ 2 file `figlib_detector_cache_rfdetr_large_dfire_{dev,test}.jsonl` đã có sẵn, không lưu cache gộp vào repo).
+
 ### 12.1 Replay operating point khóa (không quét lại threshold trên test)
 
 | Tier | Rule khóa | Recall | Precision | FA/giờ (CI95) | TTD median | So với dev |
