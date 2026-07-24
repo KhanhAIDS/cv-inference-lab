@@ -183,8 +183,24 @@ Theo ràng buộc thời gian, các phần sau trong plan gốc **cố ý chưa 
 - Kết luận vai trò: overlay xác nhận lại đúng vai trò ban đầu — **diagnostic/tham khảo cho tier chặt, không thay được raw score làm operating point chính thức** (không đủ độ tin cậy để cam kết FA budget cứng ở quy mô camera hiện có).
 - Artifact: `gate_g0_auroc_rfdetr_large_dfire_spatial_persistence_{dev,final}.json`, `figlib_final_temporal_overlay_{zerofa,week}.json`. Sweep khóa threshold dev (`figlib_dev_temporal_overlay_sweep.json`) đã xóa 2026-07-21 sau khi chốt số vào đây — cần lại thì tra git history hoặc chạy lại `temporal_eval.py` sweep từ cache winner. Cache rescored trung gian (`figlib_{dev,final}_spatial_persistence_rfdetr_large_dfire.jsonl`) không giữ lại — tái tạo được bằng 1 lệnh `temporal_eval.py spatial-persistence` từ cache gốc đã giữ.
 
-## 14. Bước tiếp theo (đề xuất, chưa tự chạy)
+## 14. Roadmap snapshot 2026-07-21 — đã được thực thi một phần
 
-- Final AUROC 0.8347 ≥ 0.80 → gate PASS, không cần proposal xếp hạng G4 (chỉ cần khi fail).
-- Đề xuất mở tiếp theo đúng roadmap đã ghi (`research_plan.md` mục P1, chưa đổi): (a) lát cắt lỗi L0 trên winner trước khi chọn đòn bẩy nào; (b) PYRONEAR-2025 data-lever (lọc FIgLib-source) làm data-only scale-up, có control; (c) SmokeyNet reference reproduction (2 lead đã tìm, chưa tải); (d) E1a qua đường tải thay thế để có FA/hour denominator đúng domain; (e) chỉ mở G2 (learned verifier) sau khi có E1 data.
-- Không tự chạy bất kỳ mục nào ở trên — chờ user duyệt riêng từng mục.
+- Final AUROC 0.8347 ≥0.80 nên không mở proposal G4. Các mục P1 sau đó đã được user duyệt và thực thi theo timeline: L0 error-slice, PYRONEAR-2025 data-only lever, SmokeyNet subsample và SOTA anchor Pyronear YOLO11s.
+- Trạng thái và số chốt mới hơn nằm ở mục 9.1, mục 15, `research_plan.md` và artifact tương ứng; nội dung này thay cho đề xuất cũ “chưa tự chạy”. E1a và G2 vẫn chưa mở.
+
+## 15. P1 PYRONEAR-2025 data-only lever — DONE 2026-07-24, không cải thiện
+
+- Data train: PYRONEAR-2025-clean-only, đã loại 315/592 video trùng trực tiếp FIgLib theo `sequence_id`, còn 277 video; toàn bộ nhãn hợp lệ remap về `smoke`. Không gộp lại D-Fire/Pyro-SDIS để giữ phép thử data-only và chấp nhận trước rủi ro catastrophic forgetting.
+- Train: continue-train winner `rfdetr_large_dfire` trên Kaggle, RF-DETR-L @800px, 8 epoch, seed 20260707. Chọn trước inference weight `checkpoint_best_total.pth` theo source validation thay vì sweep 8 checkpoint trên FIgLib dev; weight cùng global step 10245 với best EMA epoch 4, EMA mAP50-95 PYRONEAR val = 0.45057.
+- Eval giữ protocol winner: FIgLib dev camera-disjoint, 28,360 frame hợp lệ, `imgsz=1280`, `conf=0.05`, native RF-DETR postprocess; 1 corrupt JPEG loại giống các candidate trước. Không mở final/test.
+
+| Candidate | AUROC smoke | CI95 event | CI95 camera |
+|---|---:|---|---|
+| `rfdetr_large_dfire` | **0.83173** | [0.8103, 0.8498] | [0.8097, 0.8518] |
+| `rfdetr_large_dfire_pyronear2025_ft` | 0.80938 | [0.78746, 0.83185] | [0.78280, 0.83332] |
+
+- Paired delta candidate trừ baseline: **-0.02235**, CI95 event `[-0.03766, -0.00643]`, CI95 camera `[-0.03799, -0.00586]`. Cả hai CI nằm hoàn toàn dưới 0 → fine-tune tệ hơn có ý nghĩa thống kê, không phải tie.
+- Candidate riêng vẫn PASS gate tuyệt đối AUROC≥0.80, nhưng FAIL mục tiêu của lever là cải thiện winner. Kết luận thực dụng: giữ `rfdetr_large_dfire`; không dùng checkpoint fine-tune cho final hoặc deployment.
+- Diễn giải: kết quả phù hợp rủi ro catastrophic forgetting đã chấp nhận trước khi train; không đủ bằng chứng tách riêng forgetting khỏi label/domain shift. Plateau source validation giữa epoch 2-7 rất hẹp (~0.449-0.451 mAP50-95), nên không chi thêm khoảng 1,4 giờ wall-time/checkpoint trên server đang chia sẻ GPU để target-guided sweep sau khi best source-selected đã thua rõ.
+- Tài nguyên full dev trên GB10 đang chia sẻ: batch 8, 1h25m10s wall time, CPU trung bình 155%, peak RSS 2.65GiB, không swap; mẫu 10 phút cho tiến trình eval khoảng 29-42% GPU SM, tổng GPU 93-95%, 69-77°C.
+- Artifact: `figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl`, `.meta.json`, `.errors.json`, `gate_g0_auroc_rfdetr_large_dfire_pyronear2025_ft_dev.json`, `compare_rfdetr_large_dfire_vs_pyronear2025_ft_dev.json`.
