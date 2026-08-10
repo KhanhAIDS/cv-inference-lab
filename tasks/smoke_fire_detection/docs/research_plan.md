@@ -1,13 +1,24 @@
 # Research Plan — Early Fire Detection (v2.2)
 
-- Updated: `2026-07-24`
+- Updated: `2026-07-31`
 - Thay thế bản v1 (dạng chat monologue: không có decision rule, không có cost, dẫn chiếu PYRONEAR-2025 như thể đã có local, citation hỏng).
 - Cách dùng: file này chốt **câu hỏi, gate, thứ tự**; inventory kiến trúc ở mục 6.1.
 - File phụ đã xóa khỏi working tree 2026-07-21 (dọn codebase, tra git history khi cần): `research_toolbox.md` (menu kỹ thuật theo failure mode), `post_train_benchmark_plan.md` (plan benchmark 2×2 — đã thực thi xong, số chốt ở `model_benchmark_2x2.md`), 3 notebook train (`colab_train_dfire_yolo26x`, `kaggle_train_dfire_rfdetr`, `kaggle_train_pyro_sdis_rfdetr`), `report/demo_inference.py` (thay bằng `tasks/results_dashboard/`). Mọi dẫn chiếu tới các file này trong phần DONE bên dưới hiểu là trỏ git history.
 - Quy tắc dẫn chiếu (từ 2026-07-14): KHÔNG dẫn chiếu file volatile (`agent_context.md`, `CHANGELOG.md`) làm nơi chứa chi tiết — số liệu chốt ghi inline tại đây; chi tiết exploratory của bước đã đóng nằm trong git history.
 
+## 0. Product reset 2026-07-31
+
+- Mục tiêu chính đổi về phát hiện **cả `fire` và `smoke` ở khoảng cách gần** từ camera cố định, ưu tiên chất lượng phát hiện cao nhất.
+- Wildfire xa đã đóng vai trò benchmark nghiên cứu. Không tiếp tục tiêu compute hoặc mở data/model lever far-field nếu user không yêu cầu lại rõ ràng.
+- Tech lead yêu cầu ưu tiên không bỏ sót. Model selection near-field dùng event recall từng lớp và worst-class recall trước; false alarm là ràng buộc thứ hai, không bị bỏ đo.
+- mAP/AUROC và chất lượng khít của bbox chỉ là diagnostic. KPI sản phẩm là miss rate, event recall, thời gian báo lần đầu và false alarm theo alarm episode/camera-hour.
+- `rfdetr_large_dfire` là baseline near-field hiện có, không phải winner sản phẩm.
+- Trước train mới: hoàn tất inventory nguồn near-field, audit lineage/license/semantic, chuẩn hóa hai lớp `smoke=0`, `fire=1`, chia source/video/scene/camera-disjoint và khóa tập final độc lập.
+- Kế hoạch candidate gộp ba nguồn ngày 2026-07-24 chỉ còn là baseline nhanh. Không dùng nó làm phương án data cuối nếu các nguồn near-field lớn và sạch hơn audit PASS.
+
 ## 1. Research question
 
+- **RQ5 (ưu tiên sản phẩm từ 2026-07-31):** phát hiện đồng thời fire và smoke near-field từ camera cố định; tối đa hóa event recall từng lớp và worst-class recall trước khi giảm false alarm.
 - **RQ1 (đã khóa winner 2026-07-21):** early fire detection từ camera cố định, false alarm thấp — temporal confirmation cải thiện single-frame RGB bao nhiêu, đo event-level.
 - **RQ2 (định danh của lab):** accuracy–TTD–FA–cost frontier theo từng deployment envelope — edge/cloud, cadence thấp/real-time, một/nhiều camera. Modal là backend benchmark hiện tại; không phải target triển khai duy nhất.
 - **RQ3 (parked):** thermal/RGB-T gain; distill RGB-T teacher sang RGB student.
@@ -245,9 +256,9 @@ Nguyên tắc: chỉ tải dataset khi một gate/experiment cụ thể ở trê
 
 Kết luận: không có dataset nào trong nhóm trên đủ lý do vượt priority của việc đang bị block (Step 1 + Step 5 ở mục 8).
 
-## 10. Track near-field (D-Fire-style) — ĐANG CHẠY NE1
+## 10. Track near-field (D-Fire-style) — TRACK SẢN PHẨM CHÍNH
 
-- **Trạng thái 2026-07-24:** RQ1 đã khóa winner; RQ5 đã mở. FIRESENSE control và NE4 đã xong. Ba ZIP user tự tải đã có trong `to_be_resolved/`; bước hiện tại là NE1 audit cấu trúc/nhãn/chất lượng trước một lần train gộp ưu tiên thời gian. Cơ sở đề xuất gốc: near-field camera cố định ở nhà máy/facility, khu dân cư và không gian công cộng có cadence, nuisance và FA budget khác FIgLib, nên cần protocol riêng.
+- **Trạng thái 2026-07-31:** near-field là mục tiêu sản phẩm chính. FIRESENSE control và NE4 đã xong. Ba ZIP user tự tải đã có trong `to_be_resolved/`; bước hiện tại là mở rộng NE1 thành inventory đầy đủ nguồn near-field rồi audit cấu trúc/nhãn/chất lượng trước train. Cơ sở: near-field camera cố định ở nhà máy/facility, khu dân cư và không gian công cộng có cadence, nuisance và FA budget khác FIgLib, nên cần protocol riêng.
 - **Nguồn:** 3 vòng web research 2026-07-17 (standard/vendor VSD, dataset video near-field, FA-cost/privacy/edge economics). Số có nguồn ghi rõ [standard]/[vendor]/[academic]/[official]/[secondary] theo độ tin cậy giảm dần; KHÔNG dùng số [vendor]/[secondary] làm quyết định cứng — chỉ [standard]/[academic đọc trực tiếp] mới khóa protocol.
 
 ### 10.1. RQ5 (mới, proposal) — near-field detection
@@ -273,7 +284,7 @@ Kết luận: không có dataset nào trong nhóm trên đủ lý do vượt pri
 
 ### 10.4. Experiment near-field (NE1-NE5)
 
-- **NE1 — dataset acquisition/audit (ĐANG CHẠY):** ba ZIP đã có local; audit trước train gồm split/class, ảnh-label pairing, bbox malformed/out-of-range, empty-label/ảnh âm và sample visual theo nuisance. Xem trạng thái ở mục 10.8/10.12.
+- **NE1 — dataset acquisition/audit (ĐANG CHẠY):** inventory mọi nguồn near-field khả dụng; audit trước train gồm license/lineage, split theo source-video-scene, class mapping, missing-label, ảnh-label pairing, bbox malformed/out-of-range, empty-label/ảnh âm và sample visual theo nuisance. Xem trạng thái ở mục 10.8/10.12.
 - **NE2 — hard-negative menu build:** test set theo category chuẩn (welding, sunlight/backlight, incandescent/fluorescent/halogen/LED beacon, steam, dust, moving machinery/light) — đo FP/category riêng biệt, không gộp.
 - **NE3 — AMOC/bootstrap rescale sang giây:** tái dùng nguyên harness `temporal_eval.py` (đã tách CPU-only, không phụ thuộc ultralytics) — chỉ đổi đơn vị trục thời gian và operating point mục tiêu (≤30s thay 1/day-1/week). Template metric: ONFIRE 2023 (MIVIA) đã chuẩn hóa "delay từ fire-onset (tolerance 5s) + FP/video negative + FPS + RAM" — dùng làm tham chiếu thiết kế, không copy số (chưa tự đo).
 - **NE4 — error-slicing D-Fire cho near-field scale distribution:** bbox area/short-side histogram trên chính D-Fire (dataset đã có sẵn, không cần tải mới) — quyết định P2/tiny-object có phải lever đúng hay không TRƯỚC khi chạy ablation, tránh copy priority L1 của FIgLib.
@@ -283,11 +294,25 @@ Kết luận: không có dataset nào trong nhóm trên đủ lý do vượt pri
 ### 10.5. Dataset near-field — inventory
 
 - Nguyên tắc giữ nguyên mục 9: chỉ tải khi sắp dùng. NE1 đã được duyệt; ba ZIP đầu tiên do user tự tải đã có local, xem mục 10.8.
-- **Ưu tiên cao nếu duyệt track:**
+- **Ứng viên train/eval ưu tiên mới, khảo sát 2026-07-31:**
+  - **FireAndSmoke 2024:** paper công bố hơn 22.000 ảnh từ khoảng 1.200 video/nguồn Internet, cảnh indoor/outdoor/urban/industrial/ship/forest, có `fire`, `smoke`, `other` và hard case; split paper 20.108/4.757/2.417 ảnh. GitHub chỉ cung cấp script tải qua Roboflow; server từng bị Cloudflare chặn. Ưu tiên rất cao nếu đường tải ungated hoạt động lại; bắt buộc group theo video và audit duplicate trước chia lại.
+  - **Home Fire 2025:** 6.500 ảnh indoor từ khoảng 400 video, bbox `flame/smoke`, split 3.900/1.300/1.300, CC BY-NC 4.0. Domain khớp cao; cần audit split có video-disjoint và mapping `flame→fire`.
+  - **Indoor Fire Smoke 2025:** 5.000 ảnh indoor, bbox `fire/smoke`, split 3.500/750/750. Domain khớp cao; Zenodo record chưa hiển thị license rõ nên chưa được merge trước khi xác minh quyền dùng và lineage/split.
+  - **Annotated Fire-Smoke 2025:** 11.027 ảnh, YOLO bbox `fire/smoke`, CC BY 4.0. Nguồn mở và đủ lớn; cần audit tỷ lệ near-field, nguồn video và duplicate với dataset khác.
+  - **DFS gốc 2022:** 9.462 ảnh VOC, ba lớp `fire/smoke/other`. Không mặc định đồng nhất với ZIP Roboflow `DFS-Fire v3` 8.735 ảnh; phải audit lineage trước để tránh train hai bản dẫn xuất của cùng ảnh.
+  - **FASDD-CV:** nguồn lớn, bbox `fire/smoke`, có ảnh indoor/outdoor, gần/xa và negative. Chỉ dùng phần CV sau khi lọc near-field; không đưa UAV/remote-sensing vào train near-field mặc định.
+  - **MS-FSDB 2024:** 12.518 ảnh đa cảnh đã relabel/standardize từ nguồn công khai. Giá trị cao cho taxonomy, nhưng link dữ liệu từng chết; chỉ mở lại khi có đường tải ungated và audit overlap với các nguồn thành phần.
+- **Nguồn phụ, không làm trụ train detector:**
+  - **FSSD 2023:** 1.968 ảnh segmentation; semantic công bố không tách rõ hai output fire/smoke trong benchmark. Chỉ dùng sau audit mask/class.
+  - **MmodalFire 2026:** 65 video indoor lab, nhãn binary fire/non-fire và sensor đồng bộ; phù hợp temporal/onset, không đủ để train detector hai lớp nếu chưa annotate lại.
+  - **DeepQuestAI:** 3.000 ảnh classification; positive cần nhánh classification hoặc annotate, Neutral audit PASS mới dùng empty-label.
+  - **Synthetic M4SFWD/SYN-FIRE:** chỉ bổ sung điều kiện hiếm sau baseline real-data; không dùng làm bằng chứng final và không để lấn dữ liệu thật.
+- **Nguồn đã biết nhưng không theo đuổi trong pipeline hiện tại:** ONFIRE, LFDN và MIVIA yêu cầu form/email; vi phạm quy tắc chỉ dùng nguồn ungated/instant-grant. Domestic Fire and Smoke bản đầy đủ hiện là commercial licensing; sample nhỏ chỉ phù hợp audit, không phải trụ train.
+- **Inventory lịch sử trước product reset — không còn actionable nếu nguồn yêu cầu form/email:**
   - **ONFIRE 2023** (MIVIA/UNISA, https://mivia.unisa.it/onfire2023/): 322 video (219 positive + 103 negative), DUY NHẤT có gán **thời điểm fire-onset** cho toàn bộ positive — khớp trực tiếp nhu cầu TTD-giây. License không ghi rõ, xin qua email. Vai trò: nguồn chính cho NE3/NG1.
   - **LFDN** (MIVIA, https://mivia.unisa.it/large-fire-dataset-with-negative-samples-lfdn/): 36,554 ảnh bbox flame/smoke, **4,154 ảnh negative chủ đích** (nắng, mây, sương, glare, đèn pha, bụi, vải đỏ) — bổ sung trực tiếp cho NE2 (ảnh tĩnh, không thay video). Form request.
   - **FIRESENSE** (Zenodo, https://zenodo.org/records/836749): 49 video, CC BY 4.0, **tải mở xác nhận live** — 25/49 video negative thiết kế đánh lừa detector. Rẻ nhất để bắt đầu (license rõ, không cần xin phép).
-- **Ưu tiên trung bình:**
+- **Nguồn video bổ sung đã biết:**
   - **MIVIA Smoke Detection** (form request): 149 video × ~15 phút = >35h footage liên tục — nguồn tốt nhất cho FA/hour nhưng là outdoor mid/far-range, không thuần indoor.
   - **MmodalFire** (Nature Sci Data 2026, CC BY 4.0, Figshare https://doi.org/10.6084/m9.figshare.28804448): 65 video lab-controlled indoor, timestamp 0.01s, đồng bộ 6 sensor vật lý — quy mô nhỏ (2 phòng lab TQ) nhưng ground-truth onset chính xác tuyệt đối, vai trò tương tự E6 (synthetic smoke ramp) của RQ1 nhưng là video thật.
 - **Gap xác nhận (không phải lỗi khảo sát):** KHÔNG tồn tại dataset public indoor/residential/industrial nào có hàng chục giờ negative video + onset annotation cùng lúc quy mô lớn. Muốn đo FA/hour indoor nghiêm túc, lab gần như chắc chắn phải tự quay/gom negative footage — tương tự vai trò E1a (negative-day harvesting) của RQ1, nhưng chưa có nguồn kiểu HPWREN cho near-field.
@@ -297,7 +322,7 @@ Kết luận: không có dataset nào trong nhóm trên đủ lý do vượt pri
 
 1. ✅ Mở RQ5 sau RQ1; đã thực hiện đúng thứ tự.
 2. ✅ FIRESENSE tải/eval xong; ba ZIP near-field đã có local; FASDD ScienceDB tải không cần login; Indoor Fire Smoke đúng domain nhưng chưa tải.
-3. ✅ Ưu tiên thời gian hơn ablation nhân quả: nếu audit PASS, train một candidate gộp `D-Fire + DFS-Fire + DeepQuest Train/Neutral`.
+3. ⚠️ Candidate gộp `D-Fire + DFS-Fire + DeepQuest Train/Neutral` là baseline nhanh đã chốt ngày 2026-07-24, nay bị product reset 2026-07-31 thay thế ở vai trò phương án data cuối.
 4. ⏳ Audit Indoor Fire Smoke trước khi phân vai. Nếu có split video/scene-disjoint: dùng train split để train, giữ test split held-out. Nếu không: dùng Indoor làm train data và dành FASDD/nguồn độc lập khác làm held-out.
 5. ⏳ Có tự thu negative footage indoor/industrial hay không; chưa có camera/địa điểm cụ thể.
 6. ⏸ NE5 giữ parked vì chưa có hardware edge cụ thể.

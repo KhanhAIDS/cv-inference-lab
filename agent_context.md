@@ -7,6 +7,20 @@
 - Scope chính: `tasks/smoke_fire_detection/`; dataset `datasets/smoke_fire_detection/`; artifact `artifacts/smoke_fire_detection/`.
 - Task phụ: `tasks/results_dashboard/` (xem mục riêng cuối file) — front-end demo, độc lập hoàn toàn, chỉ đọc artifact của task chính, không đụng ngược lại.
 
+## Product reset 2026-07-31
+
+- Primary: fixed-camera near-field; detect cả `fire` + `smoke`; quality max.
+- Cost: FN > FP; selection = event recall từng lớp → worst-class recall → giảm FA.
+- Bbox geometry phụ; class/missing-label/ignore đúng mới là bắt buộc.
+- Canonical detection taxonomy: `smoke=0`, `fire=1`; overlap được; nuisance = negative/metadata; ambiguous = ignore.
+- Far-field wildfire: closed benchmark/reference/regression; không còn roadmap chính.
+- `rfdetr_large_dfire`: near-field baseline, không gọi product winner trước near-field selection.
+- Split: source/video/scene/camera-disjoint; cấm random frame split; chống duplicate/near-duplicate qua split.
+- Image-level positive: classifier branch hoặc annotate/pseudo-label+review; image-level negative audit PASS → detector empty-label.
+- Metrics chính: per-class event recall/miss, worst-class recall, TTD, FA/camera-hour, FA/alarm episode. mAP/AUROC = diagnostic.
+- Threshold fire/smoke riêng; alarm OR; temporal không được chặn đường báo nhanh high-confidence.
+- Current phase: complete near-field source inventory → audit/license/lineage → canonical export → train/eval near-field.
+
 ## Dataset/checkpoint
 
 - D-Fire: train 15,500; valid 1,721; test 4,306; class smoke=0, fire=1. Label: `yolo26n_dfire_control` = gốc; `yolo26x_dfire`/`rfdetr_large_dfire` = đã relabel (khác control, không so trực tiếp).
@@ -54,13 +68,14 @@
 - (d) E1a qua đường tải thay thế — vẫn chưa làm, server `ai2` không kết nối HPWREN.
 - NE4 (bbox area/short-side D-Fire, không phải L0 nhưng cùng đợt) — DONE: median short-side smoke ~29-31% width, fire ~5.5% — xa vendor near-field spec (1.1-1.6%) 20-27 lần → **D-Fire không phải tiny-object domain, không copy ưu tiên P2 sang near-field.** Artifact: `artifacts/smoke_fire_detection/ne4_dfire_scale_histogram.json`.
 - FIRESENSE control eval — DONE 2026-07-22. `rfdetr_large_dfire` zero-shot 49/49 video: pooled AUROC 0.977, smoke 0.991, fire 0.983. Fire-neg có false-alarm thật: 6/16 vượt conf 0.5, 3 video rank-invert với true positive thấp nhất. Threshold 0.70 trên FIRESENSE giữ recall 11/11, còn 3/16 false alarm; đây là development operating point, không phải final độc lập.
-- Block dataset đã đổi: user tự tải 3 ZIP near-field; FASDD ScienceDB không cần login; Indoor Fire Smoke được xác nhận đúng domain nhưng chưa tải. FireAndSmoke CostiCatargiu/MS-FSDB vẫn blocked, không còn là blocker cho NE1.
+- Near-field inventory local: D-Fire; DFS v3; DeepQuestAI; FireAndSmoke base 10k; Home Fire 6.5k; Indoor 5k; Annotated 11,021; FASDD-CV archive. User chốt MS-FSDB hoàn tất bằng các nguồn thành phần local; FireAndSmoke 2024 chỉ dùng base 10k, không lấy bản 22k augment.
+- Audit 2026-07-31→08-04: 7 nguồn local clean pairing và 0 malformed bbox; Indoor có 87/6,935 bbox vượt biên; DFS `fire=0,smoke=1`; 5 exact duplicate cross-source giữa base 10k và FireAndSmoke v1, loại v1. Annotated: user cho phép dùng theo CC BY trên trang phát hành, bất kể metadata archive `Private`. FASDD-CV V9 raw: 95,314 ảnh/label, 0 corrupt/missing/malformed, 39,199 empty label, class raw `fire=0` 73,297 box/`smoke=1` 53,080; 3 nonpositive, 161 outside, 170 exact-duplicate group nội bộ. Mirror 3,104 ảnh xác nhận byte-identical subset V9, ĐÃ XÓA archive+raw mirror. Chưa canonicalize; cần lineage/split/near-field role trước train.
 - Quy tắc dataset/checkpoint mới (chốt 2026-07-21): CHỈ lấy nguồn ungated/instant-grant (HF public, GitHub public, Zenodo open, Google Drive public-link). TUYỆT ĐỐI không lấy nguồn cần form/email duyệt thủ công (đã loại ONFIRE, LFDN vì lý do này).
 
 ## Near-field — next
 
-- Trước train: audit ZIP trên CPU, không GPU; kiểm split/class, bbox malformed/out-of-range, empty-label/ảnh âm, sample ảnh Neutral và `firerotation`. Không cần train để biết DeepQuest Neutral có đúng nuisance mục tiêu hay không.
-- Ưu tiên thời gian user: nếu audit PASS, làm **1 candidate gộp** `D-Fire + DFS-Fire + DeepQuest Train/Neutral`; D-Fire = rehearsal giữ năng lực cũ, DFS-Fire = supervised positive mới, DeepQuest Neutral = hard/background negative. Chấp nhận không tách được causal contribution của từng nguồn.
+- Trước train: hoàn tất inventory mọi nguồn near-field khả dụng; audit license, lineage/video, split, class, missing-label, bbox malformed/out-of-range, empty-label/ảnh âm và nuisance trên CPU.
+- Candidate gộp cũ `D-Fire + DFS-Fire + DeepQuest Train/Neutral` chỉ còn là baseline nhanh, không phải kế hoạch data cuối nếu nguồn near-field tốt hơn audit PASS.
 - Không dùng DeepQuest Fire/Smoke trong lần đầu vì thiếu bbox. Không dùng FireAndSmoke v1 trong lần đầu vì semantic class mơ hồ + chỉ 100 ảnh.
 - FIRESENSE đã dùng để phát hiện failure, chọn hướng data và tham khảo threshold → chỉ còn vai trò development/regression paired set. Không được gọi điểm cải thiện trên FIRESENSE là final độc lập.
 - Held-out = dữ liệu không dùng cho train/tune/selection; không đồng nghĩa cả dataset Indoor phải bị cấm train. Sau audit: nếu Indoor có split video/scene-disjoint, dùng train split để train và giữ test split held-out; nếu split không sạch, dùng Indoor cho train và dành FASDD/nguồn độc lập khác làm held-out.
@@ -73,9 +88,29 @@
 - Backend: FastAPI; demo registry chỉ RF-DETR winner + Pyronear YOLO11s reference; lazy-load, gọi lần đầu mới chiếm VRAM; queue 1 worker; FIgLib 6 mẫu mặc định; FIRESENSE 49 OOD; upload ≤250 MiB. YOLO26n chỉ còn benchmark tĩnh/control.
 - Camera laptop: browser quay clip → upload → render; không live. Chỉ HTTPS/`localhost`; HTTP LAN bị browser chặn camera. Upload vẫn chạy qua LAN.
 - Frontend: 4 tab; glossary collapsed global (CI/CI95/AUROC/FA/TTD/mAP/VRAM...); benchmark ảnh 6 model = 2 cột×3 hàng desktop, 1 cột mobile; `Kết quả` có research status collapsed; không clutter default.
+- Presentation độc lập: `tasks/results_dashboard/project_history_presentation.html`; 21 slide; tập trung kết quả phát hiện khói/lửa; 3 JPEG bbox nhúng data URI; tải 1 HTML vẫn đủ ảnh; offline.
 - Exporter: parse `*_final` đúng split; `--skip-frames` giữ frame comparison cũ; metadata có Pyronear YOLO11s reference.
 - Dashboard refresh 2026-07-24: `ResearchStatus` up-to-date + panel `FollowUpResults`; pooled/Pyronear YOLO11s/PYR fine-tune/SmokeyNet/FIRESENSE/NE4/NE1. 26 unit pass; Vite build pass.
 - Service `results-dashboard.service`: từng OOM-kill 2026-07-23 do áp lực toàn hệ thống (process peak 49.4MiB); restart 2026-07-24 PASS; bind `0.0.0.0:8731`; API đúng 2 model, cả 2 `resident=false`; RSS ~76MiB; dashboard PID không có GPU allocation.
 - Truy cập LAN: `http://<LAN-IP>:8731/`; cần cùng subnet/firewall cho TCP 8731. SSH tunnel: `ssh -L 8731:127.0.0.1:8731 <server>`.
 - Chưa verify: tương tác/layout bằng browser thật; camera permission thật trên laptop.
 - Backlog: live stream; Windows/Modal; SmokeyNet GPU; serving TensorRT/FP16/INT8.
+- Visual triage 2026-08-04: DFS, Home, Indoor, FASDD V9 xem 170 ảnh mẫu; raw mapping đều `0=fire`, `1=smoke`; không thấy lỗi nhãn hệ thống. Indoor 86, FASDD 153 ảnh bbox vượt biên trong traversal; chỉ clip bbox đã xác minh ở canonical export.
+- Cleanup: codebase mặc định agent-owned; dọn script one-shot/artifact trung gian sau tác vụ, chỉ giữ output quyết định.
+- GPU thuê ngoài: tối đa utilization an toàn để giảm chi phí thuê. GPU server công ty: trước job báo estimate thời gian/chi phí GPU nội bộ, kiểm shared load/VRAM, không ảnh hưởng job khác.
+- Lineage triage 2026-08-04: Indoor có 375 nhóm filename-gốc bắc train/valid/test → vendor split leak. Manifest `indoor_fire_smoke_augmentation_group_split.json`: group-disjoint 3,500/750/750, raw không đổi; chỉ diagnostic, chưa chứng minh scene/video-disjoint. Home không có lineage signal → train phụ, không dùng vendor valid/test làm benchmark.
+- Round-1 label audit: `near_field_review.py` tạo queue cân bằng 182 ảnh cho DFS/Home/Indoor/Annotated/FASDD; queue `near_field_round1_review_queue.json`, trạng thái đều pending, không phải benchmark/split. Exact duplicate audit: 1 ảnh trùng DFS-valid ↔ FASDD; canonical export phải loại một bản khỏi eval.
+- Lineage update 2026-08-04: DFS 0 nhóm tên lặp/cross-split; Annotated 2,214 nhóm lặp, 879 cross-split → vendor split leak. Manifest `annotated_fire_smoke_augmentation_group_split.json`: group-disjoint 7,715/1,653/1,653; diagnostic, không chứng minh scene/video-disjoint.
+- Review UX: `near_field_round1_review.html` = offline page ảnh+bbox, phím 1 đúng / 2 thiếu / 3 sai-thừa / 4 không chắc, tải JSON decision. Queue JSON chỉ machine list, không yêu cầu user sửa tay.
+- Review HTML update: đỏ=fire, xanh=smoke; trạng thái auto-save browser localStorage, nhưng cần tải JSON kết quả để đưa lại repo/agent xử lý.
+- Round-1 human review imported/validated: 182/182 valid; pass 155; missing 17; bbox wrong/extra 9; uncertain 1. Pattern missing co-label: Annotated 9 missing/32 (6 fire-only, 2 smoke-only, 1 empty) + 1 uncertain; Indoor 5 fire-only/30; DFS 2 fire-only/40; FASDD 1 fire-only/40; Home 0/40. Không auto-relabel/raw edit; bbox rộng/hẹp chỉ ghi nhận, chưa sửa.
+- Artifact outcome: `artifacts/smoke_fire_detection/near_field_round1_review_outcome.json`; tool review có mode `--queue ... --decisions ... --output ...` để validate 1:1 và tổng hợp.
+- Train blocker: chưa có đơn giá GPU nội bộ; trước bất kỳ job GPU phải báo cost estimate, không tự chạy. Triage hiện tại: Annotated + Indoor không được đưa nguyên trạng vào baseline nghiêm túc vì missing co-label sample cao.
+- GPU plan user 2026-08-04: Modal chỉ dùng profile ngắn với 1 hoặc 2 T4 để đo compute/VRAM và chọn cấu hình training Kaggle 2×T4 / Colab 1×T4; không train thực sự trên Modal hiện tại. Chờ user login Modal rồi mới inspect shared/load và báo estimate profile; không cần đơn giá GPU nội bộ cho job Modal.
+- Correction triage: lỗi missing xuất hiện trong strata `fire_only`/`smoke_only`/`empty`; kết luận đúng là không train nguyên trạng toàn bộ Annotated/Indoor. Chưa loại toàn bộ source: ảnh `both`/đã pass có thể vào curated seed sau export; source-wide inclusion chỉ sau model-assisted audit.
+- Modal profile 2026-08-05: YOLO26x @800 trên 256 ảnh D-Fire. 1×T4 batch 8: 68.21s, log GPU ~13.0/14.9GiB. 2×T4 DDP batch tổng 16 (8/GPU): 80.64s, log ~13.1/14.9GiB mỗi GPU; job ngắn bị overhead DDP nên không nhanh hơn end-to-end. Chốt safe config: Colab 1×T4 batch 8; Kaggle 2×T4 batch tổng 16. Chỉ hardware profile, không phải train/eval chất lượng.
+- Model-assisted audit: `rfdetr_large_dfire` weight local 130MiB, 2 class, chọn làm teacher. `near_field_model_audit.py`: inference → queue mâu thuẫn strong (missing / unsupported), không auto-relabel; `--html` tạo offline reviewer. Chấm bbox dataset: đỏ/xanh nét liền; teacher nét đứt+confidence. Review multi-issue: missing_or_extra, wrong_class, geometry; `--queue --decisions` validate. Checkpoint ngoài: Pyronear/SmokeyNet far-field 1-class hoặc leakage-caveat; không dùng teacher near-field 2-class.
+- Kaggle audit: notebook tự chứa code `near_field_model_audit_kaggle.ipynb`; Input 7 source expanded (5 bbox + DeepQuest + FireAndSmoke v1) + D-Fire RF-DETR checkpoint; 2 shard/GPU, output bundle ZIP review offline.
+- DeepQuest không bị bỏ audit: nhãn cấp ảnh, teacher đề xuất bbox; chỉ `adopt_teacher` do user bấm duyệt mới thành nhãn dataset dẫn xuất. FireAndSmoke v1: audit đủ 100 ảnh, chỉ giữ/remap nếu user xác nhận semantic. Raw không bao giờ bị sửa.
+- Cleanup strict: `to_be_resolved/` temp-only, phải empty/delete sau import; xóa ZIP/copy/checkpoint/cache/notebook/script one-shot khi source đã giải nén hoặc result quyết định giữ ở nơi khác.
+- Cleanup 2026-08-05: `to_be_resolved/` removed (~16.5GB); removed task `__pycache__`, completed Pyro fine-tune notebook, FireSense/SmokeyNet one-shot scripts. Candidate delete cần user confirm riêng: Pyro-SDIS/PYRONEAR data 13.8GB + historical checkpoint/cache.

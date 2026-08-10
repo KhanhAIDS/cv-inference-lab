@@ -1,0 +1,3179 @@
+{
+  "purpose": "Round-1 human label audit. This is a review queue, not a benchmark or training split.",
+  "seed": 20260804,
+  "per_category": 10,
+  "coverage": {
+    "annotated_fire_smoke_2025": {
+      "fire_only": {
+        "available": 3999,
+        "selected": 10
+      },
+      "smoke_only": {
+        "available": 4190,
+        "selected": 10
+      },
+      "both": {
+        "available": 2830,
+        "selected": 10
+      },
+      "empty": {
+        "available": 2,
+        "selected": 2
+      }
+    },
+    "dfs_fire_v3": {
+      "fire_only": {
+        "available": 4193,
+        "selected": 10
+      },
+      "smoke_only": {
+        "available": 189,
+        "selected": 10
+      },
+      "both": {
+        "available": 3337,
+        "selected": 10
+      },
+      "empty": {
+        "available": 1016,
+        "selected": 10
+      }
+    },
+    "fasdd_cv_v9": {
+      "fire_only": {
+        "available": 12550,
+        "selected": 10
+      },
+      "smoke_only": {
+        "available": 23414,
+        "selected": 10
+      },
+      "both": {
+        "available": 20151,
+        "selected": 10
+      },
+      "empty": {
+        "available": 39199,
+        "selected": 10
+      }
+    },
+    "home_fire_2025": {
+      "fire_only": {
+        "available": 3456,
+        "selected": 10
+      },
+      "smoke_only": {
+        "available": 1856,
+        "selected": 10
+      },
+      "both": {
+        "available": 1053,
+        "selected": 10
+      },
+      "empty": {
+        "available": 135,
+        "selected": 10
+      }
+    },
+    "indoor_fire_smoke_2025": {
+      "fire_only": {
+        "available": 2165,
+        "selected": 10
+      },
+      "smoke_only": {
+        "available": 2376,
+        "selected": 10
+      },
+      "both": {
+        "available": 459,
+        "selected": 10
+      },
+      "empty": {
+        "available": 0,
+        "selected": 0
+      }
+    }
+  },
+  "records": [
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/images/flare_0137_jpg.rf.fc214e7caa7e7f8c7ba7dac62e2d9100.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/labels/flare_0137_jpg.rf.fc214e7caa7e7f8c7ba7dac62e2d9100.txt",
+      "source_split": "test",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0001"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/F_323_jpg.rf.6db72483460880bb23f6f50bdbdec992.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/F_323_jpg.rf.6db72483460880bb23f6f50bdbdec992.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0002"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/F_505_jpg.rf.00d6ae25a5f4d5ef79e67c2d2edac739.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/F_505_jpg.rf.00d6ae25a5f4d5ef79e67c2d2edac739.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0003"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/F_987_jpg.rf.2cec2cd922eb357bb1222f3a5e378c03.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/F_987_jpg.rf.2cec2cd922eb357bb1222f3a5e378c03.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0004"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/NoiseWEBSmoke3223_jpg.rf.f69e07994691681dc764651c70ace66c.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/NoiseWEBSmoke3223_jpg.rf.f69e07994691681dc764651c70ace66c.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0005"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/fire-419-_jpg.rf.12d38512172d7a1377bc6e73e2baa249.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/fire-419-_jpg.rf.12d38512172d7a1377bc6e73e2baa249.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0006"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/fire_622_png.rf.93837b1464ac60c624050a8b1b3737d1.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/fire_622_png.rf.93837b1464ac60c624050a8b1b3737d1.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0007"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/flare_0219_jpg.rf.6519aefad77c3e04eb57d7dc97ba71af.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/flare_0219_jpg.rf.6519aefad77c3e04eb57d7dc97ba71af.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0008"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/hand_held_winnebago156_png_jpg.rf.6ed36b7b09fa8ffcbd0c3632e1cf850b.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/hand_held_winnebago156_png_jpg.rf.6ed36b7b09fa8ffcbd0c3632e1cf850b.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0009"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-800-_jpg.rf.7567488e630c03d9577c9d8c9b4dc317.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-800-_jpg.rf.7567488e630c03d9577c9d8c9b4dc317.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0010"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/937_jpg.rf.ed5ada21f7d6a324aa17c59805e2000b.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/937_jpg.rf.ed5ada21f7d6a324aa17c59805e2000b.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0011"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/valid/images/H_00980_png.rf.4d84d566b0beb02f02eaa97e20bb63df.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/valid/labels/H_00980_png.rf.4d84d566b0beb02f02eaa97e20bb63df.txt",
+      "source_split": "valid",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0012"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/images/IMG_20231008_115731_jpg.rf.7a863f3e590f3856d73f42ef0eac8476.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/labels/IMG_20231008_115731_jpg.rf.7a863f3e590f3856d73f42ef0eac8476.txt",
+      "source_split": "test",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0013"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/3ae1707c66cd58d384b71e6de4afee6f28586861-1080p060_jpg.rf.057f20e7d75ac28641f55f0076cdfdb0.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/3ae1707c66cd58d384b71e6de4afee6f28586861-1080p060_jpg.rf.057f20e7d75ac28641f55f0076cdfdb0.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0014"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/IMG_20231008_115238_jpg.rf.20ba29d310a7e573f17750f0211a06a0.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/IMG_20231008_115238_jpg.rf.20ba29d310a7e573f17750f0211a06a0.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0015"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/IMG_20231008_115657_jpg.rf.3ec81e687b9ef0c0987bd5ecef66c52d.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/IMG_20231008_115657_jpg.rf.3ec81e687b9ef0c0987bd5ecef66c52d.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0016"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/f-137-_jpg.rf.914e7e73f1b2872a4cb8384bd2e4a8c1.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/f-137-_jpg.rf.914e7e73f1b2872a4cb8384bd2e4a8c1.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0017"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/fire-6294-85306999_png_jpg.rf.60535b5e69e9ef6bb33179f757028712.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/fire-6294-85306999_png_jpg.rf.60535b5e69e9ef6bb33179f757028712.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0018"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/flare_0059_jpg.rf.13ba674b15d72836d953f4483389d289.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/flare_0059_jpg.rf.13ba674b15d72836d953f4483389d289.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0019"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/flare_0141_jpg.rf.cbb396c3ab34647c2bb9f27138678d47.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/flare_0141_jpg.rf.cbb396c3ab34647c2bb9f27138678d47.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0020"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/middle_-2788-_jpg.rf.0b07d56b57e22d8a9eadc9ff383eb175.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/middle_-2788-_jpg.rf.0b07d56b57e22d8a9eadc9ff383eb175.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0021"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/valid/images/IMG_20231008_115000_1-1-_jpg.rf.da7a1b07e38727d0788b25e2eb64c618.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/valid/labels/IMG_20231008_115000_1-1-_jpg.rf.da7a1b07e38727d0788b25e2eb64c618.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0022"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/images/WEBFire386_jpg.rf.6f233e158c6e91bbc2144091e55e2908.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/test/labels/WEBFire386_jpg.rf.6f233e158c6e91bbc2144091e55e2908.txt",
+      "source_split": "test",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0023"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/1402020800014321_jpg.rf.d03122b1dfedfb9a2d00e83471520b3a.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/1402020800014321_jpg.rf.d03122b1dfedfb9a2d00e83471520b3a.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0024"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/H_07554_png.rf.194f0f781239bc342cf2fdfb911f6818.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/H_07554_png.rf.194f0f781239bc342cf2fdfb911f6818.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0025"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/ck0lwextoec1a0863lou65q4l_jpeg_jpg.rf.8618fca3bc805887e9828b138538be19.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/ck0lwextoec1a0863lou65q4l_jpeg_jpg.rf.8618fca3bc805887e9828b138538be19.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0026"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/ck0rqqw9o6t8x07017cthtiom_jpeg_jpg.rf.b53ba9977d2ea28cf81e98dc4fa5d436.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/ck0rqqw9o6t8x07017cthtiom_jpeg_jpg.rf.b53ba9977d2ea28cf81e98dc4fa5d436.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0027"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-386-_jpg.rf.4ba8e65704deb3d3f0d4f354ac348c56.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-386-_jpg.rf.4ba8e65704deb3d3f0d4f354ac348c56.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0028"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-549-_jpg.rf.6eb53c7122667dbab30deb231ce4e895.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-549-_jpg.rf.6eb53c7122667dbab30deb231ce4e895.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0029"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-612-_jpg.rf.3cae7402c63b0587695a60608b9067b4.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-612-_jpg.rf.3cae7402c63b0587695a60608b9067b4.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0030"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-698-_jpg.rf.eff63ea845759fa4b18bef3308beaf59.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-698-_jpg.rf.eff63ea845759fa4b18bef3308beaf59.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0031"
+    },
+    {
+      "source": "annotated_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/images/smoke-740-_jpg.rf.35d16a66e72b2e18810703727fd6d223.jpg",
+      "label": "datasets/smoke_fire_detection/annotated_fire_smoke_2025/train/labels/smoke-740-_jpg.rf.35d16a66e72b2e18810703727fd6d223.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0032"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/test/images/middle_-3972-_jpg.rf.2bf8b2088037369def222c842956c057.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/test/labels/middle_-3972-_jpg.rf.2bf8b2088037369def222c842956c057.txt",
+      "source_split": "test",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0033"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-1350-_jpg.rf.57ec300cb2a82e16ace88263ebe2f76d.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-1350-_jpg.rf.57ec300cb2a82e16ace88263ebe2f76d.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0034"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-1460-_jpg.rf.763b22d5cc3cd4d543131d5ef0990746.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-1460-_jpg.rf.763b22d5cc3cd4d543131d5ef0990746.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0035"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-2735-_jpg.rf.5e11b7facf78a945f2d05b617ad3b885.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-2735-_jpg.rf.5e11b7facf78a945f2d05b617ad3b885.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0036"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-1624-_jpg.rf.34619053ef4bbe1864d455b0e06bc155.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-1624-_jpg.rf.34619053ef4bbe1864d455b0e06bc155.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0037"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-1649-_jpg.rf.da6cf477a9056d90626836b61103706f.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-1649-_jpg.rf.da6cf477a9056d90626836b61103706f.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0038"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-165-_jpg.rf.64c0a218ccda25fba3f63e7203abf57f.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-165-_jpg.rf.64c0a218ccda25fba3f63e7203abf57f.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0039"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-2091-_jpg.rf.0ebd6079f3ce4da6328e7dd3ce15411b.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-2091-_jpg.rf.0ebd6079f3ce4da6328e7dd3ce15411b.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0040"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3963-_jpg.rf.a48ea4fb03ca4282bc5839d54a95ec78.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3963-_jpg.rf.a48ea4fb03ca4282bc5839d54a95ec78.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0041"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/large_-2768-_jpg.rf.f466825746cfdf9fe8c390c37dcde15c.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/large_-2768-_jpg.rf.f466825746cfdf9fe8c390c37dcde15c.txt",
+      "source_split": "valid",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0042"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/test/images/other_-79-_jpg.rf.18964aafc4b972acaeac2b61253b69b1.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/test/labels/other_-79-_jpg.rf.18964aafc4b972acaeac2b61253b69b1.txt",
+      "source_split": "test",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0043"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-135-_jpg.rf.71369adaecfb3d4c7a4cba778be20d1d.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-135-_jpg.rf.71369adaecfb3d4c7a4cba778be20d1d.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0044"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-151-_jpg.rf.69a52d004af140d503e8037e83421e0c.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-151-_jpg.rf.69a52d004af140d503e8037e83421e0c.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0045"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-175-_jpg.rf.251b669b5e0692502800341b9a850f63.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-175-_jpg.rf.251b669b5e0692502800341b9a850f63.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0046"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-253-_jpg.rf.294f5853f056d5a37174b9a5198e4f3b.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-253-_jpg.rf.294f5853f056d5a37174b9a5198e4f3b.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0047"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-36-_jpg.rf.1839aaf549d953cf5b6ab657213aa189.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-36-_jpg.rf.1839aaf549d953cf5b6ab657213aa189.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0048"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-515-_jpg.rf.b3736e499e5cd4e9a411a889e6012d99.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-515-_jpg.rf.b3736e499e5cd4e9a411a889e6012d99.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0049"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-764-_jpg.rf.c1683c0023b848eec697900318e4a055.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-764-_jpg.rf.c1683c0023b848eec697900318e4a055.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0050"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/middle_-2755-_jpg.rf.651811d4161cc654196de661b2c08bee.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/middle_-2755-_jpg.rf.651811d4161cc654196de661b2c08bee.txt",
+      "source_split": "valid",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0051"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/other_-509-_jpg.rf.3d9f77a6bdcb9045f4390f224d84a724.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/other_-509-_jpg.rf.3d9f77a6bdcb9045f4390f224d84a724.txt",
+      "source_split": "valid",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0052"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/test/images/large_-1801-_jpg.rf.181f413098a1419c0675fbb77971eaa4.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/test/labels/large_-1801-_jpg.rf.181f413098a1419c0675fbb77971eaa4.txt",
+      "source_split": "test",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0053"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-2048-_jpg.rf.a9937e6d7edab2d13456442ebe81f588.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-2048-_jpg.rf.a9937e6d7edab2d13456442ebe81f588.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0054"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-2101-_jpg.rf.9871872219c2ac929aa6a2c5621e5c20.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-2101-_jpg.rf.9871872219c2ac929aa6a2c5621e5c20.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0055"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-521-_jpg.rf.4670472e7ca73363083377d873aa0919.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-521-_jpg.rf.4670472e7ca73363083377d873aa0919.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0056"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-916-_jpg.rf.afc7b14b3779b71cbc46fb09d3817130.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-916-_jpg.rf.afc7b14b3779b71cbc46fb09d3817130.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0057"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3016-_jpg.rf.52345145ebfb17d4e7b55decbc453781.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3016-_jpg.rf.52345145ebfb17d4e7b55decbc453781.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0058"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-4280-_jpg.rf.5feb4afb8b2c1039ae44a6e9a1f0c261.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-4280-_jpg.rf.5feb4afb8b2c1039ae44a6e9a1f0c261.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0059"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/large_-2384-_jpg.rf.a89c057a020ebba0691323305498ab28.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/large_-2384-_jpg.rf.a89c057a020ebba0691323305498ab28.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0060"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/large_-3340-_jpg.rf.f6f4d40c4a52dbf6b1b08cac47e2e4ed.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/large_-3340-_jpg.rf.f6f4d40c4a52dbf6b1b08cac47e2e4ed.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0061"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/middle_-4711-_jpg.rf.51eafb1d920bfc2c5954c8d5699d561e.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/middle_-4711-_jpg.rf.51eafb1d920bfc2c5954c8d5699d561e.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0062"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-1868-_jpg.rf.fc60db07ba94d7011c7532b8f5dc45cb.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-1868-_jpg.rf.fc60db07ba94d7011c7532b8f5dc45cb.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0063"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/large_-436-_jpg.rf.2ea78eb946f7f70453eaecdab3c405b0.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/large_-436-_jpg.rf.2ea78eb946f7f70453eaecdab3c405b0.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0064"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-233-_jpg.rf.ae82da0236b4caef0c1683624a9a88dc.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-233-_jpg.rf.ae82da0236b4caef0c1683624a9a88dc.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0065"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-251-_jpg.rf.4a1837db3a75377c2fa31e5b4adb15c1.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-251-_jpg.rf.4a1837db3a75377c2fa31e5b4adb15c1.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0066"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3134-_jpg.rf.1ff6f5e82908ace256b6009745e9ca75.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3134-_jpg.rf.1ff6f5e82908ace256b6009745e9ca75.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0067"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3458-_jpg.rf.2794573a334e63cbccc974f411292fcb.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3458-_jpg.rf.2794573a334e63cbccc974f411292fcb.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0068"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3729-_jpg.rf.10945a6da48473aa2d00e009f0aef634.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3729-_jpg.rf.10945a6da48473aa2d00e009f0aef634.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0069"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/middle_-3973-_jpg.rf.537f3e4a49ce4996dfd59bdfce8814e9.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/middle_-3973-_jpg.rf.537f3e4a49ce4996dfd59bdfce8814e9.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0070"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/train/images/other_-821-_jpg.rf.1d7da42a875aef53625cf063efc3eaa8.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/train/labels/other_-821-_jpg.rf.1d7da42a875aef53625cf063efc3eaa8.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0071"
+    },
+    {
+      "source": "dfs_fire_v3",
+      "image": "datasets/smoke_fire_detection/dfs_fire_v3/valid/images/large_-142-_jpg.rf.b63ac8c250e2623a55ce80ebf8a4aa0f.jpg",
+      "label": "datasets/smoke_fire_detection/dfs_fire_v3/valid/labels/large_-142-_jpg.rf.b63ac8c250e2623a55ce80ebf8a4aa0f.txt",
+      "source_split": "valid",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0072"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV000023.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV000023.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0073"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV002406.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV002406.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0074"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV002930.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV002930.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0075"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV004516.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV004516.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0076"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV008365.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV008365.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0077"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV011224.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV011224.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0078"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV011852.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV011852.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0079"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV013188.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV013188.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0080"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV013605.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV013605.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0081"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/bothFireAndSmoke_CV019205.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/bothFireAndSmoke_CV019205.txt",
+      "source_split": "unsplit",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0082"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV004845.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV004845.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0083"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV012623.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV012623.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0084"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV022502.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV022502.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0085"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV022584.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV022584.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0086"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV023727.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV023727.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0087"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV031461.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV031461.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0088"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV034093.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV034093.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0089"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV034980.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV034980.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0090"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV035804.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV035804.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0091"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/neitherFireNorSmoke_CV037627.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/neitherFireNorSmoke_CV037627.txt",
+      "source_split": "unsplit",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0092"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV002265.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV002265.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0093"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV002545.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV002545.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0094"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV003743.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV003743.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0095"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV004830.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV004830.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0096"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV006700.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV006700.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0097"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV006804.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV006804.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0098"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV007393.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV007393.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0099"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV008456.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV008456.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0100"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV010680.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV010680.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0101"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/fire_CV012054.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/fire_CV012054.txt",
+      "source_split": "unsplit",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0102"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV002856.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV002856.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0103"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV006129.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV006129.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0104"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV008705.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV008705.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0105"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV009959.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV009959.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0106"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV010717.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV010717.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0107"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV012957.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV012957.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0108"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV018045.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV018045.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0109"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV018300.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV018300.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0110"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV020612.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV020612.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0111"
+    },
+    {
+      "source": "fasdd_cv_v9",
+      "image": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/images/smoke_CV021832.jpg",
+      "label": "datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV/annotations/YOLO_CV/labels/smoke_CV021832.txt",
+      "source_split": "unsplit",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0112"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_1005.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_1005.txt",
+      "source_split": "test",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0113"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_877.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_877.txt",
+      "source_split": "test",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0114"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_1070.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_1070.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0115"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_1602.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_1602.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0116"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2455.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2455.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0117"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2480.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2480.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0118"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_508.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_508.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0119"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_669.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_669.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0120"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_1167.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_1167.txt",
+      "source_split": "val",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0121"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_148.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_148.txt",
+      "source_split": "val",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0122"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_467.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_467.txt",
+      "source_split": "test",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0123"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_1731.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_1731.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0124"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0125"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2941.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2941.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0126"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_3796.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_3796.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0127"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_4098.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_4098.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0128"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_535.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_535.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0129"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_58.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_58.txt",
+      "source_split": "train",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0130"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_607.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_607.txt",
+      "source_split": "val",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0131"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_793.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_793.txt",
+      "source_split": "val",
+      "category": "empty",
+      "dataset_classes": [],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0132"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_263.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_263.txt",
+      "source_split": "test",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0133"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_352.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_352.txt",
+      "source_split": "test",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0134"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_681.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_681.txt",
+      "source_split": "test",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0135"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_139.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_139.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0136"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2483.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2483.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0137"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_3640.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_3640.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0138"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_792.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_792.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0139"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_349.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_349.txt",
+      "source_split": "val",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0140"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_464.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_464.txt",
+      "source_split": "val",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0141"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_881.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_881.txt",
+      "source_split": "val",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0142"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/test/images/test_265.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/test/labels/test_265.txt",
+      "source_split": "test",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0143"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_1662.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_1662.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0144"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_1738.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_1738.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0145"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2084.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2084.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0146"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2530.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2530.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0147"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2745.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2745.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0148"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_2925.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_2925.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0149"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_3647.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_3647.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0150"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/train/images/train_4038.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/train/labels/train_4038.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0151"
+    },
+    {
+      "source": "home_fire_2025",
+      "image": "datasets/smoke_fire_detection/home_fire_2025/val/images/val_976.jpg",
+      "label": "datasets/smoke_fire_detection/home_fire_2025/val/labels/val_976.txt",
+      "source_split": "val",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0152"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/images/18test2773_jpg.rf.1ebf07e7897d9887156965273d0f8aa2.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/labels/18test2773_jpg.rf.1ebf07e7897d9887156965273d0f8aa2.txt",
+      "source_split": "test",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0153"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/1360_jpg.rf.95dc1f447f0aec8f6fa91b1456cb9eaf.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/1360_jpg.rf.95dc1f447f0aec8f6fa91b1456cb9eaf.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0154"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/1759_jpg.rf.4fcda1dca0c9e32d9e0f4de793cd3e4c.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/1759_jpg.rf.4fcda1dca0c9e32d9e0f4de793cd3e4c.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0155"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/8test8444_jpg.rf.342cba68bf48601cafce1f2ed71a541e.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/8test8444_jpg.rf.342cba68bf48601cafce1f2ed71a541e.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0156"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/classk11_mp4-230_jpg.rf.0db07c8447772dc00667e4170d39d6b1.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/classk11_mp4-230_jpg.rf.0db07c8447772dc00667e4170d39d6b1.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0157"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/frame_0000032_png.rf.c78c7f454bf087a046d8848d4005935c.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/frame_0000032_png.rf.c78c7f454bf087a046d8848d4005935c.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0158"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/frame_07_jpg.rf.5e8f3b8bac533375a0103e6de397f4da.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/frame_07_jpg.rf.5e8f3b8bac533375a0103e6de397f4da.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0159"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/part1_mp4-135_jpg.rf.715d161e035d2287fe79d5f32cffc3b8.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/part1_mp4-135_jpg.rf.715d161e035d2287fe79d5f32cffc3b8.txt",
+      "source_split": "train",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0160"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/images/8test9165_jpg.rf.c6eb99ec0bc166310c40e1c388704f17.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/labels/8test9165_jpg.rf.c6eb99ec0bc166310c40e1c388704f17.txt",
+      "source_split": "valid",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0161"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/images/classk11_mp4-195_jpg.rf.9b223bcfd6ff0d120c370bcd0b42f428.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/labels/classk11_mp4-195_jpg.rf.9b223bcfd6ff0d120c370bcd0b42f428.txt",
+      "source_split": "valid",
+      "category": "both",
+      "dataset_classes": [
+        "fire",
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0162"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/2035_jpg.rf.dd9e1514232f831aa62af29e860fb77d.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/2035_jpg.rf.dd9e1514232f831aa62af29e860fb77d.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0163"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/2039_jpg.rf.fac5b1ae4dd15dd67c65993b486943d3.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/2039_jpg.rf.fac5b1ae4dd15dd67c65993b486943d3.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0164"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/3_mp4-57_jpg.rf.6c6235eda839770efe1df70c81b73c46.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/3_mp4-57_jpg.rf.6c6235eda839770efe1df70c81b73c46.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0165"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/6_mp4-97_jpg.rf.5bf0a75c0a50a1e4368960ee86ef5376.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/6_mp4-97_jpg.rf.5bf0a75c0a50a1e4368960ee86ef5376.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0166"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/Inside-a-burning-house_185_jpg.rf.45cf94a1ee5735a4f24430f5e73409e3.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/Inside-a-burning-house_185_jpg.rf.45cf94a1ee5735a4f24430f5e73409e3.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0167"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/img_713_jpg.rf.0eccb70a911bff930d23ba7834b0fb2f.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/img_713_jpg.rf.0eccb70a911bff930d23ba7834b0fb2f.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0168"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/part5_mp4-61_jpg.rf.df6dd5dec4a499e80545c1994750e8c5.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/part5_mp4-61_jpg.rf.df6dd5dec4a499e80545c1994750e8c5.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0169"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/part6_Trim_mp4-78_jpg.rf.f78da47b7364eb2f619299eea2551346.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/part6_Trim_mp4-78_jpg.rf.f78da47b7364eb2f619299eea2551346.txt",
+      "source_split": "train",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0170"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/images/1984_jpg.rf.8cf65d117ca41ec8d3ffda1a655096a2.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/labels/1984_jpg.rf.8cf65d117ca41ec8d3ffda1a655096a2.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0171"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/images/FireVid36_mp4-43_jpg.rf.12fe3730457fb20260e8d49d2630f97f.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/valid/labels/FireVid36_mp4-43_jpg.rf.12fe3730457fb20260e8d49d2630f97f.txt",
+      "source_split": "valid",
+      "category": "fire_only",
+      "dataset_classes": [
+        "fire"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0172"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/images/280aos_mp4-0136_jpg.rf.53ed2bee748087278d19d86952c8af42.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/labels/280aos_mp4-0136_jpg.rf.53ed2bee748087278d19d86952c8af42.txt",
+      "source_split": "test",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0173"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/images/a_0026_jpg.rf.08739b0c899daae2d24f7622cec2eaee.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/labels/a_0026_jpg.rf.08739b0c899daae2d24f7622cec2eaee.txt",
+      "source_split": "test",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0174"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/images/test11004_jpg.rf.477aab17acd25690c875a55a638db85a.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/test/labels/test11004_jpg.rf.477aab17acd25690c875a55a638db85a.txt",
+      "source_split": "test",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0175"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/000067_jpg.rf.e386bc7b0451f0e8a0bd253d6b659dcd.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/000067_jpg.rf.e386bc7b0451f0e8a0bd253d6b659dcd.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0176"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/21test146_jpg.rf.37971655fc829dc5f4edf7927a6f8f08.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/21test146_jpg.rf.37971655fc829dc5f4edf7927a6f8f08.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0177"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/b_0200_jpg.rf.172fbe4562442c427c4e95bc8b528142.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/b_0200_jpg.rf.172fbe4562442c427c4e95bc8b528142.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0178"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/frame_0000098_png.rf.c427193815bebc0df21c1e15bb2f46b3.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/frame_0000098_png.rf.c427193815bebc0df21c1e15bb2f46b3.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0179"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/frame_0000715_png.rf.b7b083b0a76b73c8e79f9572c81f98c3.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/frame_0000715_png.rf.b7b083b0a76b73c8e79f9572c81f98c3.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0180"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/test11180_jpg.rf.89f71ee33ede1fc192d0ad6f7ec94359.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/test11180_jpg.rf.89f71ee33ede1fc192d0ad6f7ec94359.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0181"
+    },
+    {
+      "source": "indoor_fire_smoke_2025",
+      "image": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/images/test12533_jpg.rf.decd997448f00937754f9eb1efdea98d.jpg",
+      "label": "datasets/smoke_fire_detection/indoor_fire_smoke_2025/Indoor Fire Smoke/train/labels/test12533_jpg.rf.decd997448f00937754f9eb1efdea98d.txt",
+      "source_split": "train",
+      "category": "smoke_only",
+      "dataset_classes": [
+        "smoke"
+      ],
+      "review": {
+        "status": "pending",
+        "confirmed_classes": null,
+        "issue": null,
+        "note": null
+      },
+      "review_id": "nf-0182"
+    }
+  ]
+}

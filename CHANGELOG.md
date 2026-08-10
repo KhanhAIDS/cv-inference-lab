@@ -1,127 +1,104 @@
-## 2026-07-22 19:26 GMT+7 — Khảo sát 5 link dataset user đề xuất (FASDD/furg/aiformankind/Boreal/zenodo) + câu hỏi UAV — chỉ đọc, không tải
+- 2026-08-04 16:17:56 GMT+7
+  - Audit nội dung mẫu: DFS, Home, Indoor, FASDD V9; 170 ảnh; raw mapping đều `0=fire`, `1=smoke`; không thấy lỗi nhãn hệ thống.
+  - Giữ: `near_field_source_audit.json`, `fasdd_cv_v9_audit.json`, `near_field_visual_audit_sample.json`.
+  - Xóa: script audit one-shot, 2 artifact audit stale, contact sheet tạm `/tmp/near_field_visual_audit/`.
+  - Sửa: `AGENTS.md`, `agent_context.md`, `CHANGELOG.md`.
+  - Rule mới: job GPU phải đo tải và tối đa hóa utilization an toàn.
+  - Command: đọc context/rule/script/artifact; tạo và xem contact sheet tạm; parse JSON; `git diff --check`; `git status --short`.
+- 2026-08-04 16:23 GMT+7
+  - Sửa rule GPU theo user: GPU thuê ngoài tối đa utilization; GPU server công ty báo estimate thời gian/chi phí trước job và ưu tiên không ảnh hưởng workload khác.
+- 2026-08-04 16:26:27 GMT+7
+  - Lineage audit hẹp: Indoor có 643 nhóm tên lặp, 375 nhóm bắc vendor split; split gốc leak qua augmentation. Home không có nhóm tên lặp nên không có bằng chứng split scene-disjoint.
+  - Tạo `artifacts/smoke_fire_detection/near_field_lineage_triage.json`.
+  - Tạo `artifacts/smoke_fire_detection/indoor_fire_smoke_augmentation_group_split.json`: group-disjoint 3,500 train / 750 valid / 750 test; raw dataset không đổi.
+  - Không dùng GPU; command CPU-only bằng `.venv/bin/python`; không giữ script tạm.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: 2 artifact JSON nêu trên.
+- 2026-08-04 16:42 GMT+7
+  - Tạo tool giữ lại: `tasks/smoke_fire_detection/near_field_review.py`; tạo queue audit nhãn vòng 1, stratified theo source và `fire_only`/`smoke_only`/`both`/`empty`.
+  - Queue hợp lệ: 182 ảnh; DFS 40, Home 40, Indoor 30, Annotated 32, FASDD 40. Tất cả `pending`; không coi là benchmark hay split.
+  - Xác nhận `near_field_priority_duplicate_audit.json`: 1 exact duplicate DFS validation ↔ FASDD; phải loại một bản khi canonical export để không contaminate evaluation.
+  - Không dùng GPU; command: đọc context/status/artifact/layout, `.venv/bin/python near_field_review.py`, `py_compile`, `git diff --check`.
+  - Thay đổi trực tiếp: `tasks/smoke_fire_detection/near_field_review.py`, `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `artifacts/smoke_fire_detection/near_field_round1_review_queue.json`.
+- 2026-08-04 16:50 GMT+7
+  - Mở rộng filename-lineage audit (CPU-only) sang DFS và Annotated: DFS 0 nhóm lặp/cross-split; Annotated 2,214 nhóm lặp, 879 nhóm bắc vendor split → leak augmentation xác nhận.
+  - Tạo `artifacts/smoke_fire_detection/annotated_fire_smoke_augmentation_group_split.json`: group-disjoint 7,715 train / 1,653 valid / 1,653 test; raw dataset không đổi. Raw class ratio giữa split có thể lệch, nên dùng metric riêng từng class; manifest không chứng minh scene/video-disjoint.
+  - Xóa thư mục contact sheet tạm `/tmp/near_field_round1.NYrtUL/`; không giữ preview/cache/hashing.
+  - Không dùng GPU; command: filename lineage traversal và kiểm validation bằng `.venv/bin/python`; `git diff --check`; `git status --short`.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `artifacts/smoke_fire_detection/near_field_lineage_triage.json`, `artifacts/smoke_fire_detection/annotated_fire_smoke_augmentation_group_split.json`.
+- 2026-08-04 17:00 GMT+7
+  - Tạo `artifacts/smoke_fire_detection/near_field_round1_review.html`: review offline 182 ảnh, overlay bbox; phím `1` đúng, `2` thiếu nhãn, `3` sai/thừa, `4` không chắc; tải JSON quyết định sau review.
+  - Không sửa raw dataset/label; không tạo cache/hash; không dùng GPU.
+  - Command: `.venv/bin/python` parse queue+label để xuất HTML; kiểm tra payload/size; `git diff --check`.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `artifacts/smoke_fire_detection/near_field_round1_review.html`.
+- 2026-08-04 17:08 GMT+7
+  - Sửa `near_field_round1_review.html`: thêm legend đỏ=fire/xanh=smoke; auto-save trạng thái review trong localStorage của browser. JSON quyết định chỉ thành file khi bấm tải.
+  - Không dùng GPU; không sửa raw dataset/label.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `artifacts/smoke_fire_detection/near_field_round1_review.html`.
+- 2026-08-04 18:09 GMT+7
+  - Nhập và xác thực `to_be_resolved/near_field_round1_review_decisions.json` đối chiếu 1:1 với queue: 182/182 quyết định hợp lệ, không ID trùng/lạ/thiếu, không trạng thái lạ.
+  - Kết quả: 155 pass; 17 missing; 9 wrong_or_extra; 1 uncertain. Lỗi thiếu nhãn lặp theo source: Annotated 9/32 missing (6 fire-only, 2 smoke-only, 1 empty), Indoor 5/30 fire-only missing, DFS 2/40 fire-only missing, FASDD 1/40 fire-only missing; Home 0/40. Bbox rộng/hẹp chưa tự sửa vì không phải lỗi ưu tiên.
+  - Tạo `artifacts/smoke_fire_detection/near_field_round1_review_outcome.json`: outcome đã validate, chỉ dùng triage, không tự relabel raw dataset.
+  - Sửa `tasks/smoke_fire_detection/near_field_review.py`: thêm mode import/validate `--queue --decisions --output`; phát hiện và sửa lỗi newline trong artifact trước khi hoàn tất validation.
+  - Không dùng GPU; command CPU-only: `.venv/bin/python -m py_compile`, `near_field_review.py --queue ... --decisions ...`, `.venv/bin/python -m json.tool`, `jq`, `git diff --check`.
+  - Thay đổi trực tiếp: `tasks/smoke_fire_detection/near_field_review.py`, `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `artifacts/smoke_fire_detection/near_field_round1_review_outcome.json`.
+- 2026-08-04 18:18 GMT+7
+  - Điều chỉnh cách diễn đạt triage: lỗi missing nằm trong các nhóm nhãn gốc `fire_only`/`smoke_only`/`empty`, không phải mọi ảnh của Annotated/Indoor. Quyết định đúng: không nạp nguyên trạng toàn bộ hai nguồn; chỉ dùng phần curated/đã qua audit ở seed export, chờ model-assisted audit trước khi mở rộng. Không xóa source nào.
+  - Kế hoạch GPU user: Modal chỉ chạy profile ngắn trên 1 hoặc 2 T4 để đo compute/VRAM, tối ưu training sau này trên Kaggle 2×T4 và Colab 1×T4; không train nghiêm túc trên Modal. Chờ user login Modal trước khi chạy.
+  - Không dùng GPU.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`.
+- 2026-08-05 09:09:43 GMT+7
+  - Modal hardware profile ngắn, không phải train/eval chất lượng: YOLO26x, D-Fire copy tạm 256 ảnh, `imgsz=800`, 1 epoch.
+  - 1×T4: batch 8, 68.21s; log train ~13.0/14.9GiB VRAM.
+  - 2×T4 DDP: batch tổng 16 (8/GPU), 80.64s; log train ~13.1/14.9GiB mỗi GPU. Overhead khởi tạo DDP làm job ngắn chậm hơn 1 GPU; không suy ra throughput epoch dài.
+  - Chốt cấu hình bắt đầu: Colab 1×T4 batch 8; Kaggle 2×T4 batch tổng 16. Report JSON chỉ là profile phần cứng.
+  - Command: `.venv/bin/python -m modal run --detach -m tasks.smoke_fire_detection.modal_t4_training_profile::profile_one --batch 8 --imgsz 800 --fraction 0.02 --remote-output artifacts/smoke_fire_detection/modal_t4_profile_1gpu_batch8.json`; `.venv/bin/python -m modal run --detach -m tasks.smoke_fire_detection.modal_t4_training_profile::profile_two --batch 16 --imgsz 800 --fraction 0.02 --remote-output artifacts/smoke_fire_detection/modal_t4_profile_2gpu_batch16.json`; `modal app logs`; `modal volume get`; JSON validation.
+  - Thay đổi trực tiếp: `agent_context.md`, `CHANGELOG.md`; tạo rồi xóa `tasks/smoke_fire_detection/modal_t4_training_profile.py`.
+  - Thay đổi gián tiếp: tạo `artifacts/smoke_fire_detection/modal_t4_profile_1gpu_batch8.json`, `artifacts/smoke_fire_detection/modal_t4_profile_2gpu_batch16.json`; tạo cache tạm trong container và xóa cùng job; xóa bản report trung chuyển trên Modal Volume.
+- 2026-08-05 09:45 GMT+7
+  - Xác nhận teacher hiện có phù hợp: `rfdetr_large_dfire` 2 lớp, checkpoint local; checkpoint ngoài Pyronear/SmokeyNet chỉ smoke hoặc có leakage-caveat, không dùng làm teacher audit near-field hai lớp.
+  - Tạo `tasks/smoke_fire_detection/near_field_model_audit.py`: chạy teacher trên nguồn near-field, chọn bất đồng strong `possible_missing_label`/`possible_wrong_or_extra_label`, xuất JSON review; prediction chỉ là triage, không tự relabel.
+  - Không chạy inference GPU: Modal chỉ được user duyệt để profile ngắn; GPU server nội bộ thiếu đơn giá/estimate trước job.
+  - Command: đọc `agent_context.md`, registry asset/checkpoint, evaluator; `.venv/bin/python -m py_compile tasks/smoke_fire_detection/near_field_model_audit.py`; `git diff --check`.
+  - Thay đổi trực tiếp: `tasks/smoke_fire_detection/near_field_model_audit.py`, `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+- 2026-08-05 10:31:16 GMT+7
+  - Sửa workflow model-assisted review theo yêu cầu: chấm bbox nhãn gốc; bbox teacher chỉ là gợi ý nét đứt kèm confidence.
+  - HTML mới cho phép đồng thời đánh dấu `missing_or_extra`, `wrong_class`, `geometry`; `pass` và `uncertain` tách riêng. Không gộp lỗi hình học bbox với lỗi nhãn.
+  - Bổ sung validation JSON: chặn review ID lạ/trùng/thiếu, status sai và issue/status không khớp; không tự sửa raw dataset/label.
+  - Command: đọc context/tool/eval/HTML; `.venv/bin/python -m py_compile tasks/smoke_fire_detection/near_field_model_audit.py`; `--help`; kiểm thử HTML in-memory rồi xóa `/tmp/near_field_model_audit_review_test.html`; `git diff --check`.
+  - Thay đổi trực tiếp: `tasks/smoke_fire_detection/near_field_model_audit.py`, `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
+- 2026-08-05 10:53:36 GMT+7
+  - Tạo notebook Kaggle tự chứa toàn bộ mã model-assisted audit: `tasks/smoke_fire_detection/near_field_model_audit_kaggle.ipynb`. Notebook chỉ cần Kaggle Input cho 5 source near-field đã giải nén và checkpoint RF-DETR D-Fire; tự kiểm GPU, cài `rfdetr==1.8.3`, chạy tối đa 2 worker theo GPU, theo dõi utilization/VRAM, gộp queue top-100/source và xuất ZIP offline review.
+  - Sửa `AGENTS.md`: bắt buộc kiểm kê/dọn trước handoff; `to_be_resolved/` temp-only; notebook cloud tự chứa source code, Input chỉ mang binary data/checkpoint lớn.
+  - Sửa `agent_context.md`: lưu layout Kaggle audit và rule cleanup mới.
+  - Command: đọc context/rule/source audit/layout/dung lượng; đối chiếu archive với dataset giải nén; `cmp` checkpoint selected; tạo notebook bằng `.venv/bin/python`; `.venv/bin/python -m json.tool` validate notebook.
+  - Thay đổi trực tiếp: `AGENTS.md`, `agent_context.md`, `CHANGELOG.md`, `tasks/smoke_fire_detection/near_field_model_audit_kaggle.ipynb`.
+  - Thay đổi gián tiếp: không có.
+- 2026-08-05 10:56:03 GMT+7
+  - Xóa hoàn toàn `to_be_resolved/` (~16.5GB): 8 ZIP dataset đã giải nén/audit, JSON quyết định review đã import/validate, 3 checkpoint Pyro-SDIS thử nghiệm và metric/config của run đã chốt. Checkpoint `checkpoint_best_total.pth` selected đã được đối chiếu byte-for-byte với bản trong `artifacts/` trước khi xóa.
+  - Xóa cache `tasks/smoke_fire_detection/__pycache__/`; xóa notebook Pyro fine-tune đã hoàn tất và script one-shot `firesense_cache.py`, `firesense_gate.py`, `smokeynet_cache.py`.
+  - Không xóa Pyro-SDIS/PYRONEAR và historical checkpoint/cache vì đây là nhóm lớn, không còn workflow hiện tại nhưng có thể cần đối chiếu; chờ user duyệt riêng.
+  - Command: `rm -f` file temporary đã liệt kê, `rmdir to_be_resolved`, `rm -rf __pycache__`, `rm -f` 4 file one-shot; parse JSON notebook; compile worker nhúng trong notebook; `git diff --check`.
+  - Thay đổi trực tiếp: xóa `to_be_resolved/` và toàn bộ nội dung, `tasks/smoke_fire_detection/__pycache__/`, `tasks/smoke_fire_detection/kaggle_train_pyronear2025_rfdetr_finetune.ipynb`, `tasks/smoke_fire_detection/firesense_cache.py`, `tasks/smoke_fire_detection/firesense_gate.py`, `tasks/smoke_fire_detection/smokeynet_cache.py`; sửa `agent_context.md`, `CHANGELOG.md`.
+  - Thay đổi gián tiếp: không có.
 
-- Command: `WebFetch`/`WebSearch` trên 5 URL user đưa (không tải file, chỉ đọc trang/metadata), `curl` probe `scidb.cn` (API trả 404, page JS-render nên không lấy được nội dung đầy đủ).
-- **FASDD** (github.com/openrsgis/FASDD): xác nhận host thật là ScienceDB (`scidb.cn`, DOI `10.57760/sciencedb.j00104.00103`), KHÔNG PHẢI Kaggle — nhưng trang JS-render, chưa xác nhận được có cần tài khoản không.
-- **furg-fire-dataset** (github.com/steffensbola/furg-fire-dataset): license CC0, nhưng domain lẫn indoor/outdoor/robot-di-động (không phải fixed camera), format XML cũ (OpenCV 2.4.9, không phải YOLO/COCO), ~30 video, repo ngừng cập nhật — đánh giá không phù hợp near-field track hiện tại.
-- **aiformankind/wildfire-smoke-dataset**: xác nhận nguồn ảnh là camera cố định HPWREN (KHÔNG PHẢI UAV — đính chính nếu có nhận định trước đó nói ngược lại), license CC BY-NC-SA, cùng họ camera network với FIgLib/PYRONEAR nên rủi ro chính là leakage far-field, không phải domain.
-- **Boreal Forest Fire** (etsin.fairdata.fi, paper Nature Sci Data 2025): xác nhận UAV thật 100% (DJI Phantom 4, 4K, prescribed burn Phần Lan), Subset A (4954 ảnh + bbox txt) nhẹ hơn Subset B (292 video 4K — có lẽ là phần user thấy "nặng").
-- **zenodo.org/records/15826133**: xác nhận đây chính là "Indoor Fire Smoke" đã biết từ trước (research_plan.md mục 10.7), không phải nguồn mới.
-- Trả lời câu hỏi UAV của user: dự án hiện không có track UAV (kiến trúc mục 2.3 theo camera cố định far-field/near-field). Ghi nhận UAV là track thứ 3 tiềm năng (giống cách `FLAME 3` đã parked), chưa mở, không tự quyết thay user.
-- File trực tiếp sửa: `tasks/smoke_fire_detection/docs/research_plan.md` (mục 10.5/10.7 — thêm bullet khảo sát 5 nguồn + ghi chú UAV, thêm lựa chọn (d) ScienceDB), `CHANGELOG.md` (mục này).
-- Không tải/cài gì mới, không đụng dataset/train. File gián tiếp: không có.
+2026-08-05 11:30:46 GMT+7
+- Sửa workflow audit: DeepQuest vào nhánh pseudo-label có duyệt; FireAndSmoke v1 vào review đủ 100 ảnh; prediction chỉ thành nhãn dataset dẫn xuất khi reviewer chọn `adopt_teacher`; raw dataset không đổi.
+- Thay đổi trực tiếp: AGENTS.md; agent_context.md; CHANGELOG.md; tasks/smoke_fire_detection/near_field_review.py; tasks/smoke_fire_detection/near_field_model_audit.py; tasks/smoke_fire_detection/near_field_model_audit_kaggle.ipynb.
+- Thay đổi gián tiếp: không có file đầu ra workflow mới; cache __pycache__ sinh khi py_compile đã bị xóa.
+- Command: `.venv/bin/python -m py_compile tasks/smoke_fire_detection/near_field_review.py tasks/smoke_fire_detection/near_field_model_audit.py`; notebook JSON/code-cell compile; source-record count DeepQuest/FireAndSmoke v1.
+- Dọn artifact benchmark/checkpoint/cache cũ bị safety review từ chối; chưa có file artifact nào bị xóa trong lượt này.
 
-## 2026-07-22 19:51 GMT+7 — Soát `to_be_resolved/` (user tự tải) + user phản biện trục cố định/di động + cảnh báo mismatch scenario
+- 2026-08-07 16:39:50 GMT+7
+  - Nén dataset D-Fire phục vụ user tải về.
+  - Command: `uname -a`; `zip -r ../../D-Fire.zip D-Fire` (Cwd: `datasets/smoke_fire_detection`); `ls -lh D-Fire.zip`.
+  - Thay đổi trực tiếp: `CHANGELOG.md`.
+  - Thay đổi gián tiếp: `D-Fire.zip` (2.9GB).
 
-- User phản biện: trục "chỉ dùng camera cố định" có thể quá khắt khe (deployment thật chưa chốt, có thể là robot/UAV tuần tra); và cho rằng near-field hiện tại (mục 10.2, dựa FM 3232/ISO 7240-29/UL 268B/BS 5839-1 — toàn chuẩn hệ báo cháy LẮP CỐ ĐỊNH) không khớp scenario thật nào user hình dung — nêu nghi vấn hiểu lầm nghiêm trọng trong plan.
-- Command: `unzip -l`/`unzip -p` (chỉ đọc metadata/data.yaml/README, KHÔNG giải nén ảnh) trên 3 file zip có sẵn trong `to_be_resolved/` (user tự tải, không rõ nguồn gốc từ agent, đã luận ra qua metadata Roboflow nhúng trong data.yaml).
-  - `DFS-Fire.v3i.yolov11.zip`: Roboflow `cv-atyqk/dfs-fire` v3, 8939 ảnh, YOLO 2 lớp `fire,smoke`, License Public Domain.
-  - `FireAndSmoke.v1i.yolov11.zip`: Roboflow `undying/fireandsmoke-gr81i` v1, 100 ảnh, 1 lớp `firerotation`, CC BY 4.0 — xác nhận KHÁC dataset CostiCatargiu đã nhắm trước (không có lớp "other", không giải quyết vấn đề NG2).
-  - `FIRE-SMOKE-DATASET_from_DeepQuestAI.zip`: classification-only (`Fire/Smoke/Neutral` folder, không bbox), không dùng trực tiếp cho RF-DETR.
-- User xác nhận: FASDD tải được qua `scidb.cn` không cần login (gỡ block Kaggle-credential); Indoor Fire Smoke (zenodo 15826133) domain liên quan (duyệt).
-- Trả lời: leakage-check có cách làm (kỹ thuật dedup giống PYRONEAR-2025-clean), chưa chạy. Reassess trục cố định/di động: đồng ý quá khắt khe, trục đúng là khoảng cách/góc nhìn/blur chứ không phải "camera di chuyển hay không".
-- Hỏi lại user qua AskUserQuestion: kịch bản deployment thật là gì (robot mặt đất / UAV / camera cố định / chưa biết-muốn tổng quát). **User trả lời: "Vẫn giả định camera cố định, các cái khác thì thôi để sau."**
-- **Quyết định (2026-07-22 19:54 GMT+7): giữ nguyên mục 10.1-10.3 (envelope S2/gate NG dựa FM3232/ISO7240-29/UL268B/BS5839-1), không đổi. Robot mặt đất/UAV tuần tra: hoãn, không mở track song song.** furg-fire-dataset (phần robot) và Boreal Forest Fire (UAV) vẫn ở trạng thái "biết nguồn, chưa dùng" — không cần hành động thêm.
-- File trực tiếp sửa: `tasks/smoke_fire_detection/docs/research_plan.md` (mục 10.8 mới + cập nhật quyết định), `CHANGELOG.md` (mục này).
-- Không giải nén/copy/di chuyển file trong `to_be_resolved/` — chỉ đọc metadata. File gián tiếp: không có.
-
-## 2026-07-23 10:20 GMT+7 — Sửa phát biểu sai (agent tự gán quyết định cho user), giải thích multiple-comparison vs data-leakage, rà kế hoạch wrap-up
-
-- User bắt lỗi: turn trước agent nói "thứ bạn đã quyết KHÔNG làm" về việc mở final split cho 2 candidate reference — SAI, đó là khuyến nghị của agent, user chưa từng xác nhận. Đã sửa lại đúng trong `research_plan.md` mục 10.9 và trong hội thoại — câu hỏi vẫn đang mở.
-- User hỏi tại sao đánh giá nhiều lần trên test lại "sợ leakage" trong khi test không đổi model. Trả lời: không phải data-leakage cổ điển (đúng như user nói, infer không update weight) — rủi ro thật là multiple-comparison/selection bias thống kê (nhiều phép thử trên 1 tập nhỏ cố định dễ vin vào kết quả đẹp do nhiễu mẫu nhỏ, không phải tín hiệu thật) + xói mòn narrative "final one-shot". Dẫn chứng từ chính data project (mục 12.1 report: threshold khóa dev vượt budget 1.5x-3.4x khi replay final — nhiễu mẫu nhỏ có thật). Ghi lại đầy đủ ở `research_plan.md` mục 10.9.
-- Trả lời câu hỏi bundle Kaggle fine-tune: notebook đã `checkpoint_interval=1` (lưu mọi epoch) — không cần đoán epoch=8 tối ưu hay không, eval hết 8 checkpoint trên dev sau khi train, chọn tốt nhất, không cần đổi notebook.
-- Trả lời câu hỏi "train SOTA cùng dataset": đã có sẵn miễn phí `yolo26x_pyro_sdis` (dev AUROC 0.7839) làm điểm so kiến trúc far-field không cần train mới; train YOLO thật trên PYRONEAR-2025-clean là optional/stretch, không bắt buộc.
-- Trả lời câu hỏi "SOTA lửa khói gần": xác nhận KHÔNG có anchor near-field uy tín tương đương Pyronear/SmokeyNet (literature phân mảnh) — gần nhất là D-Fire paper baseline mAP50 đã trích sẵn ở report mục 9, không cần thêm việc. Làm rõ double-duty của winner (vừa là far-field winner qua zero-shot FIgLib, vừa là near-field control qua zero-shot FIRESENSE) — gốc câu hỏi mở "vì sao D-Fire thắng Pyro-SDIS trên FIgLib" vẫn chưa có lời giải nhân quả.
-- File trực tiếp sửa: `tasks/smoke_fire_detection/docs/research_plan.md` (mục 10.9 mới), `agent_context.md` (dòng P1-b, note checkpoint-sweep), `CHANGELOG.md` (mục này).
-- Không chạy training/eval nào lượt này — thuần phân tích/trả lời, không có file gián tiếp.
-
-## 2026-07-23 10:53 GMT+7 — Sampling noise vs selection bias (giải thích sâu hơn); quyết định gộp dataset Kaggle; xác nhận D-Fire baseline đã ghi report
-
-- User phản biện tiếp: "sao không gộp dev+final thành 1 tập vừa to vừa giảm nhiễu, model vốn deterministic mà". Giải thích rõ 2 cơ chế khác nhau: (1) sampling/variance noise — do mẫu hữu hạn là 1 lần rút ngẫu nhiên, không liên quan model deterministic hay không, tăng cỡ mẫu (gộp/thu thêm) giảm được; (2) selection bias — dùng chung 1 tập vừa để chọn winner/threshold vừa để báo cáo điểm, gây thổi phồng, KHÔNG liên quan cỡ mẫu, gộp dev+final không giải quyết được nếu vẫn dùng để vừa chọn vừa report. Đây là lý do final phải giữ one-shot dù biết nó "không ổn định" (mục 12.1) — sự không ổn định đó chính là finding có giá trị (cho biết threshold có generalize không), không phải lý do bỏ final.
-- User hỏi Kaggle fine-tune hiện tại có phải "đúng practice" không hay nên gộp D-Fire + Pyro-SDIS vào PYRONEAR-2025-clean để "1 lần ra kết quả tốt nhất" (tiết kiệm tài nguyên vì sắp chuyển dự án mới). Trả lời câu hỏi treo (2) ở agent_context.md dòng 47 (mitigation catastrophic-forgetting): khuyến nghị trộn D-Fire (giải quyết đồng thời forgetting + mục tiêu best-single-model), Pyro-SDIS optional/không ưu tiên (RF-DETR-L đã thua trên Pyro-SDIS trong ma trận 2×2, lợi ích không chắc). Nêu rõ đánh đổi: mất khả năng cô lập nhân quả domain-match; và chi phí thời gian thật (phải merge data+re-zip+upload Kaggle mới, không phải chỉ đổi path). User chưa chốt cuối.
-- User hỏi thêm về distillation/đổi kiến trúc/relabel-bằng-SOTA cho "novelty" report, và SOTA-relabel có leakage không. Khuyến nghị BỎ cả 3 (mỗi cái là 1 mini-project riêng, không kịp 1-2 ngày, dở dang tệ hơn không làm) — dùng finding architecture×dataset interaction đã có sẵn (mục 4-5 model_benchmark_2x2.md) làm điểm nhấn "mới" miễn phí. Relabel-SOTA không phải leakage cổ điển (sửa nhãn train, không nhìn eval) nhưng có rủi ro gián tiếp nếu SOTA model từng train trên data trùng scene eval — ghi further-work.
-- Xác nhận D-Fire baseline mAP50 literature (60.6-80.9%) đã ghi sẵn trong `model_benchmark_2x2.md` mục 9 dòng 109 — không cần thêm.
-- File trực tiếp sửa: `tasks/smoke_fire_detection/docs/research_plan.md` (mục 10.10 mới), `agent_context.md` (dòng 47, cập nhật khuyến nghị gộp dataset), `CHANGELOG.md` (mục này).
-- Không chạy training/eval/tải dataset nào lượt này — thuần phân tích/trả lời, không có file gián tiếp.
-
-## 2026-07-23 12:10 GMT+7 — Sửa chiều winner's curse; tính pooled dev+final AUROC winner; xác nhận SOTA leakage; chốt Kaggle không gộp dataset
-
-- User phản biện tiếp: thích gộp dev+final hơn tách vì ưu tiên giảm sampling noise hơn selection bias; chỉ ra "thổi phồng" có thể sai chiều (có thể xẹp xuống). Sửa lại: chỉ số dùng để CHỌN đo trên đúng tập dùng để chọn mới chắc chắn lệch có lợi (winner's curse, quy luật toán học của argmax trên ước lượng nhiễu); số liệu khác không có chiều lệch cố định, đối xứng — dẫn chứng ngay project: threshold khóa dev, replay final lại VƯỢT budget (xẹp, không thổi phồng).
-- Nhận ra: vì winner đã khóa xong chỉ dựa trên dev (trước khi final mở), gộp dev+final để tính lại điểm winner KHÔNG phát sinh selection-bias mới, chỉ giảm nhiễu — an toàn, gần miễn phí (chỉ cần gộp cache JSONL có sẵn, không cần GPU/mở gì mới).
-- **Thực thi:** command `cat figlib_detector_cache_rfdetr_large_dfire_{dev,test}.jsonl > pooled...jsonl` (scratchpad, verify 0 trùng `frame_path_index` giữa dev/final — đúng thiết kế camera-disjoint) rồi `temporal_eval.py g0 --cache pooled...jsonl --bootstrap-samples 1000 --seed 20260707`. Kết quả: AUROC(smoke) pooled = **0.8323**, CI event `[0.8156,0.8482]`, CI camera `[0.8126,0.8519]` — hẹp hơn rõ so với final-only. Ghi vào `model_benchmark_2x2.md` mục 12.1bis (bổ sung, giữ song song bảng one-shot final gốc, không thay thế — bảng gốc vẫn là finding riêng về threshold-transfer instability).
-- Xác nhận SOTA đang dùng (Pyronear yolov8s/yolo11s, SmokeyNet) đều mang leakage/fairness caveat, không cái nào chắc chắn sạch — Pyronear chưa xác minh lineage (khả năng trùng HPWREN/ALERTWildfire), SmokeyNet train trực tiếp trên chính FIgLib (in-domain, gần chắc chắn overlap). Không có SOTA ngoài nào biết là leak-free — cấu trúc field (ít checkpoint public, hầu hết gắn cùng nhóm camera network gốc FIgLib), không phải thiếu research. D-Fire/Pyro-SDIS (project tự train) là candidate "sạch" duy nhất hiện có, không phải SOTA ngoài.
-- User chốt quyết định Kaggle: giữ nguyên plan gốc (PYRONEAR-2025-clean-only, không gộp D-Fire/Pyro-SDIS) — ưu tiên giữ khả năng cô lập domain-match lever cho report, tiết kiệm compute, chấp nhận catastrophic-forgetting làm caveat công khai. Đóng câu hỏi treo (2) ở agent_context.md.
-- File trực tiếp tạo: `artifacts/smoke_fire_detection/gate_g0_auroc_rfdetr_large_dfire_pooled_dev_final.json`.
-- File trực tiếp sửa: `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md` (mục 12.1bis mới), `tasks/smoke_fire_detection/docs/research_plan.md` (mục 10.11 mới), `agent_context.md` (đóng mục 2, thêm pooled AUROC), `CHANGELOG.md` (mục này).
-- File tạm (scratch, ngoài repo): `pooled_dev_final_rfdetr_large_dfire.jsonl` tại scratchpad (gộp từ 2 cache có sẵn, không lưu vào repo).
-
-## 2026-07-24 10:57 GMT+7 — Eval PYRONEAR-2025 fine-tune trên FIgLib dev + resource profile
-
-- Quyết định user: chỉ chạy source-selected `checkpoint_best_total.pth`; không tải/sweep 8 checkpoint. User xác nhận checkpoint do chính user tải từ Kaggle và đáng tin cậy để nạp bằng RF-DETR.
-- Pilot command: `/usr/bin/time -v .venv/bin/python tasks/smoke_fire_detection/eval.py detector-cache --index artifacts/smoke_fire_detection/figlib_index.jsonl --data-root datasets/smoke_fire_detection/FIgLib --weights to_be_resolved/pyronear2025_8_epochs/checkpoint_best_total.pth --backend rfdetr --candidate-id rfdetr_large_dfire_pyronear2025_ft --class-names smoke,fire --imgsz 1280 --conf 0.05 --iou 0.6 --device cuda --split dev --batch 8 --limit 512 --out /tmp/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_pilot512.jsonl`.
-- Pilot: 512 frame/1m44.72s; CPU 135%; peak RSS 2,634,656 KiB; 0 swap; sample process GPU ~35-36% SM, total GPU 94-95%, 65-68°C. Dọn đúng 2 file pilot tạm bằng `rm /tmp/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_pilot512.jsonl /tmp/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_pilot512.jsonl.meta.json`.
-- Checkpoint command: `mkdir -p artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_pyronear2025_ft && cp -p to_be_resolved/pyronear2025_8_epochs/checkpoint_best_total.pth artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_pyronear2025_ft/checkpoint_best_total.pth`.
-- Full command: `/usr/bin/time -v .venv/bin/python tasks/smoke_fire_detection/eval.py detector-cache --index artifacts/smoke_fire_detection/figlib_index.jsonl --data-root datasets/smoke_fire_detection/FIgLib --weights artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_pyronear2025_ft/checkpoint_best_total.pth --backend rfdetr --candidate-id rfdetr_large_dfire_pyronear2025_ft --class-names smoke,fire --imgsz 1280 --conf 0.05 --iou 0.6 --device cuda --split dev --batch 8 --resume --out artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl`.
-- Full: 28,360 frame + 1 corrupt JPEG; 1h25m10s; CPU 155%; peak RSS 2,779,980 KiB; 0 swap. Resource monitor dùng `ps -p 2558230 -o etimes=,%cpu=,rss=`, `wc -l artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl`, `nvidia-smi --query-gpu=utilization.gpu,power.draw,temperature.gpu --format=csv,noheader,nounits`, `nvidia-smi pmon -c 1`; chu kỳ ban đầu 60 giây, đổi thành 600 giây theo yêu cầu user. Sample eval GPU 29-42% SM, total GPU 93-95%, power 42-55W, 69-77°C; job train khác tiếp tục chạy.
-- Kiểm tra cache class bằng `.venv/bin/python` đọc JSONL: 78,708 detection class_id=0/smoke; 7 detection class_id=1; numeric class score được giữ, cảnh báo RF-DETR về class name không ảnh hưởng primary `max_smoke_confidence`.
-- G0 command: `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py g0 --cache artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl --out artifacts/smoke_fire_detection/gate_g0_auroc_rfdetr_large_dfire_pyronear2025_ft_dev.json --bootstrap-samples 1000 --seed 20260707`.
-- Compare command: `.venv/bin/python tasks/smoke_fire_detection/temporal_eval.py compare-candidates --baseline-cache artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_dev.jsonl --candidate-cache artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl --out artifacts/smoke_fire_detection/compare_rfdetr_large_dfire_vs_pyronear2025_ft_dev.json --bootstrap-samples 1000 --seed 20260707`.
-- Kết quả: candidate AUROC smoke 0.80938, winner gốc 0.83173, Δ=-0.02235; paired CI95 event [-0.03766,-0.00643], camera [-0.03799,-0.00586]. Candidate tệ hơn có ý nghĩa thống kê; giữ winner gốc; không mở final/test, không chạy checkpoint khác.
-- Command audit/diagnostic trước eval: `uname -a`; `sed -n '1,240p' agent_context.md`; `find to_be_resolved/pyronear2025_8_epochs -maxdepth 3`; `git status --short`; đọc `training_config.json`, đầu/cuối `metrics.csv`, notebook; `.venv/bin/python` trích 8 dòng validation; `torch.load(..., weights_only=True)` đọc metadata an toàn; xem `eval.py detector-cache --help`, `temporal_eval.py g0 --help`, `compare-candidates --help`; `df -h .`; `du -sh` input/FIgLib/artifacts; `free -h`; `ps`; `nvidia-smi`; đọc metadata/cache/result bằng `sed` và thống kê JSONL bằng `.venv/bin/python`.
-- Tracking edit: `apply_patch` trực tiếp và qua shell đều fail trước khi sửa do `bwrap: loopback: Failed RTM_NEWADDR`; `git apply` fail vì hunk không khớp; dùng `ed` theo dòng/hunk sau khi xác minh bằng `nl -ba`.
-- Thay đổi trực tiếp — thêm: `artifacts/smoke_fire_detection/runs/rfdetr_large_dfire_pyronear2025_ft/checkpoint_best_total.pth` (copy binary, bị ignore bởi `*.pth`).
-- Thay đổi trực tiếp — sửa: `tasks/smoke_fire_detection/docs/model_benchmark_2x2.md`, `agent_context.md`, `CHANGELOG.md`.
-- Thay đổi gián tiếp — thêm: `artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl`, `artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl.meta.json`, `artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl.errors.json`, `artifacts/smoke_fire_detection/gate_g0_auroc_rfdetr_large_dfire_pyronear2025_ft_dev.json`, `artifacts/smoke_fire_detection/compare_rfdetr_large_dfire_vs_pyronear2025_ft_dev.json`.
-- Thay đổi gián tiếp — xóa: 2 file pilot trong `/tmp` nêu trên; không thể khôi phục nhưng chỉ là cache thử 512 frame và đã được thay bằng full cache.
-- File user có sẵn, không sửa/xóa: toàn bộ `to_be_resolved/pyronear2025_8_epochs/`.
-- Validation cuối: `.venv/bin/python` parse 4 JSON report/metadata; `wc -l` xác nhận 28,360 cache row; `git diff --check`; `git diff --stat`; `git status --short`; `test ! -e` xác nhận 2 file pilot đã xóa; `ls -lh` xác nhận checkpoint 130MiB, cache 40MiB; review `git diff`. Report sửa section 14 thành snapshot lịch sử và ghi CI baseline inline ở section 15.
-
-## 2026-07-24 16:26 GMT+7 — Làm rõ dataset near-field + cập nhật plan/context
-
-- Kết luận chốt: ưu tiên thời gian; sau audit sẽ train một candidate gộp `D-Fire + DFS-Fire + DeepQuest Train/Neutral`. Chấp nhận không tách causal contribution của từng nguồn.
-- Sửa số liệu archive bằng đếm trực tiếp: DFS-Fire có 8,735 ảnh (train 6,117/valid 1,734/test 884), không phải 8,939; DeepQuestAI có 3,000 ảnh (Train 900/lớp, Test 100/lớp), không phải 3,008; FireAndSmoke có 100 ảnh (70/20/10).
-- Làm rõ vai trò: DFS-Fire dùng được để train detector nếu audit PASS; DeepQuest Neutral dùng làm empty-label negative, Fire/Smoke thiếu bbox; FireAndSmoke loại khỏi lần đầu do class `firerotation` mơ hồ, không smoke/hard-negative và quy mô quá nhỏ.
-- Làm rõ protocol: audit Neutral trước train, không cần GPU; FIRESENSE nay là development/regression vì đã dẫn hướng fine-tune/threshold; held-out là tập chưa từng tham gia train/tune/selection và chỉ mở sau khi khóa candidate.
-- Quy ước hash theo phản hồi user: audit tạm được phép khi cần, nhưng không giữ artifact hash/checksum thường trực; phải xóa output tạm sau kiểm tra.
-- Command đọc/kiểm tra: `sed -n '1,260p' agent_context.md` (sandbox fail rồi chạy lại escalated); `uname -a`; `sed -n '1,420p' tasks/smoke_fire_detection/docs/research_plan.md`; `git status --short`; `tail -n 120 CHANGELOG.md`; `rg -n '^## 10|^### 10|DFS-Fire|DeepQuest|FireAndSmoke|held-out|FIRESENSE|PYRONEAR-2025 tồn tại|checksum|hash' tasks/smoke_fire_detection/docs/research_plan.md`; `git status --short -- agent_context.md tasks/smoke_fire_detection/docs/research_plan.md CHANGELOG.md`; `sed -n '240,390p' tasks/smoke_fire_detection/docs/research_plan.md`; `nl -ba agent_context.md | sed -n '1,185p'`; `nl -ba tasks/smoke_fire_detection/docs/research_plan.md | sed -n '1,32p;248,375p'`.
-- Command audit ZIP: `unzip -Z1 to_be_resolved/DFS-Fire.v3i.yolov11.zip | awk ...`; `unzip -Z1 to_be_resolved/FIRE-SMOKE-DATASET_from_DeepQuestAI.zip | awk ...`; `unzip -Z1 to_be_resolved/FireAndSmoke.v1i.yolov11.zip | awk ...`; `unzip -p to_be_resolved/DFS-Fire.v3i.yolov11.zip data.yaml`; `unzip -p to_be_resolved/FireAndSmoke.v1i.yolov11.zip data.yaml`.
-- Command sửa: thử `apply_patch` tool (fail `bwrap: loopback: Failed RTM_NEWADDR`); `type apply_patch`; thử `apply_patch <<'PATCH' ... PATCH` ngoài sandbox (vẫn fail cùng lỗi); dùng `ed -s agent_context.md`; dùng `ed -s tasks/smoke_fire_detection/docs/research_plan.md` hai lượt để áp hunk tối thiểu.
-- Command kiểm tra trung gian: `git diff -- agent_context.md tasks/smoke_fire_detection/docs/research_plan.md`; `rg -n 'Updated:|PYRONEAR-2025 tồn tại|Track near-field|10\\.4|10\\.5|10\\.6|Lưu ý trạng thái|8,735|3,000|10\\.12|Near-field — next' ...`; `sed -n '244,312p;340,358p;372,396p' tasks/smoke_fire_detection/docs/research_plan.md`; `nl -ba tasks/smoke_fire_detection/docs/research_plan.md | sed -n '340,356p'`; `TZ=Asia/Ho_Chi_Minh date '+%Y-%m-%d %H:%M GMT+7'`.
-- Thay đổi trực tiếp — sửa: `agent_context.md`, `tasks/smoke_fire_detection/docs/research_plan.md`, `CHANGELOG.md`.
-- Thay đổi gián tiếp: không có. Không giải nén, tạo hash, train, eval hoặc dùng GPU; ba ZIP trong `to_be_resolved/` chỉ được đọc, không sửa.
-- Correction sau validation: đổi dòng `DỪNG LẠI` lịch sử ở research plan thành snapshot `ĐÃ SUPERSEDED`, tránh mâu thuẫn với NE1 hiện hành.
-- Command validation/sửa cuối: `git diff --check`; `rg -n '8939 ảnh|8\\.939 ảnh|3008 ảnh|3\\.008 ảnh|Chưa có local|chưa tự tải/verify|CẢ 3 nguồn ưu tiên đã chốt đều bị chặn|chờ user quyết định hướng tiếp|proposal, chưa chạy|chưa tải, chờ duyệt' agent_context.md tasks/smoke_fire_detection/docs/research_plan.md`; `git diff --stat`; `git status --short`; `tail -n 24 CHANGELOG.md`; `sed -n '1,76p' agent_context.md`; `sed -n '342,392p' tasks/smoke_fire_detection/docs/research_plan.md`; `ed -s tasks/smoke_fire_detection/docs/research_plan.md`; `ed -s CHANGELOG.md`.
-
-## 2026-07-24 16:30 GMT+7 — Sửa phân vai Indoor Fire Smoke
-
-- Correction theo phản biện user: bỏ mặc định dành toàn bộ Indoor Fire Smoke làm held-out. Dataset này có giá trị train nếu domain/nhãn phù hợp.
-- Decision rule mới: nếu Indoor có split video/scene-disjoint, dùng train split để train và giữ test split held-out; nếu split không sạch, dùng Indoor cho train và dành FASDD/nguồn độc lập khác làm held-out. Không dùng cùng ảnh/video cho cả hai vai.
-- Command: `rg -n 'Held-out|held-out|Indoor Fire Smoke|FASDD' agent_context.md tasks/smoke_fire_detection/docs/research_plan.md | tail -n 30`; `ed -s agent_context.md`; `ed -s tasks/smoke_fire_detection/docs/research_plan.md`; `TZ=Asia/Ho_Chi_Minh date '+%Y-%m-%d %H:%M GMT+7'`; `ed -s CHANGELOG.md`.
-- Thay đổi trực tiếp — sửa: `agent_context.md`, `tasks/smoke_fire_detection/docs/research_plan.md`, `CHANGELOG.md`.
-- Thay đổi gián tiếp: không có.
-- Validation cuối: `git diff --check` PASS; `rg -n 'Audit Indoor Fire Smoke|Held-out độc lập|Held-out =|8,735 ảnh thật|3,000 ảnh thật|Một candidate gộp' agent_context.md tasks/smoke_fire_detection/docs/research_plan.md`; `git diff --stat`; `git status --short`. Không sửa các thay đổi/artifact có sẵn từ lượt eval PYRONEAR trước.
-
-## 2026-07-24 16:32 GMT+7 — Khóa remap class DFS-Fire trước merge
-
-- Phát hiện từ `data.yaml`: DFS-Fire dùng `fire=0,smoke=1`, ngược D-Fire `smoke=0,fire=1`. Bắt buộc remap DFS `0→1, 1→0`; merge nguyên trạng sẽ làm model học nhãn đảo.
-- Command: `ed -s agent_context.md`; `ed -s tasks/smoke_fire_detection/docs/research_plan.md`; `TZ=Asia/Ho_Chi_Minh date '+%Y-%m-%d %H:%M GMT+7'`; `git diff --check`; `rg -n 'class order ngược D-Fire|bắt buộc remap DFS' agent_context.md tasks/smoke_fire_detection/docs/research_plan.md`; `ed -s CHANGELOG.md`.
-- Thay đổi trực tiếp — sửa: `agent_context.md`, `tasks/smoke_fire_detection/docs/research_plan.md`, `CHANGELOG.md`.
-- Thay đổi gián tiếp: không có. Validation `git diff --check` PASS.
-
-## 2026-07-24 17:06 GMT+7 — Đồng bộ dashboard với kết quả follow-up và khôi phục dịch vụ
-
-- Mục tiêu: cập nhật dashboard nhưng bảo toàn toàn bộ kết quả/user content cũ. Thực hiện theo hướng additive: thêm panel `Kết quả bổ sung sau benchmark 2×2`, cập nhật `ResearchStatus`, không sửa/xóa artifact nghiên cứu, cache video, dữ liệu public hoặc cấu trúc 4 tab.
-- Kết quả far-field được thêm: winner pooled dev+final AUROC 0.8323 + CI; Pyronear YOLO11s AUROC 0.8695/Δ +0.0378 + paired CI; PYRONEAR-2025-clean fine-tune AUROC 0.8094/Δ -0.0224 + paired CI và quyết định giữ winner; SmokeyNet subsample30 AUROC 0.8092, matched-winner 0.7798, Δ +0.0294 nhưng CI chứa 0.
-- Kết quả near-field được thêm: FIRESENSE 49 video pooled/smoke/fire AUROC + cảnh báo fire-negative; NE4 scale audit D-Fire; NE1 inventory và kế hoạch candidate gộp. Cập nhật headline pooled + trạng thái FIRESENSE/NE1.
-- Resource trước/sau: không train/inference, GPU/VRAM dashboard = 0; model API đều `resident=false`; process dashboard sau restart RSS 77,564 KiB. Vite build 2.02 giây; 26/26 unit test PASS.
-- Phát hiện vận hành: `results-dashboard.service` đã OOM-kill ngày 2026-07-23 do áp lực toàn hệ thống; process dashboard khi chết chỉ peak 49.4 MiB. Restart 2026-07-24 PASS; loopback HTML/API 200; bind giữ `0.0.0.0:8731`.
-- Command nền/audit: `uname -a`; `sed -n '1,260p' agent_context.md`; `rg --files tasks/results_dashboard`; `git status --short --ignored ...`; `find tasks/results_dashboard ...`; đọc `ResearchStatus.tsx`, `export.py`, `types.ts`, `data.ts`, `README.md`, `candidates_meta.json`, `caveats_registry.json`, `App.tsx`, `Overview.tsx`, `SotaTable.tsx`, `ForestPlot.tsx`, `ResolutionSensitivity.tsx`, `SourceDomainTables.tsx`, `ComparisonMatrix.tsx`, `theme.ts`, `components.css`, `package.json`; `tail -n 180 CHANGELOG.md`.
-- Command đối chiếu artifact: `find artifacts/smoke_fire_detection ... | rg ...`; `jq` trên `candidates.json`, `evaluations.json`, `gate_g0_auroc_smokeynet_reference_subsample30.json`, `gate_g0_auroc_rfdetr_large_dfire_pyronear2025_ft_dev.json`, `gate_g0_auroc_rfdetr_large_dfire_pooled_dev_final.json`, `compare_rfdetr_large_dfire_vs_pyronear2025_ft_dev.json`, `compare_winner_vs_smokeynet_dev_subsample30.json`, `compare_winner_vs_pyronear_yolo11s_dev.json`, `gate_firesense_auroc_rfdetr_large_dfire.json`, `ne4_dfire_scale_histogram.json`.
-- Command vận hành/resource: `systemctl --user status results-dashboard.service --no-pager -l`; `ps ...`; `systemctl --user restart results-dashboard.service`; `systemctl --user is-active ...`; `curl -fsS http://127.0.0.1:8731/`; `curl -fsS http://127.0.0.1:8731/api/models`; `ps -C python ...`; `nvidia-smi --query-compute-apps=...`.
-- Command sửa: `apply_patch` thử một lần nhưng fail trước khi ghi do `bwrap: loopback: Failed RTM_NEWADDR`; fallback `ed -s` tạo `FollowUpResults.tsx`, sửa `App.tsx`, `ResearchStatus.tsx`, `agent_context.md`; lượt `ed` đầu có một số hunk không match, đã đọc lại bằng `sed`/`nl`, xóa 2 dòng `detail` stale bị duplicate và áp lại chính xác theo số dòng.
-- Command validation/build: `npm run build`; `.venv/bin/python -m unittest tasks.results_dashboard.exporter.test_export tasks.results_dashboard.backend.test_backend -v`; `sed`/`nl` đọc lại source; `find ... -newermt ...`; `stat ...`; `rg` source + production bundle; `find .../dist -type f | wc -l`; `find .../dist/data -type f | wc -l`; `TZ=Asia/Ho_Chi_Minh date ...`.
-- Validation cuối: `git diff --check` PASS; `git status --short --ignored agent_context.md CHANGELOG.md tasks/results_dashboard`; `rg` xác nhận không còn 3 câu trạng thái stale và component mới có trong source; `systemctl --user is-active` = `active`; API vẫn trả 2 model `resident=false`; dashboard RSS 77,568 KiB, CPU 1.0% sau 2 phút 29 giây.
-- Thay đổi trực tiếp — thêm: `tasks/results_dashboard/frontend/src/components/FollowUpResults.tsx`.
-- Thay đổi trực tiếp — sửa: `tasks/results_dashboard/frontend/src/App.tsx`, `tasks/results_dashboard/frontend/src/components/ResearchStatus.tsx`, `agent_context.md`, `CHANGELOG.md`.
-- Thay đổi gián tiếp do `npm run build`: `tasks/results_dashboard/frontend/tsconfig.app.tsbuildinfo`, `tasks/results_dashboard/frontend/tsconfig.node.tsbuildinfo`; toàn bộ 129 file dưới `tasks/results_dashboard/frontend/dist/` được Vite tái tạo, gồm `dist/index.html`, `dist/assets/index-BakVL-fH.css`, bundle mới `dist/assets/index-CjhDQQg5.js`, và 126 file `dist/data/**` copy nguyên từ `frontend/public/data/**`.
-- Thay đổi gián tiếp — xóa/thay thế bundle: `tasks/results_dashboard/frontend/dist/assets/index-wicbI3Xy.js` bị Vite xóa và thay bằng `index-CjhDQQg5.js`; có thể tái tạo bằng `npm run build`.
-- Không chạy exporter; `frontend/public/data/**` không bị sửa. Không tải/giải nén dataset, không tạo hash, không dùng GPU, không nạp checkpoint/model.

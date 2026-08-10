@@ -1,0 +1,515 @@
+{
+  "method": "Filename lineage triage only; strip Roboflow .rf suffix from stem; no image hashes or fingerprints retained.",
+  "sources": {
+    "dfs_fire_v3": {
+      "images": 8735,
+      "repeated_filename_groups": 0,
+      "cross_split_filename_groups": 0,
+      "cross_split_examples": []
+    },
+    "home_fire_2025": {
+      "images": 6500,
+      "repeated_filename_groups": 0,
+      "cross_split_filename_groups": 0,
+      "cross_split_examples": []
+    },
+    "indoor_fire_smoke_2025": {
+      "images": 5000,
+      "repeated_filename_groups": 643,
+      "cross_split_filename_groups": 375,
+      "cross_split_examples": [
+        [
+          {
+            "split": "train",
+            "path": "train/images/000017_jpg.rf.4782338d3922c776f98fb4139d3a753f.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000017_jpg.rf.fce207c07dd1921fc94f7a7d6ad96f49.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000017_jpg.rf.4b7bdfbcab6309ff7760110536cb0dbf.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000039_jpg.rf.224bee27908051063614fa70924a60da.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000039_jpg.rf.29e227f738bbc4e32317c0d77b53bafd.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000045_jpg.rf.582c9b4680f37cbf2733b3f8a5eb329a.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000045_jpg.rf.b673c96a9448bdb6f99f836cea2dec19.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000045_jpg.rf.e131acc8dd73826aee3ab5af488c2e1b.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000050_jpg.rf.756ba9307d7b45f0efc45ed7ea87b715.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000050_jpg.rf.9428c630bd959984236cc5e6d162545e.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000050_jpg.rf.3567e9ee9340731c5c619ba64a1da758.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000056_jpg.rf.f27ba5c539edf72484a7af7d414875df.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000056_jpg.rf.6c6b95813dc6605dc4479628c2e4abfc.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000056_jpg.rf.9090263366939062c8e4eef3b52ffa3f.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000061_jpg.rf.8b2710bea08555b99abc9bbf35ae3588.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000061_jpg.rf.6984ce546fd32e39b4cc0a4407ce5c79.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000067_jpg.rf.02267453ff6d79e51f6b8edfe27c1e9f.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000067_jpg.rf.e386bc7b0451f0e8a0bd253d6b659dcd.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000067_jpg.rf.7249b02aa1210dfb9ba443fad1d9fac9.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000116_jpg.rf.1dadc1a8db651f0b604a90cb884125ac.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000116_jpg.rf.78c4bf165e163a4e676a0449ec9fa1ad.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000116_jpg.rf.8fa6b7cfe5f468c2f6f56a6c1011d71c.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000122_jpg.rf.8c8eb52336e3dc1a1991926c20f19809.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000122_jpg.rf.d887b369292c84761bb431a375ed6248.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000122_jpg.rf.fe13b3583b657df230661e8fd753a238.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000127_jpg.rf.f639bd93781c7a81094e80e38013d8b8.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000127_jpg.rf.d1e65bb626a199c7aaca0c5366f6d480.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000133_jpg.rf.a1a3685f02c5d0f0b0d075263499e4f7.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000133_jpg.rf.247604eda371adbcff2a6ef91d50d72a.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000149_jpg.rf.5bb863dec87e151aa690779b36ae4f7a.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000149_jpg.rf.b3ec0c6e9194725256eb4fa735b231da.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000149_jpg.rf.92f6bddf0926ec601388a4b581024042.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000149_jpg.rf.5117b01daa9e9b2434c25e081d52d04d.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000155_jpg.rf.2a7e50b1adbca73449cfd0379fc27e50.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000155_jpg.rf.a5b0e3313e42c55290b1c9ed71902934.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000155_jpg.rf.d9ce50e4a2964f8407dfb170ab1fdbe7.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000166_jpg.rf.75e970793e46ac2711e7af6bdae11778.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000166_jpg.rf.ace5c35cdfd609e92018bf55fd1cb164.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000166_jpg.rf.40d8bf103906fff3ce55fd9e7a6fc6b9.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000177_jpg.rf.921d8453618ecf42bd0d7c1eb4a8d7c2.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000177_jpg.rf.1c3896715140113043b2e7e260733c24.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000182_jpg.rf.3bd0a224627430cbd40c5ec64e777346.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000182_jpg.rf.6b4e091b79937f7a15ed76ec41931f89.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000182_jpg.rf.04c52acc3f99c06424b89366f01a819e.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000692_jpg.rf.6a1c92f481ff2ee554500a514fec7bdf.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000692_jpg.rf.d88b2bae0ac747767409d48ecf8dc285.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000692_jpg.rf.64524cf258cb55a892782007e41006f5.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000697_jpg.rf.ec56de907717b66b3d9977601790e81f.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000697_jpg.rf.ca8a60692b07cd9d9d6dfd88b5831bbb.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000726_jpg.rf.404d1d8a2b3f00ec50963061f6d7cc46.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/000726_jpg.rf.03436a7ee651866921b47f9a05c9c17e.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/000838_jpg.rf.1c47cae4952132c091772bc6965012af.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/000838_jpg.rf.fc8d6a5b4e59274db0bbad35a6666c23.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/000838_jpg.rf.6995f161450456670a68691f8c5963b9.jpg"
+          }
+        ]
+      ]
+    },
+    "annotated_fire_smoke_2025": {
+      "images": 11021,
+      "repeated_filename_groups": 2214,
+      "cross_split_filename_groups": 879,
+      "cross_split_examples": [
+        [
+          {
+            "split": "train",
+            "path": "train/images/101_jpg.rf.33760d03202f69b96bcb498e2953b451.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/101_jpg.rf.f0e1888c117c6699caa525dc099b9158.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1147_jpg.rf.8a5d45a1916f62c0cc91496ff28094dc.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/1147_jpg.rf.ce6d8408e721aee01ff2c010fecfeee2.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1154_jpg.rf.4c1f740a35a93ea0589afe07cc77dcbd.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/1154_jpg.rf.2bcbaf4c2407843974718cf9656eb1c5.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1262_png_jpg.rf.66aa573e8267574a0e5ef4540b143982.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/1262_png_jpg.rf.a486f3647c04b5fa339716013fa31702.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/12_jpg.rf.4ce1d4fae653fa59b85747e2074242c5.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/12_jpg.rf.bed970f87e324985ce31cafe87b1e586.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/12_jpg.rf.cf380fc11de3d6322a834c3a5cb7279f.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1471_jpg.rf.c8bb33566c6abe2d7436ebc7e12626a3.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/1471_jpg.rf.759a33c504d0b0f9c5c62b98750f7776.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/14_jpg.rf.4b9c28f90d05686eaabd8706bc1a867d.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/14_jpg.rf.753e8dfc5fd42e8779c0d1bdaa939a7e.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1510_png_jpg.rf.a7f6b219991f7fc81d77d0452e57c289.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/1510_png_jpg.rf.e7e6478ecc5882ef99c99227f1ce4a4f.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/158_jpg.rf.faf432ff33bd3272842583d79c45e430.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/158_jpg.rf.57994b424a15a3e3562db10f44231731.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1619_png_jpg.rf.e8b3ff06a0e7f3c6fb872e735280a465.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/1619_png_jpg.rf.219e9afa86de1ecfbfdd27c0ecfc4dc8.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/17_jpg.rf.d8a4474a03edf3fdbc54f08a15bb04bd.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/17_jpg.rf.f195316b9726653ada7a5bf92b81baf9.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/17_jpg.rf.0d701c6229d72fc547bb0550ac6207c6.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/188_jpg.rf.f139798ed776beea213e12c5a39d37fb.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/188_jpg.rf.ff1a04a0930b2aa40d8b194e2f6b5c69.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/18_jpg.rf.02c11ca3c9c18a0dd5547ec9e55915fe.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/18_jpg.rf.2eddb1adf0b2f50c4eaa1289c8d5c761.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/18_jpg.rf.868e07399a3a44bc4971ef953891ef68.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/190_jpg.rf.2f08c44e3a0b2ebb8da2651f578360b1.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/190_jpg.rf.94f4df89b3e224c8701fe12215d63222.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/1_jpg.rf.362cb12ba3ac41135e40382483eabac5.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/1_jpg.rf.6f4fa93a74accb0971e1d156a8f35b52.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/1_jpg.rf.931ec3d4ac4da1d4fc977e6acd692fbe.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/1_jpg.rf.e6819b7bc8aa729b1505e4025247045f.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/206_jpg.rf.49a8557ae284af603b8d1df37ae9f02a.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/206_jpg.rf.456990309960e8ee525accb2ecb704b7.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/207_png_jpg.rf.67808d8a1dbc8787b03749911d011b90.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/207_png_jpg.rf.8f20ab66c1e6e601878cd3e89f2e9946.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/2111_jpg.rf.a9c5d37416888ab12b96c7addf07bd79.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/2111_jpg.rf.caac923004bd34afce62424d700138a1.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/2111_jpg.rf.8f26ba345cf2f904fd4de0cb301a5d8c.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/213_jpg.rf.35dd006493d98e44a9d76ee4e6ed397c.jpg"
+          },
+          {
+            "split": "train",
+            "path": "train/images/213_jpg.rf.aecd94dade182edcf2c144b40f04fd09.jpg"
+          },
+          {
+            "split": "test",
+            "path": "test/images/213_jpg.rf.ee4a14e4357f41579492b2eb5a3a18e0.jpg"
+          }
+        ],
+        [
+          {
+            "split": "train",
+            "path": "train/images/227_jpg.rf.e5e54fc55800487592a72704711532ab.jpg"
+          },
+          {
+            "split": "valid",
+            "path": "valid/images/227_jpg.rf.6ed4c4c72ca29412d8494f47da97a643.jpg"
+          }
+        ]
+      ]
+    }
+  }
+}

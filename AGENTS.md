@@ -52,6 +52,14 @@
 - Đặt tên file/folder tường minh theo nội dung.
 - Không thêm comment trong code.
 - Chỉ giữ hoặc thêm comment code khi user yêu cầu rõ.
+- Mặc định mọi file/thư mục trong codebase là agent-owned, trừ `docs/` root và khi user nói rõ khác.
+- Sau mỗi tác vụ, agent phải dọn mạnh tay code, script tạm, artifact trung gian, cache và scaffold do agent tạo; chỉ giữ đầu ra đang phục vụ trực tiếp cho workflow hiện tại hoặc kết quả cần audit.
+- Không giữ script chỉ để tái tạo một lần audit đã hoàn tất; giữ kết quả cuối đủ để quyết định, xóa script và output trung gian.
+- Trước khi handoff, agent phải kiểm kê file/folder đã dùng hoặc tạo trong tác vụ; xóa mọi bản nén, bản copy, checkpoint, cache, notebook và mã một-lần khi đã có bản cần dùng hoặc kết quả quyết định ở nơi khác.
+- `to_be_resolved/` chỉ là vùng tạm: sau khi dữ liệu đã giải nén và audit/import xong, thư mục phải trống rồi xóa. Không giữ ZIP hay file quyết định gốc ở đó chỉ vì tiện tham chiếu.
+- Notebook chạy cloud phải tự chứa toàn bộ mã thực thi. Kaggle/Colab Input chỉ dùng cho dữ liệu ảnh/nhãn và checkpoint nhị phân lớn; không bắt user upload source code rời trừ khi user chủ động chọn cách đó.
+- GPU thuê ngoài: trước/trong job đo utilization và VRAM; tăng batch size, worker hoặc concurrency an toàn để tận dụng GPU tối đa và giảm chi phí thuê.
+- GPU server công ty: không làm ảnh hưởng job khác; trước mọi job phải báo ước tính thời gian và chi phí GPU nội bộ, kiểm tra shared load/VRAM, rồi mới chạy trong mức an toàn.
 
 ## 6. Mục tiêu tối thượng
 
@@ -59,6 +67,41 @@
 - Mọi quyết định kỹ thuật phải phục vụ đo, so sánh, hoặc tối ưu inference.
 - Không tối ưu mù.
 - Không thêm complexity nếu chưa giúp đo, so sánh, hoặc tối ưu inference rõ hơn.
+
+## 6.1. Mục tiêu sản phẩm khói/lửa
+
+- Mục tiêu sản phẩm chính: phát hiện **cả lửa và khói ở khoảng cách gần** từ camera cố định với độ chính xác cao nhất có thể.
+- Wildfire xa không còn là hướng tối ưu chính. Kết quả far-field đã có chỉ giữ làm đối chứng, kiểm tra hồi quy hoặc nghiên cứu phụ. Không dùng winner far-field làm winner sản phẩm near-field nếu chưa thắng đánh giá near-field.
+- Ưu tiên chất lượng phát hiện trước tốc độ, chi phí và tối ưu inference. Chỉ tối ưu inference sau khi khóa được chất lượng mô hình.
+- Chi phí bỏ sót cao hơn chi phí báo giả. Chọn model và operating point theo thứ tự:
+  - Tối đa hóa event recall của từng lớp `fire` và `smoke`.
+  - Tối đa hóa lớp yếu hơn trong hai lớp.
+  - Sau đó mới giảm false alarm trong giới hạn không làm recall giảm ngoài mức đã duyệt.
+- Không dùng mAP hoặc AUROC trung bình làm tiêu chí duy nhất để chọn model. Bắt buộc báo cáo riêng:
+  - Event recall và miss rate cho `fire`.
+  - Event recall và miss rate cho `smoke`.
+  - Recall của lớp yếu hơn.
+  - Thời gian báo lần đầu.
+  - False alarm theo camera-giờ và theo alarm episode.
+- Bbox chỉ là tín hiệu giúp học vị trí, không phải KPI sản phẩm. Không tốn công đồng nhất phong cách bbox nếu class và vùng mục tiêu đã đúng. Tuy nhiên, không được dùng lý do “bbox không quan trọng” để chấp nhận sai class, thiếu nhãn fire/smoke hoặc gán nuisance thành positive.
+- Hệ nhãn chuẩn có đúng hai class phát hiện: `fire` và `smoke`. Hai class được phép chồng vùng. `other`, steam, fog, cloud, dust, glare, đèn, phản xạ và vật màu lửa là hard negative hoặc metadata, không tự động trở thành class phát hiện thứ ba.
+- Ảnh hoặc vùng không chắc là `fire`/`smoke` phải gán `ignore` hoặc loại khỏi train. Không ép nhãn mơ hồ thành negative vì sẽ tăng bỏ sót.
+- Dataset gốc phải giữ nguyên. Dataset hợp nhất chỉ là bản xuất dẫn xuất sau audit và remap.
+- Pseudo-label từ model không phải ground truth tự động. Chỉ dùng bbox model vào bản dẫn xuất khi reviewer bấm duyệt rõ ràng; nếu không chắc, loại/ignore ảnh đó.
+- Trước khi merge dataset, bắt buộc:
+  - Lập mapping class theo từng nguồn.
+  - Audit nhãn thiếu, đặc biệt ảnh có cả fire và smoke nhưng chỉ gán một lớp.
+  - Tách theo video, scene, camera hoặc nguồn gốc; không random split theo frame.
+  - Ngăn ảnh trùng và frame gần trùng rơi sang nhiều split.
+  - Ghi lại giấy phép và nguồn gốc.
+- Dataset chỉ có nhãn cấp ảnh:
+  - Positive `fire`/`smoke` không được đưa thẳng vào detector như bbox.
+  - Chỉ dùng qua nhánh classification, hoặc sau khi annotate/pseudo-label và review.
+  - Negative đã audit có thể dùng làm empty-label cho detector.
+- Khi train từ nhiều dataset, không để nguồn lớn nhất chi phối chỉ vì có nhiều frame gần trùng. Sampling phải cân bằng theo source, scene, class và hard-negative.
+- Threshold phải tách riêng cho `fire` và `smoke`; không mặc định dùng `0.5`.
+- Alarm tổng là phép OR giữa `fire` và `smoke`. Temporal confirmation chỉ được dùng nếu có đường báo ngay cho tín hiệu mạnh và đã chứng minh không làm tăng miss hoặc trễ quá mức.
+- Chỉ được tuyên bố vượt SOTA near-field khi dùng benchmark công khai cùng protocol, hoặc tập near-field độc lập không tham gia train/tune/selection. Điểm cao trên tập tự gộp không đủ cho tuyên bố SOTA.
 
 ## 7. Tracking và Reporting
 - Bắt buộc duy trì file `CHANGELOG.md` ở thư mục root để kiểm soát gắt gao mọi thay đổi. Nếu file đã có nội dung, phải **append** (ghi tiếp) theo trình tự thời gian (timeline), tuyệt đối không xóa nội dung cũ.
