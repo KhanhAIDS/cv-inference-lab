@@ -1,0 +1,54 @@
+{
+  "purpose": "Merged human annotation workspace. decisions.jsonl is the authoritative human ground truth; raw datasets are never edited.",
+  "created_at_gmt7": "2026-08-12T18:52:56+07:00",
+  "repo_root_relative_workspace": "artifacts/smoke_fire_detection/near_field_label_audit",
+  "classes": [
+    "smoke",
+    "fire",
+    "ignore"
+  ],
+  "teacher_box_cap": 25,
+  "bundles": [
+    {
+      "bundle": "review_error_0000",
+      "source_path": "review_error_0000.zip",
+      "records": 29378,
+      "kept": 29378
+    },
+    {
+      "bundle": "review_pseudo_0000",
+      "source_path": "review_pseudo_0000.zip",
+      "records": 1047,
+      "kept": 1047
+    }
+  ],
+  "tasks": 30425,
+  "duplicate_task_ids_merged": 0,
+  "missing_images_skipped": 0,
+  "already_audited_carried_over": 0,
+  "source_counts": {
+    "annotated_fire_smoke_2025": 4879,
+    "deepquest_ai": 1346,
+    "dfs_fire_v3": 3386,
+    "fasdd_cv_v9": 17247,
+    "fire_and_smoke_v1": 100,
+    "home_fire_2025": 1480,
+    "indoor_fire_smoke_2025": 1987
+  },
+  "issue_counts": {
+    "full_source_semantic_review": 100,
+    "possible_extra_bbox": 11804,
+    "possible_geometry_mismatch": 9504,
+    "possible_image_class_conflict": 261,
+    "possible_missing_bbox": 7383,
+    "possible_pseudo_label": 1047,
+    "possible_wrong_class_bbox": 47,
+    "static_dataset_issue": 241,
+    "teacher_disagrees_with_image_class": 38
+  },
+  "queue_type_counts": {
+    "error": 29378,
+    "pseudo": 1047
+  },
+  "images_embedded_in_workspace": false
+}

@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Label audit</title>
+<style>
+:root {
+  --bg: #101216; --panel: #171b21; --panel2: #1e242c; --line: #2b333d;
+  --text: #e6edf3; --muted: #8b98a5; --accent: #4da3ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: grid;
+  grid-template-columns: 250px 1fr 320px;
+  grid-template-rows: 42px 1fr 48px;
+  grid-template-areas: "head head head" "side stage panel" "side bar panel";
+  background: var(--bg); color: var(--text);
+  font: 13px/1.45 system-ui, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+header { grid-area: head; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+header .chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
+#side { grid-area: side; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 10px; }
+#stage { grid-area: stage; position: relative; overflow: hidden; background: #07090c; }
+#bar { grid-area: bar; background: var(--panel); border-top: 1px solid var(--line); padding: 8px 10px; display: flex; align-items: center; gap: 6px; overflow-x: auto; }
+#panel { grid-area: panel; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 10px; }
+canvas { display: block; cursor: crosshair; }
+h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 0 6px; }
+h3:first-child { margin-top: 0; }
+button, select, input { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; }
+button { cursor: pointer; white-space: nowrap; }
+button:hover { border-color: var(--accent); }
+button.primary { background: #1f6feb; border-color: #1f6feb; font-weight: 600; }
+button.bad { background: #6b1f1a; border-color: #8a2822; }
+button.on { border-color: var(--accent); color: var(--accent); }
+select[multiple] { width: 100%; height: 96px; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; }
+.chip { padding: 1px 7px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-size: 11px; }
+.chip.issue { border-color: var(--warn); color: var(--warn); }
+.chip.static { border-color: var(--bad); color: var(--bad); }
+.chip.done { border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+td { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+tr.sel { background: #223049; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.bararea { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 3px 0 6px; }
+.bararea > i { display: block; height: 100%; background: var(--ok); }
+details { border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); }
+details > summary { cursor: pointer; padding: 7px 9px; font-weight: 600; color: var(--accent); }
+details[open] > summary { border-bottom: 1px solid var(--line); }
+.rules { max-height: 46vh; overflow-y: auto; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+.rules b { color: var(--accent); }
+.rules p { margin: 0 0 7px; }
+.rules .k { color: var(--warn); font-weight: 600; }
+#toast { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #0d1015ee; border: 1px solid var(--line); border-radius: 6px; padding: 5px 13px; opacity: 0; transition: opacity .18s; pointer-events: none; }
+#toast.show { opacity: 1; }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <span id="pos" class="mono">–</span>
+  <span id="taskid" class="mono"></span>
+  <span id="chips" class="chips"></span>
+  <span class="grow"></span>
+  <span id="meta" class="mono"></span>
+</header>
+
+<aside id="side">
+  <h3>Queue</h3>
+  <div class="mono">source</div>
+  <select id="f-source" multiple></select>
+  <div class="mono" style="margin-top:6px">issue</div>
+  <select id="f-issue" multiple></select>
+  <div class="mono" style="margin-top:6px">trạng thái</div>
+  <select id="f-status" multiple></select>
+  <div class="row" style="margin-top:8px">
+    <span class="mono grow">tối đa/source</span>
+    <input id="f-persource" type="number" min="0" step="10" value="0" style="width:66px">
+  </div>
+  <div class="row">
+    <span class="mono grow">lấy</span>
+    <input id="f-limit" type="number" min="1" step="50" value="500" style="width:66px">
+  </div>
+  <div class="row">
+    <span class="mono grow">sắp xếp</span>
+    <select id="f-order" style="width:104px">
+      <option value="priority">priority</option>
+      <option value="boxes">ít bbox trước</option>
+      <option value="queue">thứ tự queue</option>
+    </select>
+  </div>
+  <div class="row" style="margin-top:8px"><button id="reload" class="primary grow">Nạp queue</button></div>
+  <div id="matched" class="mono"></div>
+  <h3>Tiến độ</h3>
+  <div id="progress"></div>
+</aside>
+
+<main id="stage">
+  <canvas id="cv"></canvas>
+  <div id="empty">Bấm <b>Nạp queue</b></div>
+  <div id="toast"></div>
+</main>
+
+<div id="bar">
+  <button id="c-smoke">1 smoke</button>
+  <button id="c-fire">2 fire</button>
+  <button id="b-del">Del</button>
+  <button id="b-undo">undo</button>
+  <button id="v-teacher">T model</button>
+  <span class="mono">conf <span id="tconf">0.30</span></span>
+  <span class="grow"></span>
+  <button id="b-prev">←</button>
+  <button id="b-next">→</button>
+  <button id="s-excluded" class="bad">E loại</button>
+  <button id="s-teacher" class="primary">W model → lưu</button>
+  <button id="s-confirmed" class="primary">Enter lưu GT</button>
+</div>
+
+<aside id="panel">
+  <h3>Bbox</h3>
+  <table id="boxes"><tbody></tbody></table>
+  <div class="mono" id="origin" style="margin-top:6px"></div>
+  <h3>Hướng dẫn</h3>
+  <details>
+    <summary>Cách dùng + phím tắt</summary>
+    <div class="rules">
+      <p><b>Chuột</b></p>
+      <p><span class="k">Kéo</span> ở vùng trống hoặc trong một bbox <i>chưa được chọn</i> → vẽ bbox mới.<br>
+      <span class="k">Click</span> trong bbox → chọn bbox <b>nhỏ nhất</b> chứa điểm đó (nên bbox nhỏ nằm trong bbox to vẫn chọn được).<br>
+      <span class="k">Kéo trong bbox đang chọn</span> → di chuyển đúng bbox đó, bbox to trùm lên nó không bị ảnh hưởng.<br>
+      <span class="k">Kéo ô vuông trắng ở góc/cạnh</span> → đổi kích thước.<br>
+      <span class="k">Shift + kéo</span> → luôn vẽ bbox mới, kể cả khi đang đứng trong bbox đang chọn.<br>
+      <span class="k">Lăn chuột</span> → zoom. <span class="k">Space + kéo</span> hoặc chuột giữa → pan.</p>
+      <p><b>Phím</b></p>
+      <p><span class="k">Enter</span> lưu nhãn đang thấy làm ground truth rồi sang ảnh sau.<br>
+      <span class="k">W</span> lấy bbox của model làm nhãn, lưu luôn, sang ảnh sau.<br>
+      <span class="k">1</span> / <span class="k">2</span> đặt class smoke / fire (nếu đang chọn bbox thì đổi class bbox đó).<br>
+      <span class="k">Del</span> xóa bbox đang chọn. <span class="k">Esc</span> bỏ chọn.<br>
+      <span class="k">Ctrl+Z</span> undo. <span class="k">E</span> loại ảnh khỏi train/eval.<br>
+      <span class="k">←</span> <span class="k">→</span> ảnh trước/sau. <span class="k">T</span> ẩn/hiện bbox model. <span class="k">[</span> <span class="k">]</span> ngưỡng conf model.<br>
+      <span class="k">0</span> vừa khung, <span class="k">-</span> <span class="k">=</span> zoom.</p>
+      <p>Ảnh đã lưu bị loại khỏi queue. Mở lại app sẽ tự nhảy về ảnh đang làm dở.</p>
+    </div>
+  </details>
+  <div style="height:8px"></div>
+  <details>
+    <summary>Luật vẽ bbox + edge case</summary>
+    <div class="rules">
+      <p><b>Nguyên tắc</b></p>
+      <p>Sai class &gt; thiếu object &gt; ảnh âm dán nhãn dương &gt; bbox lệch hình học. FN &gt; FP: lưỡng lự giữa vẽ và không vẽ một vùng có khả năng là khói/lửa thì <b>vẽ</b>. Mỗi object quyết trong ~2 giây.</p>
+      <p><b>Đếm object</b></p>
+      <p><b>R1</b> Một vùng liền mạch = 1 bbox. Bị vật che ngang mà mắt vẫn thấy là một khối liền → vẫn 1 bbox.<br>
+      <b>R2</b> Nhiều đốm nhỏ tụ cụm = 1 bbox chung. Khoảng cách giữa 2 đốm ≤ 1× chiều dài đốm lớn hơn → cùng cụm.<br>
+      <b>R3</b> Tách <b>chỉ khi khác gốc phát</b>, không phải khác màu. Một cột đổi màu theo độ cao (đen → xám → trắng) vẫn là 1 bbox. Test: che một vùng đi, vùng còn lại có gốc riêng không?<br>
+      <b>R3b</b> Phải vẽ &gt;6 bbox khói/lửa cho 1 ảnh → gần như chắc chắn đang tách quá nhỏ, gộp lại.<br>
+      <b>Xung đột R1–R3 → chọn ít box hơn.</b> Gộp không mất event recall; tách sai tạo nhãn dương thừa.</p>
+      <p><b>Vẽ bbox</b></p>
+      <p><b>R4</b> &lt;10×10 px và không rõ đặc trưng → bỏ. &lt;10×10 px nhưng đặc trưng rõ (đốm lửa sáng rõ) → phải giữ.<br>
+      <b>R5</b> Phản chiếu trên nước, kính, sàn bóng, kim loại → không vẽ.<br>
+      <b>R6</b> Biên khói bám phần còn phân biệt được với nền. Phần đã tan hòa vào trời → không bao.<br>
+      <b>R7</b> fire và smoke độc lập, <b>được overlap</b>. Ảnh có cả hai phải có cả hai nhãn. bbox fire nằm trong bbox smoke là bình thường.<br>
+      <b>R8</b> fill = diện tích object thật / diện tích bbox. fill &lt; 0.35 mới xét tách, và chỉ tách nếu mỗi phần đạt fill ≥ 0.5 và có gốc riêng.<br>
+      <b>R9</b> Bbox không được ≥90% diện tích ảnh trừ khi khói/lửa thật phủ ≥60% ảnh. Full-image box dạy model báo động trên mọi ảnh mù mờ.<br>
+      <b>R10</b> Chỉ bao phần trong khung. Không suy diễn phần bị crop. Bbox vượt biên kéo về biên.<br>
+      <b>R11</b> 0 bbox = đã xác nhận không có khói/lửa (hard negative), không phải "chưa xem".<br>
+      <b>R12</b> Không để bbox lồng hoàn toàn trong bbox khác cùng class → gộp 1. Khác class thì được.<br>
+      <b>R13</b> Không quyết được cả ảnh → <span class="k">E</span> loại ảnh, đừng đoán.</p>
+      <p><b>Edge case</b></p>
+      <p><b>E1 Lửa lẫn khói.</b> 2 bbox độc lập, chồng nhau. Không có class gộp.<br>
+      <b>E2 Vùng chuyển tiếp nửa lửa nửa khói.</b> Không phải chọn một: bbox fire bao tới nơi còn thấy phát sáng cam/vàng/trắng; bbox smoke bao từ nơi bắt đầu thấy hạt che, kể cả phần chồng lên lửa. Vùng giữa thuộc cả hai. Không cắt đôi, không vẽ box thứ ba.<br>
+      <b>E3 Sau hàng cây, song sắt, lưới, hàng rào.</b> Occluder mảnh và lặp không chia object → 1 bbox bao trọn, bao luôn song sắt ở giữa. Occluder che ≤50% → 1 bbox, không do dự. Che &gt;50% vẫn ưu tiên 1 bbox vì song sắt không tạo gốc riêng.<br>
+      <b>E4 Khói mờ như sương vì ảnh phân giải kém.</b> Test bối cảnh, không test pixel: có <b>gốc</b> không, có <b>hướng</b> phun/tỏa không, có nguồn cháy/vệt sẫm ở gốc không. Có gốc + hướng → vẽ smoke. Lớp mờ phủ đều toàn ảnh, không gốc, không hướng → haze khí quyển, không vẽ. Phải zoom &gt;200% mới thấy → không vẽ và ảnh không dùng làm smoke-positive.<br>
+      <b>E5 Lửa hình chữ L, vòng cung, đường lửa dài.</b> fill ≥ 0.35 → 1 bbox bao trọn. fill &lt; 0.35 → chỉ tách nếu mỗi nhánh có gốc phát riêng. Chữ L từ một điểm cháy lan 2 hướng = 1 gốc = 1 bbox dù fill thấp.<br>
+      <b>E6 Khói bị lửa chiếu sáng đỏ/cam.</b> Là <b>smoke</b>, không phải fire. Test: vùng đó tự phát sáng hay chỉ bị chiếu? Chỉ bị chiếu → smoke. Đây là nguồn lỗi sai class phổ biến nhất.<br>
+      <b>E7 Lửa qua cửa kính.</b> Thấy trực tiếp qua kính trong → vẽ bình thường. Phản chiếu trên mặt kính → không vẽ. Phản chiếu thường bị lật, mờ, méo, và có object gốc ở chỗ khác trong ảnh.<br>
+      <b>E8 Lửa trên TV, màn hình, poster, biển hiệu, tranh.</b> Không vẽ. Không phải sự kiện cháy.<br>
+      <b>E9 Nến, bật lửa, bếp gas, lò, đèn dầu, đốt rác có kiểm soát.</b> Không vẽ, đây là nuisance/hard negative theo taxonomy đã chốt.<br>
+      <b>E10 Đèn đường, đèn pha, mặt trời, chớp sáng, phản chiếu kim loại.</b> Không vẽ.<br>
+      <b>E11 Hơi nước, khí thải ống khói, bụi, mây thấp, sương mù.</b> Không vẽ. Khí thải công nghiệp là bẫy lớn nhất vì cũng có gốc và hướng — phân biệt: phát ra từ miệng ống cố định, đều, liên tục, màu trắng/xám nhạt đồng nhất; khói cháy có gốc trên vật cháy, không đều, thường lẫn màu.<br>
+      <b>E12 Khói đen và khói trắng cùng một cột.</b> 1 bbox. Đổi màu theo độ cao không tách object.<br>
+      <b>E13 Khói/lửa bị crop ở mép ảnh.</b> Kéo bbox về biên. Phần thấy được &lt;10×10 px và không rõ đặc trưng → bỏ.<br>
+      <b>E14 Bbox lồng/trùng nhau.</b> Cùng class → gộp 1.<br>
+      <b>E15 Ảnh ban đêm.</b> Lửa là điểm sáng nhỏ nhưng đặc trưng rõ → vẽ. Khói ban đêm gần như không thấy → không vẽ, ảnh không dùng làm smoke-positive nhưng vẫn dùng được làm fire-positive.<br>
+      <b>E16 Nhiều điểm cháy rời rạc trên một đường lửa.</b> Liên tục hoặc cách ≤1× chiều dài đốm → 1 bbox. Rời rạc rõ, mỗi điểm có gốc riêng, tổng ≤6 box → tách.<br>
+      <b>E17 Ảnh augment (flip/rotate/crop) của cùng ảnh gốc.</b> Nhãn phải nhất quán trong cùng nhóm. Đừng tự lan quyết định sang bản augment khác vì crop có thể làm object biến mất thật.<br>
+      <b>E18 Khói che gần hết ảnh.</b> Khói thật phủ ≥60% → bbox lớn hợp lệ. Không thì vẽ chặt hơn.<br>
+      <b>E19 Tàn lửa, than hồng.</b> Phát sáng, đặc trưng rõ → fire. Khói mỏng từ tàn có gốc rõ → smoke. Vệt đen/xám không phát sáng, không tỏa → không vẽ.<br>
+      <b>E20 Lửa rất nhỏ là nguồn của cột khói lớn.</b> 2 bbox: fire nhỏ (giữ dù &lt;10×10 px nếu đặc trưng rõ) + smoke lớn. Bỏ fire nhỏ = mất fire recall, mà worst-class recall là metric chốt.</p>
+      <p><b>Nhãn từ model</b></p>
+      <p><span class="k">W</span> ghi <span class="mono">label_source=teacher</span>. Teacher là <span class="mono">rfdetr_large_dfire</span>, đúng model đang là winner → nhãn này chỉ dùng cho train split, không dùng để đánh giá chính nó. Vẫn phải xem ảnh trước khi bấm W.</p>
+    </div>
+  </details>
+</aside>
+
+<script>
+const COLORS = {smoke: '#C6FF00', fire: '#FF2BD6'};
+const STORAGE = 'label_audit_state_v2';
+const state = {
+  tasks: [], index: -1,
+  boxes: [], history: [], dirty: false, provenance: 'dataset',
+  activeClass: 'smoke', selected: -1,
+  image: null, imageToken: 0,
+  view: {scale: 1, tx: 0, ty: 0},
+  drag: null, spaceDown: false, startedAt: 0,
+  teacher: true, teacherConf: 0.30
+};
+const canvas = document.getElementById('cv');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+
+function task() { return state.index >= 0 ? state.tasks[state.index] : null; }
+function contrastOf(hex) {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 140 ? '#000000' : '#ffffff';
+}
+function toast(message) {
+  const node = document.getElementById('toast');
+  node.textContent = message;
+  node.classList.add('show');
+  clearTimeout(node.timer);
+  node.timer = setTimeout(() => node.classList.remove('show'), 1300);
+}
+function persist(patch) {
+  const saved = JSON.parse(localStorage.getItem(STORAGE) || '{}');
+  localStorage.setItem(STORAGE, JSON.stringify({...saved, ...patch}));
+}
+function restored() { return JSON.parse(localStorage.getItem(STORAGE) || '{}'); }
+
+function viewSize() { const rect = stage.getBoundingClientRect(); return {w: rect.width, h: rect.height}; }
+function resize() {
+  const box = viewSize();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.round(box.w * ratio);
+  canvas.height = Math.round(box.h * ratio);
+  canvas.style.width = box.w + 'px';
+  canvas.style.height = box.h + 'px';
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  fit();
+}
+function fit() {
+  if (!state.image) { draw(); return; }
+  const box = viewSize();
+  const scale = Math.min(box.w / state.image.naturalWidth, box.h / state.image.naturalHeight);
+  state.view = {scale, tx: (box.w - state.image.naturalWidth * scale) / 2, ty: (box.h - state.image.naturalHeight * scale) / 2};
+  draw();
+}
+function zoomAt(factor, sx, sy) {
+  const view = state.view;
+  const next = Math.min(30, Math.max(0.05, view.scale * factor));
+  const ratio = next / view.scale;
+  view.tx = sx - (sx - view.tx) * ratio;
+  view.ty = sy - (sy - view.ty) * ratio;
+  view.scale = next;
+  draw();
+}
+function toScreen(x, y) { return [state.view.tx + x * state.view.scale, state.view.ty + y * state.view.scale]; }
+function toImage(sx, sy) { return [(sx - state.view.tx) / state.view.scale, (sy - state.view.ty) / state.view.scale]; }
+function pointerPos(event) { const rect = canvas.getBoundingClientRect(); return [event.clientX - rect.left, event.clientY - rect.top]; }
+function boxPixels(box) {
+  const w = box.w * state.image.naturalWidth, h = box.h * state.image.naturalHeight;
+  return [box.cx * state.image.naturalWidth - w / 2, box.cy * state.image.naturalHeight - h / 2, w, h];
+}
+function fromPixels(x, y, w, h) {
+  const image = state.image;
+  return {
+    cx: Math.min(1, Math.max(0, (x + w / 2) / image.naturalWidth)),
+    cy: Math.min(1, Math.max(0, (y + h / 2) / image.naturalHeight)),
+    w: Math.min(1, Math.abs(w) / image.naturalWidth),
+    h: Math.min(1, Math.abs(h) / image.naturalHeight)
+  };
+}
+function handlePoints(box) {
+  const [x, y, w, h] = boxPixels(box);
+  const [sx, sy] = toScreen(x, y);
+  const sw = w * state.view.scale, sh = h * state.view.scale;
+  return [[sx, sy], [sx + sw / 2, sy], [sx + sw, sy], [sx + sw, sy + sh / 2], [sx + sw, sy + sh], [sx + sw / 2, sy + sh], [sx, sy + sh], [sx, sy + sh / 2]];
+}
+
+function strokeBox(sx, sy, sw, sh, color, width, dash) {
+  ctx.setLineDash(dash || []);
+  ctx.strokeStyle = contrastOf(color);
+  ctx.lineWidth = width + 4;
+  ctx.strokeRect(sx, sy, sw, sh);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.strokeRect(sx, sy, sw, sh);
+  ctx.setLineDash([]);
+}
+function chip(sx, sy, text, color) {
+  ctx.font = '600 12px system-ui, sans-serif';
+  const width = ctx.measureText(text).width + 9;
+  const top = sy - 17 < 2 ? sy + 2 : sy - 17;
+  ctx.fillStyle = contrastOf(color);
+  ctx.fillRect(sx - 1, top - 1, width + 2, 17);
+  ctx.fillStyle = color;
+  ctx.fillRect(sx, top, width, 15);
+  ctx.fillStyle = contrastOf(color);
+  ctx.fillText(text, sx + 4, top + 11);
+}
+function draw() {
+  const box = viewSize();
+  ctx.clearRect(0, 0, box.w, box.h);
+  if (!state.image) return;
+  const view = state.view;
+  ctx.drawImage(state.image, view.tx, view.ty, state.image.naturalWidth * view.scale, state.image.naturalHeight * view.scale);
+  const current = task();
+  if (state.teacher && current) {
+    for (const item of current.teacher_boxes) {
+      if (item.conf < state.teacherConf) continue;
+      const [x, y, w, h] = boxPixels(item);
+      const [sx, sy] = toScreen(x, y);
+      ctx.globalAlpha = 0.7;
+      strokeBox(sx, sy, w * view.scale, h * view.scale, COLORS[item.cls], 2, [9, 7]);
+      chip(sx, sy, `model ${item.cls} ${item.conf.toFixed(2)}`, COLORS[item.cls]);
+      ctx.globalAlpha = 1;
+    }
+  }
+  state.boxes.forEach((item, index) => {
+    const [x, y, w, h] = boxPixels(item);
+    const [sx, sy] = toScreen(x, y);
+    const selected = index === state.selected;
+    strokeBox(sx, sy, w * view.scale, h * view.scale, COLORS[item.cls], selected ? 5 : 3);
+    chip(sx, sy, `${index + 1} ${item.cls}`, COLORS[item.cls]);
+    if (selected) {
+      for (const [px, py] of handlePoints(item)) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(px - 5, py - 5, 10, 10);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+      }
+    }
+  });
+  if (state.drag && state.drag.mode === 'draw' && state.drag.rect) {
+    const [x, y, w, h] = state.drag.rect;
+    const [sx, sy] = toScreen(x, y);
+    strokeBox(sx, sy, w * view.scale, h * view.scale, COLORS[state.activeClass], 3, [7, 5]);
+  }
+}
+
+function pushHistory(markHuman) {
+  state.history.push(JSON.stringify(state.boxes));
+  if (state.history.length > 50) state.history.shift();
+  state.dirty = true;
+  if (markHuman !== false) state.provenance = 'human';
+}
+function undo() {
+  if (!state.history.length) return;
+  state.boxes = JSON.parse(state.history.pop());
+  state.selected = -1;
+  renderPanel();
+  draw();
+}
+function hitHandle(sx, sy) {
+  if (state.selected < 0) return -1;
+  const points = handlePoints(state.boxes[state.selected]);
+  for (let index = 0; index < points.length; index += 1) {
+    if (Math.abs(sx - points[index][0]) <= 7 && Math.abs(sy - points[index][1]) <= 7) return index;
+  }
+  return -1;
+}
+function inside(box, ix, iy) {
+  const [x, y, w, h] = boxPixels(box);
+  return ix >= x && ix <= x + w && iy >= y && iy <= y + h;
+}
+function smallestAt(ix, iy) {
+  let best = -1, bestArea = Infinity;
+  state.boxes.forEach((box, index) => {
+    if (!inside(box, ix, iy)) return;
+    const area = box.w * box.h;
+    if (area < bestArea) { bestArea = area; best = index; }
+  });
+  return best;
+}
+
+canvas.addEventListener('contextmenu', event => event.preventDefault());
+canvas.addEventListener('wheel', event => {
+  event.preventDefault();
+  const [sx, sy] = pointerPos(event);
+  zoomAt(event.deltaY < 0 ? 1.15 : 1 / 1.15, sx, sy);
+}, {passive: false});
+canvas.addEventListener('pointerdown', event => {
+  if (!state.image) return;
+  try { canvas.setPointerCapture(event.pointerId); } catch (error) { /* capture optional */ }
+  const [sx, sy] = pointerPos(event);
+  const [ix, iy] = toImage(sx, sy);
+  if (event.button === 1 || event.button === 2 || state.spaceDown) {
+    state.drag = {mode: 'pan', sx, sy, tx: state.view.tx, ty: state.view.ty};
+    return;
+  }
+  const handle = hitHandle(sx, sy);
+  if (handle >= 0) {
+    pushHistory();
+    state.drag = {mode: 'resize', handle, origin: {...state.boxes[state.selected]}, ix, iy};
+    return;
+  }
+  if (!event.shiftKey && state.selected >= 0 && inside(state.boxes[state.selected], ix, iy)) {
+    pushHistory();
+    state.drag = {mode: 'move', ix, iy, origin: {...state.boxes[state.selected]}};
+    return;
+  }
+  state.drag = {mode: 'draw', ix, iy, sx, sy, rect: null};
+});
+canvas.addEventListener('pointermove', event => {
+  if (!state.drag || !state.image) return;
+  const [sx, sy] = pointerPos(event);
+  const [ix, iy] = toImage(sx, sy);
+  const drag = state.drag;
+  if (drag.mode === 'pan') {
+    state.view.tx = drag.tx + (sx - drag.sx);
+    state.view.ty = drag.ty + (sy - drag.sy);
+    draw();
+    return;
+  }
+  if (drag.mode === 'draw') {
+    drag.rect = [Math.min(drag.ix, ix), Math.min(drag.iy, iy), Math.abs(ix - drag.ix), Math.abs(iy - drag.iy)];
+    draw();
+    return;
+  }
+  if (drag.mode === 'move') {
+    const image = state.image;
+    const box = state.boxes[state.selected];
+    box.cx = Math.min(1, Math.max(0, drag.origin.cx + (ix - drag.ix) / image.naturalWidth));
+    box.cy = Math.min(1, Math.max(0, drag.origin.cy + (iy - drag.iy) / image.naturalHeight));
+    renderPanel();
+    draw();
+    return;
+  }
+  if (drag.mode === 'resize') {
+    const image = state.image;
+    const origin = drag.origin;
+    let x = (origin.cx - origin.w / 2) * image.naturalWidth;
+    let y = (origin.cy - origin.h / 2) * image.naturalHeight;
+    let w = origin.w * image.naturalWidth;
+    let h = origin.h * image.naturalHeight;
+    const handle = drag.handle;
+    if (handle === 0 || handle === 1 || handle === 2) { h += y - iy; y = iy; }
+    if (handle === 4 || handle === 5 || handle === 6) { h = iy - y; }
+    if (handle === 0 || handle === 6 || handle === 7) { w += x - ix; x = ix; }
+    if (handle === 2 || handle === 3 || handle === 4) { w = ix - x; }
+    Object.assign(state.boxes[state.selected], fromPixels(x, y, Math.max(1, w), Math.max(1, h)));
+    renderPanel();
+    draw();
+  }
+});
+canvas.addEventListener('pointerup', event => {
+  const drag = state.drag;
+  state.drag = null;
+  if (!drag || !state.image) return;
+  if (drag.mode === 'draw') {
+    const [sx, sy] = pointerPos(event);
+    const moved = Math.abs(sx - drag.sx) > 4 || Math.abs(sy - drag.sy) > 4;
+    if (moved && drag.rect) {
+      const [x, y, w, h] = drag.rect;
+      pushHistory();
+      state.boxes.push({cls: state.activeClass, ...fromPixels(x, y, w, h)});
+      state.selected = state.boxes.length - 1;
+    } else {
+      state.selected = smallestAt(drag.ix, drag.iy);
+    }
+  }
+  renderPanel();
+  draw();
+});
+
+function renderPanel() {
+  const body = document.querySelector('#boxes tbody');
+  body.innerHTML = state.boxes.length ? '' : '<tr><td class="mono">không có bbox — nhãn rỗng (ảnh âm)</td></tr>';
+  state.boxes.forEach((box, index) => {
+    const row = document.createElement('tr');
+    row.className = index === state.selected ? 'sel' : '';
+    row.innerHTML = `<td><span class="sw" style="background:${COLORS[box.cls]}"></span>${index + 1}</td>`
+      + `<td><select data-index="${index}">${['smoke', 'fire'].map(name => `<option value="${name}"${name === box.cls ? ' selected' : ''}>${name}</option>`).join('')}</select></td>`
+      + `<td class="mono">${(box.w * box.h * 100).toFixed(2)}%</td>`
+      + `<td><button data-del="${index}">x</button></td>`;
+    row.addEventListener('click', event => {
+      if (event.target.tagName === 'SELECT' || event.target.tagName === 'BUTTON') return;
+      state.selected = index;
+      renderPanel();
+      draw();
+    });
+    body.appendChild(row);
+  });
+  body.querySelectorAll('select').forEach(select => select.addEventListener('change', event => {
+    pushHistory();
+    state.boxes[Number(event.target.dataset.index)].cls = event.target.value;
+    renderPanel();
+    draw();
+  }));
+  body.querySelectorAll('[data-del]').forEach(button => button.addEventListener('click', event => {
+    pushHistory();
+    state.boxes.splice(Number(event.target.dataset.del), 1);
+    state.selected = -1;
+    renderPanel();
+    draw();
+  }));
+  const current = task();
+  const origin = document.getElementById('origin');
+  if (current) {
+    const counts = {};
+    for (const box of current.dataset_boxes) counts[box.cls] = (counts[box.cls] || 0) + 1;
+    const teacher = current.teacher_boxes.filter(box => box.conf >= state.teacherConf).length;
+    origin.innerHTML = `nhãn dataset: ${Object.entries(counts).map(([k, v]) => `${k}×${v}`).join(', ') || 'rỗng'}`
+      + `<br>bbox model ≥${state.teacherConf.toFixed(2)}: ${teacher}/${current.teacher_box_count}`
+      + `<br>${current.width}×${current.height} px · ${current.label_kind}`;
+  } else {
+    origin.textContent = '';
+  }
+  document.getElementById('c-smoke').classList.toggle('on', state.activeClass === 'smoke');
+  document.getElementById('c-fire').classList.toggle('on', state.activeClass === 'fire');
+  document.getElementById('v-teacher').classList.toggle('on', state.teacher);
+  document.getElementById('tconf').textContent = state.teacherConf.toFixed(2);
+  document.getElementById('meta').textContent = current ? 'label_source: ' + state.provenance : '';
+}
+function renderHeader() {
+  const current = task();
+  document.getElementById('pos').textContent = current ? `${state.index + 1}/${state.tasks.length}` : '–';
+  document.getElementById('taskid').textContent = current ? current.task_id : '';
+  const chips = document.getElementById('chips');
+  chips.innerHTML = '';
+  if (!current) return;
+  const add = (text, kind) => {
+    const node = document.createElement('span');
+    node.className = 'chip' + (kind ? ' ' + kind : '');
+    node.textContent = text;
+    chips.appendChild(node);
+  };
+  add(current.source);
+  add(current.issue, 'issue');
+  for (const issue of current.secondary_issues) add(issue, 'issue');
+  for (const code of current.static_issues) add(code, 'static');
+  if (current.status && current.status !== 'pending') add(current.status, 'done');
+  if (current.carried_over_status) add('đã audit: ' + current.carried_over_status, 'done');
+}
+
+function loadImage() {
+  const current = task();
+  if (!current) { state.image = null; draw(); return; }
+  const token = ++state.imageToken;
+  const image = new Image();
+  image.onload = () => { if (token === state.imageToken) { state.image = image; fit(); } };
+  image.onerror = () => { if (token === state.imageToken) toast('không tải được ảnh'); };
+  image.src = '/image?task=' + encodeURIComponent(current.task_id);
+  for (let step = 1; step <= 3; step += 1) {
+    const ahead = state.tasks[state.index + step];
+    if (ahead) new Image().src = '/image?task=' + encodeURIComponent(ahead.task_id);
+  }
+}
+function show(index) {
+  if (index < 0 || index >= state.tasks.length) return;
+  state.index = index;
+  const current = task();
+  const decision = current.decision;
+  state.boxes = JSON.parse(JSON.stringify(decision && decision.boxes ? decision.boxes : current.dataset_boxes));
+  state.history.length = 0;
+  state.dirty = false;
+  state.selected = -1;
+  state.startedAt = performance.now();
+  state.provenance = decision ? (decision.label_source || 'human') : 'dataset';
+  document.getElementById('empty').style.display = 'none';
+  persist({lastTask: current.task_id});
+  renderHeader();
+  renderPanel();
+  loadImage();
+}
+
+async function saveDecision(status, advance) {
+  const current = task();
+  if (!current) return;
+  const response = await fetch('/api/decision', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      task_id: current.task_id, status, label_source: state.provenance,
+      boxes: state.boxes, seconds_spent: (performance.now() - state.startedAt) / 1000
+    })
+  });
+  if (!response.ok) { toast('lưu lỗi'); return; }
+  current.decision = {status, label_source: state.provenance, boxes: JSON.parse(JSON.stringify(state.boxes))};
+  current.status = status;
+  state.dirty = false;
+  renderHeader();
+  refreshProgress();
+  if (status !== 'draft') toast(`${status} · ${state.boxes.length} bbox · ${state.provenance}`);
+  if (advance) {
+    if (state.index + 1 < state.tasks.length) show(state.index + 1);
+    else toast('hết queue');
+  }
+}
+async function navigate(step) {
+  if (state.dirty && task()) await saveDecision(task().status === 'confirmed' ? 'confirmed' : 'draft', false);
+  show(state.index + step);
+}
+function adoptTeacherAndSave() {
+  const current = task();
+  if (!current) return;
+  const picked = current.teacher_boxes.filter(box => box.conf >= state.teacherConf)
+    .map(box => ({cls: box.cls, cx: box.cx, cy: box.cy, w: box.w, h: box.h}));
+  if (!picked.length) { toast('model không có bbox trên ngưỡng'); return; }
+  pushHistory(false);
+  state.boxes = picked;
+  state.provenance = 'teacher';
+  state.selected = -1;
+  renderPanel();
+  draw();
+  saveDecision('confirmed', true);
+}
+function setClass(name) {
+  state.activeClass = name;
+  if (state.selected >= 0) {
+    pushHistory();
+    state.boxes[state.selected].cls = name;
+  }
+  renderPanel();
+  draw();
+}
+function deleteSelected() {
+  if (state.selected < 0) return;
+  pushHistory();
+  state.boxes.splice(state.selected, 1);
+  state.selected = -1;
+  renderPanel();
+  draw();
+}
+
+async function refreshProgress() {
+  const data = await (await fetch('/api/progress')).json();
+  const overall = data.overall;
+  const total = Object.values(overall).reduce((sum, value) => sum + value, 0);
+  const done = (overall.confirmed || 0) + (overall.excluded || 0);
+  let html = `<div class="mono">${done}/${total} đã chốt</div><div class="bararea"><i style="width:${total ? (done / total * 100).toFixed(1) : 0}%"></i></div><table><tbody>`;
+  for (const [source, counts] of Object.entries(data.per_source)) {
+    const sum = Object.values(counts).reduce((a, b) => a + b, 0);
+    html += `<tr><td>${source.replace(/_/g, ' ')}</td><td class="mono">${(counts.confirmed || 0) + (counts.excluded || 0)}/${sum}</td></tr>`;
+  }
+  document.getElementById('progress').innerHTML = html + '</tbody></table>';
+}
+function fillSelect(id, counts, selected) {
+  const select = document.getElementById(id);
+  select.innerHTML = '';
+  for (const [value, count] of Object.entries(counts)) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = `${value} (${count})`;
+    option.selected = selected.includes(value);
+    select.appendChild(option);
+  }
+}
+function selectedValues(id) { return Array.from(document.getElementById(id).selectedOptions).map(option => option.value); }
+async function loadQueue() {
+  const params = new URLSearchParams();
+  for (const value of selectedValues('f-source')) params.append('source', value);
+  for (const value of selectedValues('f-issue')) params.append('issue', value);
+  for (const value of selectedValues('f-status')) params.append('status', value);
+  params.set('limit', document.getElementById('f-limit').value || '500');
+  params.set('max_per_source', document.getElementById('f-persource').value || '0');
+  params.set('order', document.getElementById('f-order').value);
+  persist({
+    filters: {
+      source: selectedValues('f-source'), issue: selectedValues('f-issue'), status: selectedValues('f-status'),
+      limit: document.getElementById('f-limit').value, persource: document.getElementById('f-persource').value,
+      order: document.getElementById('f-order').value
+    }
+  });
+  const data = await (await fetch('/api/tasks?' + params.toString())).json();
+  state.tasks = data.tasks;
+  document.getElementById('matched').textContent = `khớp ${data.matched}, nạp ${data.returned}`;
+  if (!state.tasks.length) {
+    state.index = -1;
+    state.image = null;
+    const empty = document.getElementById('empty');
+    empty.style.display = 'grid';
+    empty.textContent = 'Không có ảnh khớp bộ lọc';
+    draw();
+    return;
+  }
+  const last = restored().lastTask;
+  const resume = last ? state.tasks.findIndex(item => item.task_id === last) : -1;
+  show(resume >= 0 ? resume : 0);
+  if (resume > 0) toast('tiếp tục từ ảnh đang làm dở');
+}
+
+document.getElementById('reload').addEventListener('click', loadQueue);
+document.getElementById('c-smoke').addEventListener('click', () => setClass('smoke'));
+document.getElementById('c-fire').addEventListener('click', () => setClass('fire'));
+document.getElementById('b-del').addEventListener('click', deleteSelected);
+document.getElementById('b-undo').addEventListener('click', undo);
+document.getElementById('v-teacher').addEventListener('click', () => { state.teacher = !state.teacher; renderPanel(); draw(); });
+document.getElementById('b-prev').addEventListener('click', () => navigate(-1));
+document.getElementById('b-next').addEventListener('click', () => navigate(1));
+document.getElementById('s-excluded').addEventListener('click', () => saveDecision('excluded', true));
+document.getElementById('s-teacher').addEventListener('click', adoptTeacherAndSave);
+document.getElementById('s-confirmed').addEventListener('click', () => saveDecision('confirmed', true));
+
+addEventListener('keydown', event => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) return;
+  const key = event.key;
+  if (key === ' ') { state.spaceDown = true; event.preventDefault(); return; }
+  if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'z') { undo(); event.preventDefault(); return; }
+  if (key === '1') { setClass('smoke'); return; }
+  if (key === '2') { setClass('fire'); return; }
+  if (key === 'Delete' || key === 'Backspace') { deleteSelected(); event.preventDefault(); return; }
+  if (key === 'Enter') { saveDecision('confirmed', true); event.preventDefault(); return; }
+  if (key === 'ArrowRight') { navigate(1); event.preventDefault(); return; }
+  if (key === 'ArrowLeft') { navigate(-1); event.preventDefault(); return; }
+  if (key === 'Escape') { state.selected = -1; renderPanel(); draw(); return; }
+  const lower = key.toLowerCase();
+  if (lower === 'w') { adoptTeacherAndSave(); return; }
+  if (lower === 'e') { saveDecision('excluded', true); return; }
+  if (lower === 't') { state.teacher = !state.teacher; renderPanel(); draw(); return; }
+  if (key === '[') { state.teacherConf = Math.max(0.01, state.teacherConf - 0.05); renderPanel(); draw(); return; }
+  if (key === ']') { state.teacherConf = Math.min(0.95, state.teacherConf + 0.05); renderPanel(); draw(); return; }
+  if (key === '0') { fit(); return; }
+  if (key === '=' || key === '+') { const box = viewSize(); zoomAt(1.2, box.w / 2, box.h / 2); return; }
+  if (key === '-') { const box = viewSize(); zoomAt(1 / 1.2, box.w / 2, box.h / 2); return; }
+});
+addEventListener('keyup', event => { if (event.key === ' ') state.spaceDown = false; });
+addEventListener('resize', resize);
+
+(async function start() {
+  const data = await (await fetch('/api/bootstrap')).json();
+  const saved = restored().filters || {};
+  fillSelect('f-source', data.sources, saved.source || []);
+  fillSelect('f-issue', data.issues, saved.issue || []);
+  fillSelect('f-status', {
+    pending: data.progress.pending || 0, draft: data.progress.draft || 0,
+    confirmed: data.progress.confirmed || 0, excluded: data.progress.excluded || 0, all: data.total_tasks
+  }, saved.status || ['pending', 'draft']);
+  if (saved.limit) document.getElementById('f-limit').value = saved.limit;
+  if (saved.persource) document.getElementById('f-persource').value = saved.persource;
+  if (saved.order) document.getElementById('f-order').value = saved.order;
+  resize();
+  renderPanel();
+  await refreshProgress();
+  await loadQueue();
+})();
+</script>
+</body>
+</html>

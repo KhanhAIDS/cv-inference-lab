@@ -89,9 +89,9 @@ def run_module(args):
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=7200, cpu=4, memory=16384)
 def build_figlib_index(
     data_root: str = "datasets/smoke_fire_detection/FIgLib/FIgLib",
-    index_out: str = "artifacts/smoke_fire_detection/figlib_index.jsonl",
-    audit_out: str = "artifacts/smoke_fire_detection/figlib_audit.json",
-    manifest_out: str = "artifacts/smoke_fire_detection/figlib_split_manifest.json",
+    index_out: str = "artifacts/smoke_fire_detection/figlib/figlib_index.jsonl",
+    audit_out: str = "artifacts/smoke_fire_detection/figlib/figlib_audit.json",
+    manifest_out: str = "artifacts/smoke_fire_detection/figlib/figlib_split_manifest.json",
     split_mode: str = "camera-disjoint",
     subset_manifest: str = "",
     test_ratio: float = 0.3,
@@ -123,10 +123,10 @@ def build_figlib_index(
 
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=86400)
 def cache_candidate(
-    index: str = "artifacts/smoke_fire_detection/figlib_index.jsonl",
+    index: str = "artifacts/smoke_fire_detection/figlib/figlib_index.jsonl",
     data_root: str = "datasets/smoke_fire_detection/FIgLib/FIgLib",
-    weights: str = "artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
-    out: str = "artifacts/smoke_fire_detection/figlib_detector_cache.jsonl",
+    weights: str = "artifacts/smoke_fire_detection/checkpoints/yolo26n_dfire_control/best.pt",
+    out: str = "artifacts/smoke_fire_detection/detector_cache/figlib_detector_cache.jsonl",
     split: str = "dev",
     candidate_revision: str = "",
     batch: int = 8,
@@ -170,10 +170,10 @@ def cache_candidate(
 
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=86400)
 def probe_detector(
-    index: str = "artifacts/smoke_fire_detection/figlib_index.jsonl",
+    index: str = "artifacts/smoke_fire_detection/figlib/figlib_index.jsonl",
     data_root: str = "datasets/smoke_fire_detection/FIgLib/FIgLib",
-    weights: str = "artifacts/smoke_fire_detection/runs/dfire_yolo26n_baseline_full_vram/weights/best.pt",
-    out: str = "artifacts/smoke_fire_detection/figlib_detector_probe.jsonl",
+    weights: str = "artifacts/smoke_fire_detection/checkpoints/yolo26n_dfire_control/best.pt",
+    out: str = "artifacts/smoke_fire_detection/detector_cache/figlib_detector_probe.jsonl",
     candidate_revision: str = "",
     limit: int = 30,
     batch: int = 4,
@@ -222,7 +222,7 @@ def profile_yolo_candidate(
     warmup: int = 30,
     measured: int = 300,
     rounds: int = 3,
-    out: str = "artifacts/smoke_fire_detection/profile_report.json",
+    out: str = "artifacts/smoke_fire_detection/benchmark/profile/profile_report.json",
 ):
     command = [
         "tasks.smoke_fire_detection.eval",
@@ -267,7 +267,7 @@ def profile_rfdetr_candidate(
     warmup: int = 30,
     measured: int = 300,
     rounds: int = 3,
-    out: str = "artifacts/smoke_fire_detection/profile_report.json",
+    out: str = "artifacts/smoke_fire_detection/benchmark/profile/profile_report.json",
 ):
     command = [
         "tasks.smoke_fire_detection.eval",
@@ -301,8 +301,8 @@ def profile_rfdetr_candidate(
 
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=3600)
 def download_pyronear(
-    out: str = "artifacts/smoke_fire_detection/pyronear_yolov8s.pt",
-    manifest_out: str = "artifacts/smoke_fire_detection/pyronear_yolov8s_manifest.json",
+    out: str = "artifacts/smoke_fire_detection/checkpoints/external/pyronear_yolov8s.pt",
+    manifest_out: str = "artifacts/smoke_fire_detection/checkpoints/external/pyronear_yolov8s_manifest.json",
 ):
     output_path = workspace_path(out)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -328,8 +328,8 @@ def download_pyronear(
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=14400, cpu=4, memory=16384)
 def run_temporal(
     command: str = "g0",
-    cache: str = "artifacts/smoke_fire_detection/figlib_baseline_dev_cache.jsonl",
-    out: str = "artifacts/smoke_fire_detection/temporal_baseline_dev.json",
+    cache: str = "artifacts/smoke_fire_detection/detector_cache/figlib_baseline_dev_cache.jsonl",
+    out: str = "artifacts/smoke_fire_detection/benchmark/temporal/temporal_baseline_dev.json",
     events_out: str = "",
     score: str = "smoke",
     bootstrap_samples: int = 1000,
@@ -354,9 +354,9 @@ def run_temporal(
 
 @app.function(image=utility_image, volumes={"/workspace": volume}, timeout=14400, cpu=4, memory=16384)
 def compare_candidates(
-    baseline_cache: str = "artifacts/smoke_fire_detection/figlib_baseline_dev_cache.jsonl",
-    candidate_cache: str = "artifacts/smoke_fire_detection/figlib_pyronear_dev_cache.jsonl",
-    out: str = "artifacts/smoke_fire_detection/checkpoint2_candidate_comparison.json",
+    baseline_cache: str = "artifacts/smoke_fire_detection/detector_cache/figlib_baseline_dev_cache.jsonl",
+    candidate_cache: str = "artifacts/smoke_fire_detection/detector_cache/figlib_pyronear_dev_cache.jsonl",
+    out: str = "artifacts/smoke_fire_detection/benchmark/compare/checkpoint2_candidate_comparison.json",
     bootstrap_samples: int = 1000,
 ):
     result = run_module([
@@ -397,9 +397,9 @@ def pyro_sdis_cli(action: str = "cache"):
 
 @app.function(image=yolo_image, gpu="L4", volumes={"/workspace": volume}, timeout=86400)
 def evaluate(
-    weights: str = "artifacts/smoke_fire_detection/runs/yolo26x_pyro_sdis/weights/best.pt",
+    weights: str = "artifacts/smoke_fire_detection/checkpoints/yolo26x_pyro_sdis/best.pt",
     data_yaml: str = "datasets/smoke_fire_detection/pyro-sdis-yolo/dataset.yaml",
-    out: str = "artifacts/smoke_fire_detection/eval_report.json",
+    out: str = "artifacts/smoke_fire_detection/benchmark/eval_report.json",
     split: str = "val",
     conf: float = 0.25,
     iou: float = 0.6,

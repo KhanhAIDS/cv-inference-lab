@@ -1,0 +1,405 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_test.jsonl",
+  "n_positive_frames": 5587,
+  "n_negative_frames": 5937,
+  "bbox_size_vs_confidence": {
+    "frame_width": 2048,
+    "frame_height": 1536,
+    "n_positive_with_detection": 4323,
+    "n_positive_no_detection": 1264,
+    "pearson_correlation_area_vs_confidence": 0.06451888394681471,
+    "buckets": [
+      {
+        "range_pct_area": "[0.0,0.1)",
+        "n_frames": 285,
+        "mean_confidence": 0.383159946741765,
+        "frac_conf_ge_0.3": 0.5929824561403508,
+        "frac_conf_ge_0.5": 0.3929824561403509
+      },
+      {
+        "range_pct_area": "[0.1,0.3)",
+        "n_frames": 790,
+        "mean_confidence": 0.5199318225719506,
+        "frac_conf_ge_0.3": 0.7886075949367088,
+        "frac_conf_ge_0.5": 0.620253164556962
+      },
+      {
+        "range_pct_area": "[0.3,0.7)",
+        "n_frames": 745,
+        "mean_confidence": 0.6002794005426785,
+        "frac_conf_ge_0.3": 0.8563758389261745,
+        "frac_conf_ge_0.5": 0.7463087248322148
+      },
+      {
+        "range_pct_area": "[0.7,1.5)",
+        "n_frames": 776,
+        "mean_confidence": 0.6174713345820603,
+        "frac_conf_ge_0.3": 0.8492268041237113,
+        "frac_conf_ge_0.5": 0.7268041237113402
+      },
+      {
+        "range_pct_area": "[1.5,5.0)",
+        "n_frames": 995,
+        "mean_confidence": 0.6003193041337794,
+        "frac_conf_ge_0.3": 0.7849246231155779,
+        "frac_conf_ge_0.5": 0.6824120603015076
+      },
+      {
+        "range_pct_area": "[5.0,inf)",
+        "n_frames": 732,
+        "mean_confidence": 0.694953272867276,
+        "frac_conf_ge_0.3": 0.8811475409836066,
+        "frac_conf_ge_0.5": 0.8114754098360656
+      }
+    ],
+    "no_detection_bucket": {
+      "n_frames": 1264,
+      "mean_confidence": 0.0
+    }
+  },
+  "offset_band_auroc": [
+    {
+      "offset_start_seconds": 180,
+      "offset_end_seconds": 600,
+      "n_positive_frames": 1040,
+      "auroc_vs_all_negative": 0.7587792008395848
+    },
+    {
+      "offset_start_seconds": 600,
+      "offset_end_seconds": 1200,
+      "n_positive_frames": 1503,
+      "auroc_vs_all_negative": 0.8493877440784032
+    },
+    {
+      "offset_start_seconds": 1200,
+      "offset_end_seconds": 100000,
+      "n_positive_frames": 3044,
+      "auroc_vs_all_negative": 0.8534399853742438
+    }
+  ],
+  "per_camera_auroc": {
+    "n_cameras_with_both_labels": 35,
+    "percentiles": {
+      "p10": 0.6239309210526316,
+      "p25": 0.730585015395142,
+      "median": 0.8679413399601086,
+      "p75": 0.9502726390793831,
+      "p90": 0.9973684210526316
+    },
+    "worst_10": [
+      {
+        "camera_id": "bi-s-mobo-m",
+        "auroc": 0.5,
+        "n_positive": 38,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "tp-s-mobo-m",
+        "auroc": 0.5,
+        "n_positive": 30,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "stgo-s-mobo-m",
+        "auroc": 0.6161616161616161,
+        "n_positive": 33,
+        "n_negative": 33
+      },
+      {
+        "camera_id": "ml-n-mobo-c",
+        "auroc": 0.6239309210526316,
+        "n_positive": 76,
+        "n_negative": 80
+      },
+      {
+        "camera_id": "bi-s-mobo-c",
+        "auroc": 0.6685,
+        "n_positive": 75,
+        "n_negative": 80
+      },
+      {
+        "camera_id": "om-s-mobo-c",
+        "auroc": 0.6691318370476115,
+        "n_positive": 486,
+        "n_negative": 467
+      },
+      {
+        "camera_id": "wc-s-mobo-c",
+        "auroc": 0.6707695289784842,
+        "n_positive": 67,
+        "n_negative": 77
+      },
+      {
+        "camera_id": "hp-w-mobo-c",
+        "auroc": 0.6737234042553192,
+        "n_positive": 188,
+        "n_negative": 200
+      },
+      {
+        "camera_id": "starr-n-mobo-m",
+        "auroc": 0.730585015395142,
+        "n_positive": 74,
+        "n_negative": 79
+      },
+      {
+        "camera_id": "bh-s-mobo-c",
+        "auroc": 0.7509300595238095,
+        "n_positive": 224,
+        "n_negative": 240
+      }
+    ],
+    "best_10": [
+      {
+        "camera_id": "cp-s-mobo-c",
+        "auroc": 0.9377627627627627,
+        "n_positive": 111,
+        "n_negative": 120
+      },
+      {
+        "camera_id": "smer-tcs8-mobo-c",
+        "auroc": 0.9502726390793831,
+        "n_positive": 334,
+        "n_negative": 358
+      },
+      {
+        "camera_id": "syp-n-mobo-m",
+        "auroc": 0.9557432432432432,
+        "n_positive": 37,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "bl-s-mobo-c",
+        "auroc": 0.9576039141754197,
+        "n_positive": 141,
+        "n_negative": 158
+      },
+      {
+        "camera_id": "69bravo-w-mobo-c",
+        "auroc": 0.985,
+        "n_positive": 35,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "fire_rm-e-mobo-c",
+        "auroc": 0.9864864864864865,
+        "n_positive": 37,
+        "n_negative": 39
+      },
+      {
+        "camera_id": "lp-s-iqeye",
+        "auroc": 0.9973684210526316,
+        "n_positive": 38,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "syp-n-mobo-c",
+        "auroc": 1.0,
+        "n_positive": 38,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "so-s-mobo-c",
+        "auroc": 1.0,
+        "n_positive": 38,
+        "n_negative": 40
+      },
+      {
+        "camera_id": "ws-s-mobo-c",
+        "auroc": 1.0,
+        "n_positive": 37,
+        "n_negative": 40
+      }
+    ]
+  },
+  "fp_audit_candidates": {
+    "note": "highest-confidence pre-ignition frames; category (haze/glare/cloud/etc) needs a quick visual pass, not auto-labeled here",
+    "top_n": [
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464419_-00900.jpg",
+        "ignition_offset_seconds": -900,
+        "max_smoke_confidence": 0.8723353743553162,
+        "n_detections": 3
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464479_-00840.jpg",
+        "ignition_offset_seconds": -840,
+        "max_smoke_confidence": 0.8717625737190247,
+        "n_detections": 3
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464539_-00780.jpg",
+        "ignition_offset_seconds": -780,
+        "max_smoke_confidence": 0.8590049743652344,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463639_-01680.jpg",
+        "ignition_offset_seconds": -1680,
+        "max_smoke_confidence": 0.8580194115638733,
+        "n_detections": 4
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464299_-01020.jpg",
+        "ignition_offset_seconds": -1020,
+        "max_smoke_confidence": 0.8573092222213745,
+        "n_detections": 4
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464359_-00960.jpg",
+        "ignition_offset_seconds": -960,
+        "max_smoke_confidence": 0.8528144359588623,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463519_-01800.jpg",
+        "ignition_offset_seconds": -1800,
+        "max_smoke_confidence": 0.8453251719474792,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464659_-00660.jpg",
+        "ignition_offset_seconds": -660,
+        "max_smoke_confidence": 0.8453180193901062,
+        "n_detections": 4
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464599_-00720.jpg",
+        "ignition_offset_seconds": -720,
+        "max_smoke_confidence": 0.8447338938713074,
+        "n_detections": 3
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607464239_-01080.jpg",
+        "ignition_offset_seconds": -1080,
+        "max_smoke_confidence": 0.8446925282478333,
+        "n_detections": 4
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463759_-01560.jpg",
+        "ignition_offset_seconds": -1560,
+        "max_smoke_confidence": 0.8419034481048584,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463399_-01920.jpg",
+        "ignition_offset_seconds": -1920,
+        "max_smoke_confidence": 0.8397237658500671,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463579_-01740.jpg",
+        "ignition_offset_seconds": -1740,
+        "max_smoke_confidence": 0.8381483554840088,
+        "n_detections": 4
+      },
+      {
+        "sequence_id": "20201208_FIRE_om-s-mobo-c",
+        "camera_id": "om-s-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20201208_FIRE_om-s-mobo-c/1607463819_-01500.jpg",
+        "ignition_offset_seconds": -1500,
+        "max_smoke_confidence": 0.8354477286338806,
+        "n_detections": 5
+      },
+      {
+        "sequence_id": "20200822_SloaneFire_lp-n-mobo-c",
+        "camera_id": "lp-n-mobo-c",
+        "frame_path": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/FIgLib/20200822_SloaneFire_lp-n-mobo-c/1598129281_-00600.jpg",
+        "ignition_offset_seconds": -600,
+        "max_smoke_confidence": 0.8347293734550476,
+        "n_detections": 1
+      }
+    ]
+  },
+  "visibility_cross_reference": {
+    "note": "partial coverage: only sequences present in the human_review_labels.json subset",
+    "n_sequences_matched": 10,
+    "rows": [
+      {
+        "sequence_id": "20250710_SpringsFire_lp-n-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "control",
+        "auroc_on_winner": 1.0
+      },
+      {
+        "sequence_id": "20231108.221213-AmagoFire-bi-s-mobo-c",
+        "visibility_label": "fire_only",
+        "group": "silent",
+        "auroc_on_winner": 0.5394736842105263
+      },
+      {
+        "sequence_id": "20170520_FIRE_om-s-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "silent",
+        "auroc_on_winner": 0.5789473684210527
+      },
+      {
+        "sequence_id": "20250501_FelipeFire_ml-n-mobo-c",
+        "visibility_label": "ambiguous",
+        "group": "silent",
+        "auroc_on_winner": 0.7569078947368421
+      },
+      {
+        "sequence_id": "20180910_FIRE_smer-tcs8-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "control",
+        "auroc_on_winner": 0.9473684210526315
+      },
+      {
+        "sequence_id": "20250724_PostaFire_ws-w-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "control",
+        "auroc_on_winner": 0.9864864864864865
+      },
+      {
+        "sequence_id": "20200202_FIRE_hp-w-mobo-c",
+        "visibility_label": "not_visible",
+        "group": "silent",
+        "auroc_on_winner": 0.5
+      },
+      {
+        "sequence_id": "20231030.123437-HighlandFire-hp-n-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "silent",
+        "auroc_on_winner": 0.8947368421052632
+      },
+      {
+        "sequence_id": "20200611_skyline_lp-n-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "control",
+        "auroc_on_winner": 0.9802631578947368
+      },
+      {
+        "sequence_id": "20231027.095451-prescribed-vo-w-mobo-c",
+        "visibility_label": "visible_smoke",
+        "group": "silent",
+        "auroc_on_winner": 0.7858108108108108
+      }
+    ]
+  }
+}

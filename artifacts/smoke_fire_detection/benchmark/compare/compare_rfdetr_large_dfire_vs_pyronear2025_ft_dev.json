@@ -1,0 +1,29 @@
+{
+  "baseline_cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_dev.jsonl",
+  "candidate_cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_rfdetr_large_dfire_pyronear2025_ft_dev.jsonl",
+  "ignore_band_seconds": 180,
+  "paired_frames": 27263,
+  "paired_events": 358,
+  "paired_cameras": 108,
+  "baseline_auroc_smoke": 0.8317349367179875,
+  "candidate_auroc_smoke": 0.8093822542856931,
+  "delta_auroc_smoke": -0.02235268243229438,
+  "paired_bootstrap_event": {
+    "ci95": [
+      -0.03766424291791564,
+      -0.006429117976527681
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "paired_bootstrap_camera": {
+    "ci95": [
+      -0.037989518331770396,
+      -0.005857337581630675
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "winner_rule": "event and camera lower CI > 0",
+  "decision": "tie_or_not_proven"
+}

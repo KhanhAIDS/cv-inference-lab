@@ -1,0 +1,28 @@
+{
+  "purpose": "Short T4 training profile only. It is not a quality-training run.",
+  "gpu_count": 2,
+  "batch_total": 16,
+  "imgsz": 800,
+  "train_images_available": 17221,
+  "images_profiled": 256,
+  "elapsed_seconds": 80.64,
+  "per_gpu": [
+    {
+      "index": 0,
+      "name": "Tesla T4",
+      "nvidia_smi_peak_memory_used_mib": 13749,
+      "nvidia_smi_mean_utilization_pct": 29.0,
+      "nvidia_smi_max_utilization_pct": 100,
+      "nvidia_smi_mean_power_w": 35.7
+    },
+    {
+      "index": 1,
+      "name": "Tesla T4",
+      "nvidia_smi_peak_memory_used_mib": 13739,
+      "nvidia_smi_mean_utilization_pct": 36.3,
+      "nvidia_smi_max_utilization_pct": 100,
+      "nvidia_smi_mean_power_w": 38.6
+    }
+  ],
+  "samples": 116
+}

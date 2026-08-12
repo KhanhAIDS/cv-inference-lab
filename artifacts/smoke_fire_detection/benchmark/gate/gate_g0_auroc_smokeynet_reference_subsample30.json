@@ -1,0 +1,47 @@
+{
+  "cache": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/artifacts/smoke_fire_detection/figlib_detector_cache_smokeynet_reference_dev_subsample30.jsonl",
+  "design_decisions": {
+    "ignore_band_seconds": 180,
+    "label_rule": "offset < 0 -> negative (pre-ignition); offset >= ignore_band_seconds -> positive (post-ignition); [0, ignore_band_seconds) excluded",
+    "primary_gate_metric": "max_smoke_confidence",
+    "auroc_method": "mann_whitney_u_rank_sum (numpy, tie-corrected, no scipy/sklearn dependency)",
+    "bootstrap_event_unit": "sequence_id",
+    "bootstrap_camera_unit": "camera_id"
+  },
+  "counts": {
+    "total_frames": 2366,
+    "frames_dropped_by_ignore_band": 92,
+    "frames_used": 2274,
+    "n_pos": 1110,
+    "n_neg": 1164,
+    "n_events": 30,
+    "n_cameras": 24
+  },
+  "auroc": {
+    "smoke": 0.8092249465960806,
+    "fire": 0.5,
+    "any": 0.8092249465960806
+  },
+  "bootstrap_event_smoke": {
+    "ci95": [
+      0.7296127787943227,
+      0.8951781970649895
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "bootstrap_camera_smoke": {
+    "ci95": [
+      0.7277930584824306,
+      0.8927050365334271
+    ],
+    "n_resamples_used": 1000,
+    "n_resamples_requested": 1000
+  },
+  "gate": {
+    "name": "G0",
+    "auroc_smoke": 0.8092249465960806,
+    "decision": "pass",
+    "next_action": "Detector du tin hieu transfer sang FIgLib -> mo G1 (N-of-M/EMA temporal experiment)."
+  }
+}

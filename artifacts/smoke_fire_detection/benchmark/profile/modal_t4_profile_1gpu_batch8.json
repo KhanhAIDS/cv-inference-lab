@@ -1,0 +1,20 @@
+{
+  "purpose": "Short T4 training profile only. It is not a quality-training run.",
+  "gpu_count": 1,
+  "batch_total": 8,
+  "imgsz": 800,
+  "train_images_available": 17221,
+  "images_profiled": 256,
+  "elapsed_seconds": 68.21,
+  "per_gpu": [
+    {
+      "index": 0,
+      "name": "Tesla T4",
+      "peak_memory_used_mib": 483,
+      "mean_utilization_pct": 1.2,
+      "max_utilization_pct": 7,
+      "mean_power_w": 25.7
+    }
+  ],
+  "samples": 18
+}

@@ -1,0 +1,114 @@
+{
+  "sources": {
+    "fasdd_cv_v9": {
+      "root": "/home/tts01/Luyen_Minh_Khanh/cv-inference-lab/datasets/smoke_fire_detection/fasdd_cv_v9/FASDD_CV",
+      "images": 95314,
+      "readable_images": 95314,
+      "corrupt_images": [],
+      "labels": 95314,
+      "paired_labels": 95314,
+      "missing_labels": [],
+      "orphan_labels": [],
+      "unpaired_label_files": 0,
+      "unpaired_label_examples": [],
+      "empty_labels": 39199,
+      "boxes": 126377,
+      "class_counts": {
+        "0": 73297,
+        "1": 53080
+      },
+      "malformed_label_lines": 0,
+      "nonpositive_boxes": 3,
+      "out_of_range_values": 0,
+      "boxes_outside_image": 161,
+      "splits": {
+        "unsplit": 95314
+      }
+    }
+  },
+  "exact_duplicate_groups": 170,
+  "cross_source_exact_duplicate_groups": 0,
+  "exact_duplicate_examples": [
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV000900.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV001143.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV001187.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV011088.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV001232.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV008211.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009285.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV013738.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009287.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV013706.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009305.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV019553.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009310.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV013691.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009331.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV010142.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009352.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV010128.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009358.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV010130.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009359.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV010133.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009363.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV018969.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009378.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV019577.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009379.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV013683.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV009637.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV019555.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV013785.jpg",
+      "fasdd_cv_v9:images/fire_CV007054.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV015638.jpg",
+      "fasdd_cv_v9:images/fire_CV009341.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV015646.jpg",
+      "fasdd_cv_v9:images/fire_CV009352.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV017933.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV017935.jpg"
+    ],
+    [
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV017986.jpg",
+      "fasdd_cv_v9:images/bothFireAndSmoke_CV018002.jpg"
+    ]
+  ],
+  "cross_source_exact_duplicate_examples": []
+}
